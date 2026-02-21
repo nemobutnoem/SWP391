@@ -1,0 +1,102 @@
+.dashWrap {
+  display: grid;
+  gap: 18px;
+}
+
+.dashTopGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.dashBottomGrid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 16px;
+}
+
+.dashCard {
+  background: #ffffff;
+  border: 1px solid rgba(236, 236, 236, 0.9);
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 8px 22px rgba(16, 24, 40, 0.04);
+  min-height: 110px;
+}
+
+.dashCardTitle {
+  font-size: 12px;
+  font-weight: 700;
+  color: #374151;
+  margin-bottom: 10px;
+}
+
+.dashBigNumber {
+  font-size: 30px;
+  font-weight: 800;
+  color: #111827;
+}
+
+.dashDanger {
+  color: #dc2626;
+}
+
+.dashMuted {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.dashStatRow {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  font-size: 13px;
+  color: #111827;
+  border-bottom: 1px dashed #f1f5f9;
+}
+
+.dashStatRow:last-child {
+  border-bottom: 0;
+}
+
+.dashPlaceholderChart {
+  height: 220px;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1px dashed #e5e7eb;
+  display: grid;
+  place-items: center;
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.dashList {
+  margin: 0;
+  padding-left: 18px;
+  color: #111827;
+  font-size: 13px;
+  display: grid;
+  gap: 8px;
+}
+
+.dashLink {
+  display: inline-block;
+  margin-top: 10px;
+  font-size: 12px;
+  color: #2563eb;
+  text-decoration: none;
+}
+
+.dashLink:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 1100px) {
+  .dashTopGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .dashBottomGrid {
+    grid-template-columns: 1fr;
+  }
+}
