@@ -28,19 +28,19 @@ export function AppRoutes() {
           {/* DEV: mock smoke test */}
           <Route path="/dev/mock" element={<MockSmokeTestPage />} />
 
-          {/* Admin: chỉ topics */}
+          {/* Admin */}
           <Route element={<RoleGuard allow={[ROLES.ADMIN]} />}>
             {/* admin routes here */}
           </Route>
 
-          {/* Lecturer: chỉ xem tiến trình */}
+          {/* Lecturer */}
           <Route element={<RoleGuard allow={[ROLES.LECTURER]} />}>
             {/* lecturer routes here */}
           </Route>
 
-          {/* Team Lead + Team Member: work area + sync */}
-          <Route element={<RoleGuard allow={[ROLES.LEADER, ROLES.MEMBER]} />}>
-            {/* team routes here */}
+          {/* Student (Leader/Member đều là Student; leader/member check ở feature-level) */}
+          <Route element={<RoleGuard allow={[ROLES.STUDENT]} />}>
+            {/* student routes here */}
           </Route>
         </Route>
       </Route>

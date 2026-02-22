@@ -22,6 +22,7 @@ function writeStorage(value) {
 }
 
 export function AuthProvider({ children }) {
+  // IMPORTANT: init from storage
   const [session, setSession] = useState(() => readStorage());
 
   const value = useMemo(() => {
@@ -30,12 +31,13 @@ export function AuthProvider({ children }) {
     return {
       user,
       isAuthenticated: Boolean(user),
-      loginFake: ({ role, name }) => {
+      loginFake: async ({ role, name }) => {
         const next = { user: { id: "fake-1", name: name || "User", role } };
         setSession(next);
         writeStorage(next);
+        return next;
       },
-      logout: () => {
+      logout: async () => {
         setSession(null);
         writeStorage(null);
       },

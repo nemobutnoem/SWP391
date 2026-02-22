@@ -1,16 +1,21 @@
 import { http } from "../../http/httpClient.js";
+import { tokenStorage } from "../tokenStorage.js";
 
 export const authApi = {
+  async login({ account, password }) {
+    const res = await http.post("/auth/login", { account, password }, { auth: false });
+    const accessToken = res.data?.accessToken || res.data?.token;
+    if (accessToken) tokenStorage.set(accessToken);
+    return res.data; // expect { user, ... }
+  },
+
   async getSession() {
-    const res = await http.get("/auth/session");
+    const res = await http.get("/me");
     return res.data;
   },
-  async login(payload) {
-    const res = await http.post("/auth/login", payload);
-    return res.data;
-  },
+
   async logout() {
-    const res = await http.post("/auth/logout", {});
-    return res.data;
+    tokenStorage.clear();
+    return { ok: true };
   },
 };
