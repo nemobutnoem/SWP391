@@ -1,6 +1,6 @@
 import React from "react";
 import { BrowserRouter } from "react-router-dom";
-import { AuthProvider } from "../store/auth/auth.context.jsx";
+import { AuthProvider } from "../store/auth/authProvider.jsx";
 
 export function AppProviders({ children }) {
   return (

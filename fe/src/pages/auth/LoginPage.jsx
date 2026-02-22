@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../../store/auth/auth.context.jsx";
+import { useAuth } from "../../store/auth/useAuth.jsx";
 import { ROLES, ROLE_LABELS } from "../../routes/access/roles.js";
 
 export function LoginPage() {

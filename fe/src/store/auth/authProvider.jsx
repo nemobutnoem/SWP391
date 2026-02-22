@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
+import { AuthContext } from "./authContext.jsx";
 
-const AuthContext = createContext(null);
 const STORAGE_KEY = "swp_fake_auth";
 
 function readStorage() {
@@ -43,10 +43,4 @@ export function AuthProvider({ children }) {
   }, [session]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
-  return ctx;
 }

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { useAuth } from "../../store/auth/auth.context.jsx";
+import { useAuth } from "../../store/auth/useAuth.jsx";
 import "./topbar.css";
 
 function initials(name = "User") {

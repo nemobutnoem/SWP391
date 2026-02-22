@@ -1,6 +1,6 @@
 import React from "react";
 import { NavLink } from "react-router-dom";
-import { useAuth } from "../../store/auth/auth.context.jsx";
+import { useAuth } from "../../store/auth/useAuth.jsx";
 import { ROLES } from "../../routes/access/roles.js";
 import "./sidebar.css";
 

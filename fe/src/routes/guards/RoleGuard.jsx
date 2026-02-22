@@ -1,6 +1,6 @@
 import React from "react";
 import { Navigate, Outlet } from "react-router-dom";
-import { useAuth } from "../../store/auth/auth.context.jsx";
+import { useAuth } from "../../store/auth/useAuth.jsx";
 
 export function RoleGuard({ allow = [] }) {
   const { user } = useAuth();

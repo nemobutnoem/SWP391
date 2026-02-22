@@ -1,6 +1,6 @@
 import React from "react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
-import { useAuth } from "../../store/auth/auth.context.jsx";
+import { useAuth } from "../../store/auth/useAuth.jsx";
 
 export function AuthGuard() {
   const { isAuthenticated } = useAuth();
@@ -9,6 +9,5 @@ export function AuthGuard() {
   if (!isAuthenticated) {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   }
-
   return <Outlet />;
 }
