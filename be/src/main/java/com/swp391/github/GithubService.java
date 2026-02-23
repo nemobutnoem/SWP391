@@ -1,0 +1,99 @@
+package com.swp391.github;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.swp391.group.GroupMemberRepository;
+import com.swp391.github.dto.GithubStatsResponse;
+import com.swp391.integration.GroupIntegrationService;
+import com.swp391.repo.GithubRepositoryRepository;
+import com.swp391.security.UserPrincipal;
+import com.swp391.student.StudentRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.util.HashMap;
+import java.util.Map;
+
+@Service
+@RequiredArgsConstructor
+public class GithubService {
+	private final GitHubClient gitHubClient;
+	private final GithubActivityRepository activityRepository;
+	private final GithubRepositoryRepository repoRepository;
+	private final StudentRepository studentRepository;
+	private final GroupMemberRepository memberRepository;
+	private final GroupIntegrationService integrationService;
+
+	public GithubStatsResponse stats(Integer groupId, Instant from, Instant to, UserPrincipal principal) {
+		ensureMember(groupId, principal);
+		LocalDateTime fromLdt = from == null ? null : LocalDateTime.ofInstant(from, ZoneOffset.UTC);
+		LocalDateTime toLdt = to == null ? null : LocalDateTime.ofInstant(to, ZoneOffset.UTC);
+		Map<String, Integer> map = new HashMap<>();
+		for (Object[] row : activityRepository.sumCommitsByUser(groupId, fromLdt, toLdt)) {
+			String username = (String) row[0];
+			Integer sum = ((Number) row[1]).intValue();
+			map.put(username == null ? "unknown" : username, sum);
+		}
+		return new GithubStatsResponse(groupId, map);
+	}
+
+	@Transactional
+	public int syncCommits(Integer groupId, UserPrincipal principal) {
+		ensureMember(groupId, principal);
+		String role = principal.getRole() == null ? "" : principal.getRole();
+		if (!role.equalsIgnoreCase("TEAM_LEAD")) {
+			throw new SecurityException("Only TEAM_LEAD can trigger GitHub sync");
+		}
+		String token = integrationService.resolveGithubToken(groupId);
+		int inserted = 0;
+		for (var repo : repoRepository.findByGroupId(groupId)) {
+			if (repo.getRepoOwner() == null || repo.getRepoName() == null) {
+				continue;
+			}
+			JsonNode commits = gitHubClient.listCommits(repo.getRepoOwner(), repo.getRepoName(), null, token);
+			if (commits == null || !commits.isArray()) {
+				continue;
+			}
+			for (JsonNode c : commits) {
+				String sha = c.path("sha").asText(null);
+				if (sha == null) continue;
+				String message = c.path("commit").path("message").asText(null);
+				String authorLogin = c.path("author").path("login").asText(null);
+				String date = c.path("commit").path("author").path("date").asText(null);
+				LocalDateTime occurredAt = null;
+				try {
+					if (date != null) occurredAt = LocalDateTime.ofInstant(Instant.parse(date), ZoneOffset.UTC);
+				} catch (Exception ignored) {
+				}
+
+				GithubActivityEntity a = new GithubActivityEntity();
+				a.setGroupId(groupId);
+				a.setGithubUsername(authorLogin);
+				a.setActivityType("commit");
+				a.setCommitSha(sha);
+				a.setCommitMessage(message);
+				a.setPushedCommitCount(1);
+				a.setOccurredAt(occurredAt);
+				a.setGithubEventId(sha);
+				try {
+					activityRepository.save(a);
+					inserted++;
+				} catch (DataIntegrityViolationException ignored) {
+					// duplicate sha for group
+				}
+			}
+		}
+		return inserted;
+	}
+
+	private void ensureMember(Integer groupId, UserPrincipal principal) {
+		var student = studentRepository.findByUserId(principal.getUserId())
+				.orElseThrow(() -> new IllegalArgumentException("Student not found for current user"));
+		memberRepository.findByGroupIdAndStudentId(groupId, student.getId())
+				.orElseThrow(() -> new SecurityException("You are not a member of this group"));
+	}
+}
