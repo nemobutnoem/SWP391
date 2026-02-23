@@ -1,4 +1,5 @@
 import { env } from "../../app/config/env.js";
+import { tokenStorage } from "../auth/tokenStorage.js";
 
 function buildUrl(path) {
   const base = (env.apiUrl || "").replace(/\/+$/, "");
@@ -24,11 +25,14 @@ export class HttpError extends Error {
 }
 
 export const http = {
-  async request(method, path, { body, headers, signal } = {}) {
+  async request(method, path, { body, headers, signal, auth = true } = {}) {
+    const token = auth ? tokenStorage.get() : null;
+
     const res = await fetch(buildUrl(path), {
       method,
       headers: {
         ...(body ? { "Content-Type": "application/json" } : {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...(headers || {}),
       },
       body: body ? JSON.stringify(body) : undefined,
