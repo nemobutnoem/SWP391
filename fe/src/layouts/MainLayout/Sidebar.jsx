@@ -4,7 +4,6 @@ import { useAuth } from "../../store/auth/useAuth.jsx";
 import { ROLES } from "../../routes/access/roles.js";
 import "./sidebar.css";
 
-
 const navClass = ({ isActive }) => `navItem ${isActive ? "navItem--active" : ""}`;
 
 export function Sidebar() {
@@ -13,7 +12,10 @@ export function Sidebar() {
 
   const isAdmin = role === ROLES.ADMIN;
   const isLecturer = role === ROLES.LECTURER;
-  const isTeam = role === ROLES.LEADER || role === ROLES.MEMBER;
+  const isStudent = role === ROLES.STUDENT;
+
+  // If you want "team features" for Student only:
+  const canSeeTeamMenus = isStudent; // or (isStudent || isLecturer) tùy bạn
 
   return (
     <aside className="sidebar">
@@ -25,21 +27,21 @@ export function Sidebar() {
           Dashboard
         </NavLink>
 
-        {isTeam && (
-          <NavLink to="/issues" className={navClass}>
+        {canSeeTeamMenus && (
+          <NavLink to="/tasks" className={navClass}>
             <span className="dot" />
             Tasks
           </NavLink>
         )}
 
-        {isTeam && (
+        {canSeeTeamMenus && (
           <NavLink to="/activity" className={navClass}>
             <span className="dot" />
             Commits (GitHub)
           </NavLink>
         )}
 
-        {isTeam && (
+        {canSeeTeamMenus && (
           <NavLink to="/sync" className={navClass}>
             <span className="dot" />
             Requirements (Jira)
@@ -53,7 +55,7 @@ export function Sidebar() {
           </NavLink>
         )}
 
-        {(isLecturer || isTeam) && (
+        {(isLecturer || isStudent) && (
           <NavLink to="/activity" className={navClass}>
             <span className="dot" />
             Progress

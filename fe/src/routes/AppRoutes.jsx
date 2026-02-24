@@ -13,6 +13,7 @@ import { ForbiddenPage } from "../pages/auth/ForbiddenPage.jsx";
 import { NotFoundPage } from "../pages/auth/NotFoundPage.jsx";
 
 import { MockSmokeTestPage } from "../pages/dev/MockSmokeTestPage.jsx";
+import { TasksBoardPage } from "../pages/tasks/TasksBoardPage.jsx";
 
 export function AppRoutes() {
   return (
@@ -24,6 +25,9 @@ export function AppRoutes() {
         <Route element={<MainLayout />}>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<DashboardPage />} />
+
+          {/* Tasks */}
+          <Route path="/tasks" element={<TasksBoardPage />} />
 
           {/* DEV: mock smoke test */}
           <Route path="/dev/mock" element={<MockSmokeTestPage />} />
