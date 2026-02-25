@@ -14,15 +14,14 @@ export function Sidebar() {
   const isLecturer = role === ROLES.LECTURER;
   const isStudent = role === ROLES.STUDENT;
 
-  // If you want "team features" for Student only:
-  const canSeeTeamMenus = isStudent; // or (isStudent || isLecturer) tùy bạn
+  const canSeeTeamMenus = isStudent;
 
   return (
     <aside className="sidebar">
       <div className="brand">SWP</div>
 
       <nav className="nav">
-        <NavLink to="/dashboard" className={navClass}>
+        <NavLink to="/dashboard" end className={navClass}>
           <span className="dot" />
           Dashboard
         </NavLink>
@@ -56,7 +55,7 @@ export function Sidebar() {
         )}
 
         {(isLecturer || isStudent) && (
-          <NavLink to="/activity" className={navClass}>
+          <NavLink to="/progress" className={navClass}>
             <span className="dot" />
             Progress
           </NavLink>
