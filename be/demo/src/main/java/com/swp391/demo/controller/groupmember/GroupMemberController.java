@@ -15,37 +15,44 @@ import org.springframework.web.bind.annotation.RestController;
 import com.swp391.demo.entity.groupmember.GroupMember;
 import com.swp391.demo.service.groupmember.GroupMemberService;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/groupmembers")
 @RequiredArgsConstructor
 public class GroupMemberController {
-private final GroupMemberService groupMemberService;
-@GetMapping
-public ResponseEntity<List<GroupMember>> getAllLectures(){
-    return ResponseEntity.ok(groupMemberService.getAllMembers());
-}
+    private final GroupMemberService groupMemberService;
 
-@GetMapping("/id")
-public ResponseEntity<GroupMember> getMemberById(@PathVariable Long id){
-    return ResponseEntity.ok(groupMemberService.getMemberById(id));
-}
+    @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'LECTURER')")
+    public ResponseEntity<List<GroupMember>> getAllMembers() {
+        return ResponseEntity.ok(groupMemberService.getAllMembers());
+    }
 
-@PostMapping
-public ResponseEntity<GroupMember> createMember(@RequestBody GroupMember groupMember){
-    GroupMember saved = groupMemberService.createMember(groupMember);
-    return ResponseEntity.ok(saved);
-}
-@PutMapping("/id")
-public ResponseEntity<GroupMember> updateMember(@PathVariable Long id,@RequestBody GroupMember groupMember){
-    return ResponseEntity.ok(groupMemberService.updateMember(id,groupMember));
-}
-@DeleteMapping("/id")
-public ResponseEntity<String> deleteMember(@PathVariable Long id){
-    groupMemberService.deleteMember(id);;
-    return ResponseEntity.ok("Member delete successfully");
-}
-}
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'LECTURER', 'LEADER', 'MEMBER')")
+    public ResponseEntity<GroupMember> getMemberById(@PathVariable Long id) {
+        return ResponseEntity.ok(groupMemberService.getMemberById(id));
+    }
 
+    @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'LECTURER')")
+    public ResponseEntity<GroupMember> createMember(@RequestBody GroupMember groupMember) {
+        GroupMember saved = groupMemberService.createMember(groupMember);
+        return ResponseEntity.ok(saved);
+    }
 
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'LECTURER')")
+    public ResponseEntity<GroupMember> updateMember(@PathVariable Long id, @RequestBody GroupMember groupMember) {
+        return ResponseEntity.ok(groupMemberService.updateMember(id, groupMember));
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'LECTURER')")
+    public ResponseEntity<String> deleteMember(@PathVariable Long id) {
+        groupMemberService.deleteMember(id);
+        return ResponseEntity.ok("Member delete successfully");
+    }
+}
