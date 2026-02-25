@@ -1,71 +1,73 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { TasksBoardView } from "./TasksBoardView.jsx";
-import { getJiraTasks } from "../../services/mockDb.service.js";
 import { effectiveStatus } from "../../features/tasks/taskStats.js";
+
 import { jiraTaskService } from "../../services/jiraTasks/jiraTask.service.js";
 import { syncService } from "../../services/sync/sync.service.js";
 
 const DEFAULT_GROUP_ID = 1;
 
+function normalizeStatus(s) {
+  const v = String(s ?? "").trim().toUpperCase();
+  if (v === "TODO" || v === "TO DO" || v === "TO_DO") return "TODO";
+  if (v === "IN_PROGRESS" || v === "IN PROGRESS" || v === "INPROGRESS")
+    return "IN_PROGRESS";
+  if (v === "IN_REVIEW" || v === "IN REVIEW" || v === "INREVIEW")
+    return "IN_REVIEW";
+  if (v === "DONE") return "DONE";
+  return "TODO";
+}
+
 function normalizeJiraTask(t) {
   return {
-    id: String(t.id),
+    id: Number(t.id),
     title: t.title ?? t.summary ?? t.jira_issue_key ?? `Task #${t.id}`,
-    dueDate: t.dueDate ?? t.due_date ?? t.jira_due_date ?? t.duedate ?? "",
-    assigneeName:
-      t.assigneeName ??
-      t.assignee_name ??
-      t.assignee ??
-      (t.assignee_user_id ? `User #${t.assignee_user_id}` : "Unassigned"),
-    status: t.status ?? "TODO",
+    dueDate: t.dueDate ?? t.due_date ?? "",
+    assigneeName: t.assigneeName ?? t.assignee_name ?? t.assignee ?? "Unassigned",
+    status: normalizeStatus(t.status),
+    // giữ raw nếu cần debug
     _raw: t,
   };
 }
 
 export function TasksBoardPage() {
-  const [query, setQuery] = useState("");
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [localTasks, setLocalTasks] = useState(() => getJiraTasks());
-
-  const handleStatusChange = (taskId, newStatus) => {
-    setLocalTasks((prev) =>
-      prev.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t)),
-    );
-  };
+  const [groupId] = useState(DEFAULT_GROUP_ID);
 
   const [query, setQuery] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [tasks, setTasks] = useState([]);
 
-  const loadTasks = async () => {
-    setIsLoading(true);
-    try {
-      const data = await jiraTaskService.listByGroup(groupId);
-
-      // DEBUG (để biết vì sao trống)
-      console.log("groupId =", groupId);
-      console.log("jiraTaskService.listByGroup returned:", data);
-
-      setTasks((Array.isArray(data) ? data : []).map(normalizeJiraTask));
-    } catch (e) {
-      console.error("Load tasks failed:", e);
-      setTasks([]);
-    } finally {
-      setIsLoading(false);
-    }
+  const load = async () => {
+    const data = await jiraTaskService.listByGroup(groupId);
+    const list = Array.isArray(data) ? data : [];
+    setTasks(list.map(normalizeJiraTask));
   };
 
   useEffect(() => {
-    loadTasks();
+    load().catch((e) => console.error("[TasksBoard] load failed:", e));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [groupId]);
 
+  const handleStatusChange = async (taskId, newStatus) => {
+    // optimistic UI: update trước cho mượt
+    setTasks((prev) =>
+      prev.map((t) => (Number(t.id) === Number(taskId) ? { ...t, status: newStatus } : t)),
+    );
+
+    try {
+      await jiraTaskService.updateStatus(taskId, newStatus);
+      await load(); // reload để chắc chắn đồng bộ với mockDb/api
+    } catch (e) {
+      console.error("[TasksBoard] updateStatus failed:", e);
+      await load(); // rollback bằng cách reload
+    }
+  };
+
   const filteredTasks = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return localTasks;
-    return localTasks.filter((t) => (t.title || "").toLowerCase().includes(q));
-  }, [query, localTasks]);
+    if (!q) return tasks;
+    return tasks.filter((t) => (t.title || "").toLowerCase().includes(q));
+  }, [query, tasks]);
 
   const columns = useMemo(() => {
     const base = {
@@ -76,7 +78,7 @@ export function TasksBoardPage() {
       OVERDUE: [],
     };
 
-    for (const t of tasks) {
+    for (const t of filteredTasks) {
       const st = effectiveStatus(t);
       (base[st] ?? base.TODO).push(t);
     }
@@ -85,10 +87,13 @@ export function TasksBoardPage() {
 
   const onSync = async () => {
     setIsSyncing(true);
-    // Simulation of fetching fresh data
     try {
-      await new Promise((r) => setTimeout(r, 800));
-      setLocalTasks(getJiraTasks());
+      // tuỳ syncService của bạn có nhận groupId hay không
+      // await syncService.syncAll(groupId);
+      await syncService.syncAll();
+      await load();
+    } catch (e) {
+      console.error("[TasksBoard] sync failed:", e);
     } finally {
       setIsSyncing(false);
     }
@@ -98,6 +103,8 @@ export function TasksBoardPage() {
     <TasksBoardView
       query={query}
       onQueryChange={setQuery}
+      isSyncing={isSyncing}
+      onSync={onSync}
       columns={columns}
       onStatusChange={handleStatusChange}
     />

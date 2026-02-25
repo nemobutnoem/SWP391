@@ -1,8 +1,5 @@
 import React from "react";
 import styles from "./tasksBoard.module.css";
-import { PageHeader } from "../../components/common/PageHeader.jsx";
-import { Button } from "../../components/common/Button.jsx";
-import { PriorityIcon } from "../../components/common/StatusComponents.jsx";
 
 const COLUMN_META = [
   { key: "TODO", title: "Backlog" },
@@ -12,25 +9,19 @@ const COLUMN_META = [
   { key: "OVERDUE", title: "Overdue" },
 ];
 
-function TaskCard({ task, statusKey, onStatusChange }) {
-  const [isSyncing, setIsSyncing] = React.useState(false);
-  const [isSynced, setIsSynced] = React.useState(true);
+function isOverdue(task, statusKey) {
+  // Nếu task đã được đưa vào cột OVERDUE từ columns thì tone danger
+  if (statusKey === "OVERDUE") return true;
 
-  const initials =
-    task.assigneeName
-      ?.split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase() || "U";
+  // Optional: nếu có dueDate và quá hạn thì cũng danger
+  if (!task?.dueDate) return false;
+  const d = new Date(task.dueDate);
+  if (Number.isNaN(d.getTime())) return false;
+  return d.getTime() < Date.now();
+}
 
-  const handlePush = (e) => {
-    e.stopPropagation();
-    setIsSyncing(true);
-    setTimeout(() => {
-      setIsSyncing(false);
-      setIsSynced(true);
-    }, 1200);
-  };
+function TaskCard({ task, statusKey }) {
+  const overdue = isOverdue(task, statusKey);
 
   const handleDragStart = (e) => {
     e.dataTransfer.setData("taskId", task.id.toString());
@@ -38,16 +29,23 @@ function TaskCard({ task, statusKey, onStatusChange }) {
   };
 
   return (
-    <div className={`${styles.card} ${tone === "danger" ? styles.cardDanger : ""}`}>
+    <div
+      className={`${styles.card} ${overdue ? styles.cardDanger : ""}`}
+      draggable
+      onDragStart={handleDragStart}
+    >
       <div className={styles.cardTitle}>{task.title}</div>
       <div className={styles.cardMeta}>
         <div className={styles.cardDue}>
-          Due: <span className={tone === "danger" ? styles.dueDanger : ""}>{task.dueDate}</span>
+          Due:{" "}
+          <span className={overdue ? styles.dueDanger : ""}>
+            {task.dueDate || "-"}
+          </span>
         </div>
       </div>
       <div className={styles.cardFooter}>
         <div className={styles.avatar} aria-hidden />
-        <div className={styles.assignee}>{task.assigneeName}</div>
+        <div className={styles.assignee}>{task.assigneeName || "Unassigned"}</div>
       </div>
     </div>
   );
@@ -62,18 +60,17 @@ function Column({ title, statusKey, tasks, onStatusChange }) {
     setIsOver(true);
   };
 
-  const handleDragLeave = () => {
-    setIsOver(false);
-  };
+  const handleDragLeave = () => setIsOver(false);
 
   const handleDrop = (e) => {
     e.preventDefault();
     setIsOver(false);
+
     const taskIdString = e.dataTransfer.getData("taskId");
-    if (taskIdString) {
-      const taskId = parseInt(taskIdString);
-      onStatusChange(taskId, statusKey === "OVERDUE" ? "TODO" : statusKey);
-    }
+    if (!taskIdString) return;
+
+    const taskId = parseInt(taskIdString, 10);
+    onStatusChange?.(taskId, statusKey === "OVERDUE" ? "TODO" : statusKey);
   };
 
   return (
@@ -95,19 +92,22 @@ function Column({ title, statusKey, tasks, onStatusChange }) {
 
       <div className={styles["col-body"]}>
         {tasks.map((t) => (
-          <TaskCard
-            key={t.id}
-            task={t}
-            statusKey={statusKey}
-            onStatusChange={onStatusChange}
-          />
+          <TaskCard key={t.id} task={t} statusKey={statusKey} />
         ))}
       </div>
     </div>
   );
 }
 
-export function TasksBoardView({ query, onQueryChange, isSyncing, onSync, columns }) {
+// FIX CHÍNH: thêm onStatusChange ở đây
+export function TasksBoardView({
+  query,
+  onQueryChange,
+  isSyncing,
+  onSync,
+  columns,
+  onStatusChange,
+}) {
   return (
     <div className={styles.page}>
       <div className={styles.topbar}>
@@ -123,7 +123,6 @@ export function TasksBoardView({ query, onQueryChange, isSyncing, onSync, column
         <button className={styles.syncBtn} onClick={onSync} disabled={isSyncing}>
           {isSyncing ? "Syncing..." : "Sync with Jira & GitHub"}
         </button>
-
       </div>
 
       <div className={styles.board}>

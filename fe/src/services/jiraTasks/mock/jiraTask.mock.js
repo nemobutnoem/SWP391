@@ -11,16 +11,21 @@ export const jiraTaskMock = {
     // ép Number để tránh case group_id là "1"
     const filtered = all.filter((t) => Number(t.group_id) === gid);
 
-    const result = (filtered.length > 0 ? filtered : all).sort(
-      (a, b) => new Date(b.updated_at) - new Date(a.updated_at)
-    );
+    // IMPORTANT: clone trước khi sort để không mutate mockDb (và tránh readonly array)
+    const base = filtered.length > 0 ? filtered : all;
+
+    const result = base
+      .slice()
+      .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
 
     return result;
   },
 
   async updateStatus(taskId, status) {
     await sleep(220);
-    const item = (mockDb.jiraTasks || []).find((t) => Number(t.id) === Number(taskId));
+    const item = (mockDb.jiraTasks || []).find(
+      (t) => Number(t.id) === Number(taskId),
+    );
     if (!item) throw new Error("Task not found");
     item.status = status;
     item.updated_at = new Date().toISOString();
