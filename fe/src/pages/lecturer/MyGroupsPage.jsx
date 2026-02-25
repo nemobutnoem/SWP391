@@ -1,10 +1,7 @@
-import React, { useState, useMemo } from "react";
-import {
-  getGroups,
-  getGroupMembers,
-  getStudents,
-  getGrades,
-} from "../../services/mockDb.service.js";
+import React, { useEffect, useState, useMemo } from "react";
+import { groupService } from "../../services/groups/group.service.js";
+import { studentService } from "../../services/students/student.service.js";
+import { gradeService } from "../../services/grades/grade.service.js";
 import { MyGroupsView } from "./MyGroupsView.jsx";
 import "../admin/adminManagement.css";
 
@@ -17,10 +14,17 @@ const MY_LECTURER_ID = 2;
 export function MyGroupsPage() {
   const [expandedGroupId, setExpandedGroupId] = useState(null);
 
-  const allGroups = useMemo(() => getGroups(), []);
-  const allMembers = useMemo(() => getGroupMembers(), []);
-  const students = useMemo(() => getStudents(), []);
-  const grades = useMemo(() => getGrades(), []);
+  const [allGroups, setAllGroups] = useState([]);
+  const [allMembers, setAllMembers] = useState([]);
+  const [students, setStudents] = useState([]);
+  const [grades, setGrades] = useState([]);
+
+  useEffect(() => {
+    groupService.list().then(setAllGroups);
+    groupService.listMembers().then(setAllMembers);
+    studentService.list().then(setStudents);
+    gradeService.list().then(setGrades);
+  }, []);
 
   const myGroups = useMemo(
     () => allGroups.filter((g) => g.supervisor_id === MY_LECTURER_ID),

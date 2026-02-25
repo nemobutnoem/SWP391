@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from "react";
-import { getJiraTasks } from "../../services/mockDb.service.js";
+import React, { useEffect, useMemo, useState } from "react";
+import { jiraTaskService } from "../../services/jiraTasks/jiraTask.service.js";
 import { SRSBuilderView } from "./SRSBuilderView.jsx";
 import "./srsBuilder.css";
 
@@ -9,11 +9,15 @@ import "./srsBuilder.css";
  */
 export function SRSBuilderPage() {
   const [viewMode, setViewMode] = useState("builder");
-  const [tasks, setTasks] = useState(() =>
-    getJiraTasks().map((t) => ({ ...t, category: "UNMAPPED" })),
-  );
+  const [tasks, setTasks] = useState([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [lastSaved, setLastSaved] = useState(null);
+
+  useEffect(() => {
+    jiraTaskService.list().then((data) =>
+      setTasks(data.map((t) => ({ ...t, category: "UNMAPPED" }))),
+    );
+  }, []);
 
   const handleMoveTask = (taskId, newCategory) => {
     setTasks((prev) =>

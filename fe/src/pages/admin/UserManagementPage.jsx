@@ -1,10 +1,8 @@
-import React, { useState, useMemo } from "react";
-import {
-  getStudents,
-  getLecturers,
-  getGroups,
-  getProjects,
-} from "../../services/mockDb.service.js";
+import React, { useEffect, useState, useMemo } from "react";
+import { studentService } from "../../services/students/student.service.js";
+import { lecturerService } from "../../services/lecturers/lecturer.service.js";
+import { groupService } from "../../services/groups/group.service.js";
+import { projectService } from "../../services/projects/project.service.js";
 import { UserManagementView } from "./UserManagementView.jsx";
 import "./adminManagement.css";
 
@@ -19,10 +17,17 @@ export function UserManagementPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
 
-  const [localStudents, setLocalStudents] = useState(() => getStudents());
-  const [localLecturers, setLocalLecturers] = useState(() => getLecturers());
-  const groups = useMemo(() => getGroups(), []);
-  const projects = useMemo(() => getProjects(), []);
+  const [localStudents, setLocalStudents] = useState([]);
+  const [localLecturers, setLocalLecturers] = useState([]);
+  const [groups, setGroups] = useState([]);
+  const [projects, setProjects] = useState([]);
+
+  useEffect(() => {
+    studentService.list().then(setLocalStudents);
+    lecturerService.list().then(setLocalLecturers);
+    groupService.list().then(setGroups);
+    projectService.list().then(setProjects);
+  }, []);
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);

@@ -1,6 +1,11 @@
 import { http } from "../../http/httpClient.js";
 
 export const jiraTaskApi = {
+  async list() {
+    const res = await http.get("/jira-tasks");
+    return res.data;
+  },
+
   async listByGroup(groupId) {
     const res = await http.get(`/groups/${groupId}/jira-tasks`);
     return res.data;

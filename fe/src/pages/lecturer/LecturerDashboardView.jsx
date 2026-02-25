@@ -1,11 +1,7 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  getGroups,
-  getGroupMembers,
-  getStudents,
-  getGrades,
-} from "../../services/mockDb.service.js";
+import { groupService } from "../../services/groups/group.service.js";
+import { gradeService } from "../../services/grades/grade.service.js";
 import { PageHeader } from "../../components/common/PageHeader.jsx";
 import { StatCard } from "../../components/common/StatCard.jsx";
 import { Badge } from "../../components/common/Badge.jsx";
@@ -106,9 +102,15 @@ const ACTIVITY_ICONS = {
 export function LecturerDashboardView() {
   const navigate = useNavigate();
 
-  const allGroups = useMemo(() => getGroups(), []);
-  const allMembers = useMemo(() => getGroupMembers(), []);
-  const grades = useMemo(() => getGrades(), []);
+  const [allGroups, setAllGroups] = useState([]);
+  const [allMembers, setAllMembers] = useState([]);
+  const [grades, setGrades] = useState([]);
+
+  useEffect(() => {
+    groupService.list().then(setAllGroups);
+    groupService.listMembers().then(setAllMembers);
+    gradeService.list().then(setGrades);
+  }, []);
 
   const myGroups = useMemo(
     () => allGroups.filter((g) => g.supervisor_id === MY_LECTURER_ID),

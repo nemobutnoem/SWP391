@@ -1,9 +1,7 @@
-import React, { useState, useMemo } from "react";
-import {
-  getJiraProjects,
-  getGithubRepositories,
-  getSyncLogs,
-} from "../../services/mockDb.service.js";
+import React, { useEffect, useState } from "react";
+import { jiraProjectService } from "../../services/jiraProjects/jiraProject.service.js";
+import { githubRepositoryService } from "../../services/githubRepositories/githubRepository.service.js";
+import { syncLogService } from "../../services/syncLogs/syncLog.service.js";
 import { SyncView } from "./SyncView.jsx";
 import "./sync.css";
 
@@ -11,13 +9,17 @@ import "./sync.css";
  * Container layer – quản lý state, gọi service, truyền data + handler xuống View.
  */
 export function SyncPage() {
-  const jiraProjects = useMemo(() => getJiraProjects(), []);
-  const githubRepos = useMemo(() => getGithubRepositories(), []);
-  const initialLogs = useMemo(() => getSyncLogs(), []);
-
-  const [logs, setLogs] = useState(initialLogs);
+  const [jiraProjects, setJiraProjects] = useState([]);
+  const [githubRepos, setGithubRepos] = useState([]);
+  const [logs, setLogs] = useState([]);
   const [syncing, setSyncing] = useState(false);
   const [syncTarget, setSyncTarget] = useState("");
+
+  useEffect(() => {
+    jiraProjectService.list().then(setJiraProjects);
+    githubRepositoryService.list().then(setGithubRepos);
+    syncLogService.list().then(setLogs);
+  }, []);
 
   const handleSync = (target) => {
     setSyncTarget(target);

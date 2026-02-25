@@ -1,13 +1,17 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Modal } from "../../components/common/Modal.jsx";
 import { Button } from "../../components/common/Button.jsx";
-import { getStudents } from "../../services/mockDb.service.js";
+import { studentService } from "../../services/students/student.service.js";
 
 export function CreateTaskModal({ isOpen, onClose, onCreate }) {
   const [title, setTitle] = useState("");
   const [priority, setPriority] = useState("MEDIUM");
   const [assigneeId, setAssigneeId] = useState("");
-  const students = getStudents();
+  const [students, setStudents] = useState([]);
+
+  useEffect(() => {
+    studentService.list().then(setStudents);
+  }, []);
 
   const handleSubmit = (e) => {
     e.preventDefault();

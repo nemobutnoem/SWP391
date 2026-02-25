@@ -1,11 +1,8 @@
-import React, { useState, useMemo } from "react";
-import {
-  getGroups,
-  getTopics,
-  getLecturers,
-  getGroupMembers,
-  getStudents,
-} from "../../services/mockDb.service.js";
+import React, { useEffect, useState, useMemo } from "react";
+import { groupService } from "../../services/groups/group.service.js";
+import { topicService } from "../../services/topics/topic.service.js";
+import { lecturerService } from "../../services/lecturers/lecturer.service.js";
+import { studentService } from "../../services/students/student.service.js";
 import { AllocationView } from "./AllocationView.jsx";
 import "./adminManagement.css";
 
@@ -16,11 +13,19 @@ import "./adminManagement.css";
 export function AllocationPage() {
   const [expandedGroupId, setExpandedGroupId] = useState(null);
 
-  const groups = useMemo(() => getGroups(), []);
-  const topics = useMemo(() => getTopics(), []);
-  const lecturers = useMemo(() => getLecturers(), []);
-  const members = useMemo(() => getGroupMembers(), []);
-  const students = useMemo(() => getStudents(), []);
+  const [groups, setGroups] = useState([]);
+  const [topics, setTopics] = useState([]);
+  const [lecturers, setLecturers] = useState([]);
+  const [members, setMembers] = useState([]);
+  const [students, setStudents] = useState([]);
+
+  useEffect(() => {
+    groupService.list().then(setGroups);
+    groupService.listMembers().then(setMembers);
+    topicService.list().then(setTopics);
+    lecturerService.list().then(setLecturers);
+    studentService.list().then(setStudents);
+  }, []);
 
   const enrichedGroups = useMemo(() => {
     return groups.map((g) => {

@@ -1,5 +1,6 @@
-import React, { useState, useMemo } from "react";
-import { getGroups, getGrades } from "../../services/mockDb.service.js";
+import React, { useEffect, useState, useMemo } from "react";
+import { groupService } from "../../services/groups/group.service.js";
+import { gradeService } from "../../services/grades/grade.service.js";
 import { GradingView } from "./GradingView.jsx";
 import "../admin/adminManagement.css";
 
@@ -10,14 +11,17 @@ const MY_LECTURER_ID = 2;
  * Khong chua JSX UI truc tiep.
  */
 export function GradingPage() {
-  const allGroups = useMemo(() => getGroups(), []);
-  const initialGrades = useMemo(() => getGrades(), []);
-
-  const [grades, setGrades] = useState(initialGrades);
+  const [allGroups, setAllGroups] = useState([]);
+  const [grades, setGrades] = useState([]);
   const [editingId, setEditingId] = useState(null);
   const [draftScore, setDraftScore] = useState("");
   const [draftFeedback, setDraftFeedback] = useState("");
   const [filterStatus, setFilterStatus] = useState("ALL");
+
+  useEffect(() => {
+    groupService.list().then(setAllGroups);
+    gradeService.list().then(setGrades);
+  }, []);
 
   const myGrades = useMemo(
     () => grades.filter((g) => g.lecturer_id === MY_LECTURER_ID),

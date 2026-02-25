@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { getTopics } from "../../services/mockDb.service.js";
+import React, { useEffect, useState } from "react";
+import { topicService } from "../../services/topics/topic.service.js";
 import { TopicsView } from "./TopicsView.jsx";
 import "./topics.css";
 
@@ -8,7 +8,11 @@ import "./topics.css";
  * Khong chua JSX UI truc tiep.
  */
 export function TopicsPage() {
-  const [topics, setTopics] = useState(() => getTopics());
+  const [topics, setTopics] = useState([]);
+
+  useEffect(() => {
+    topicService.list().then(setTopics);
+  }, []);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTopic, setEditingTopic] = useState(null);
 

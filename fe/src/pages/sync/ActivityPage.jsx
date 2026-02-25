@@ -1,8 +1,6 @@
-import React, { useMemo, useState } from "react";
-import {
-  getGithubActivities,
-  getStudents,
-} from "../../services/mockDb.service.js";
+import React, { useEffect, useMemo, useState } from "react";
+import { githubActivityService } from "../../services/githubActivities/githubActivity.service.js";
+import { studentService } from "../../services/students/student.service.js";
 import { ActivityView } from "./ActivityView.jsx";
 import "./activity.css";
 
@@ -11,8 +9,13 @@ import "./activity.css";
  * Khong chua JSX UI truc tiep.
  */
 export function ActivityPage() {
-  const allActivities = useMemo(() => getGithubActivities(), []);
-  const allStudents = useMemo(() => getStudents(), []);
+  const [allActivities, setAllActivities] = useState([]);
+  const [allStudents, setAllStudents] = useState([]);
+
+  useEffect(() => {
+    githubActivityService.list().then(setAllActivities);
+    studentService.list().then(setAllStudents);
+  }, []);
 
   const [branchFilter, setBranchFilter] = useState("all");
   const [actorFilter, setActorFilter] = useState("all");

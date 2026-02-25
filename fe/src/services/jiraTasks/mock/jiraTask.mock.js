@@ -2,6 +2,12 @@ import { mockDb } from "../../mock/mockDb.js";
 import { sleep } from "../../mock/mockHttp.js";
 
 export const jiraTaskMock = {
+  async list() {
+    await sleep(250);
+    const all = Array.isArray(mockDb.jiraTasks) ? mockDb.jiraTasks : [];
+    return all.slice().sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+  },
+
   async listByGroup(groupId) {
     await sleep(250);
 
