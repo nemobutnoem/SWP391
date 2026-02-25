@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { TasksBoardView } from "./TasksBoardView.jsx";
+import { getJiraTasks } from "../../services/mockDb.service.js";
 import { effectiveStatus } from "../../features/tasks/taskStats.js";
 import { jiraTaskService } from "../../services/jiraTasks/jiraTask.service.js";
 import { syncService } from "../../services/sync/sync.service.js";
@@ -22,7 +23,15 @@ function normalizeJiraTask(t) {
 }
 
 export function TasksBoardPage() {
-  const [groupId] = useState(DEFAULT_GROUP_ID);
+  const [query, setQuery] = useState("");
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [localTasks, setLocalTasks] = useState(() => getJiraTasks());
+
+  const handleStatusChange = (taskId, newStatus) => {
+    setLocalTasks((prev) =>
+      prev.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t)),
+    );
+  };
 
   const [query, setQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -54,13 +63,20 @@ export function TasksBoardPage() {
 
   const filteredTasks = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return tasks;
-    return tasks.filter((t) => (t.title || "").toLowerCase().includes(q));
-  }, [query, tasks]);
+    if (!q) return localTasks;
+    return localTasks.filter((t) => (t.title || "").toLowerCase().includes(q));
+  }, [query, localTasks]);
 
   const columns = useMemo(() => {
-    const base = { TODO: [], IN_PROGRESS: [], IN_REVIEW: [], DONE: [], OVERDUE: [] };
-    for (const t of filteredTasks) {
+    const base = {
+      TODO: [],
+      IN_PROGRESS: [],
+      IN_REVIEW: [],
+      DONE: [],
+      OVERDUE: [],
+    };
+
+    for (const t of tasks) {
       const st = effectiveStatus(t);
       (base[st] ?? base.TODO).push(t);
     }
@@ -69,11 +85,10 @@ export function TasksBoardPage() {
 
   const onSync = async () => {
     setIsSyncing(true);
+    // Simulation of fetching fresh data
     try {
-      await syncService.syncAll();
-      await loadTasks();
-    } catch (e) {
-      console.error("Sync failed:", e);
+      await new Promise((r) => setTimeout(r, 800));
+      setLocalTasks(getJiraTasks());
     } finally {
       setIsSyncing(false);
     }
@@ -84,9 +99,7 @@ export function TasksBoardPage() {
       query={query}
       onQueryChange={setQuery}
       columns={columns}
-      onSync={onSync}
-      isSyncing={isSyncing}
-      isLoading={isLoading}
+      onStatusChange={handleStatusChange}
     />
   );
 }

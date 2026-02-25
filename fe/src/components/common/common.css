@@ -1,0 +1,146 @@
+/* Professional Common Components */
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 5rem 2rem;
+  text-align: center;
+  background: white;
+  border: 1px solid var(--slate-200);
+  border-radius: var(--border-radius);
+}
+
+.emptyIcon {
+  font-size: 4rem;
+  margin-bottom: 1.5rem;
+  filter: grayscale(1);
+  opacity: 0.5;
+}
+
+.emptyText {
+  color: var(--slate-500);
+  font-size: 1.125rem;
+  font-weight: 500;
+}
+
+/* StatCard - Elevated SaaS Look */
+.statCard {
+  background: white;
+  padding: 1.75rem;
+  border-radius: 16px;
+  border: 1px solid var(--slate-200);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s,
+    border-color 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+
+.statCard:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--primary-light);
+}
+
+.statCard::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 4px;
+  height: 100%;
+  background: var(--primary);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.statCard:hover::after {
+  opacity: 1;
+}
+
+.statTitle {
+  color: var(--slate-500);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.statValue {
+  font-size: 2.25rem;
+  font-weight: 800;
+  color: var(--slate-900);
+  font-family: var(--font-heading);
+}
+
+.statSubtext {
+  font-size: 0.8125rem;
+  color: var(--slate-400);
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* Status & Priority - Soft Colors */
+.statusBadge {
+  padding: 0.35rem 0.85rem;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+  display: inline-flex;
+  align-items: center;
+}
+
+.status--todo {
+  background: var(--slate-100);
+  color: var(--slate-600);
+}
+.status--in_progress {
+  background: #fff7ed;
+  color: #c2410c;
+}
+.status--in_review {
+  background: var(--primary-light);
+  color: var(--primary);
+}
+.status--done {
+  background: #ecfdf5;
+  color: var(--success);
+}
+.status--overdue {
+  background: #fef2f2;
+  color: var(--danger);
+}
+
+.priorityIcon {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  padding: 0.25rem 0.6rem;
+  border-radius: 6px;
+  background: var(--slate-50);
+}
+
+.priority--red {
+  color: var(--danger);
+  background: #fef2f2;
+}
+.priority--orange {
+  color: #ea580c;
+  background: #fff7ed;
+}
+.priority--green {
+  color: var(--success);
+  background: #ecfdf5;
+}
