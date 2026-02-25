@@ -1,0 +1,44 @@
+server:
+  port: 8080
+
+spring:
+  datasource:
+    url: jdbc:sqlserver://localhost:1433;databaseName=SWP391;encrypt=true;trustServerCertificate=true
+    username: sa
+    password: 12345
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.SQLServerDialect
+  flyway:
+    # You already have an existing SQL Server schema (dbo.*). Keep Flyway off to avoid conflicts.
+    enabled: false
+
+app:
+  jwt:
+    # Use a long random string (>= 32 chars) in real env.
+    secret: "CHANGE_ME_TO_A_LONG_RANDOM_SECRET_32_CHARS_MIN"
+    issuer: "swp391"
+    access-token-ttl-minutes: 120
+
+  auth:
+    allow-register: false
+
+jira:
+  base-url: "https://your-domain.atlassian.net"
+  email: ""
+  api-token: ""
+  debug:
+    minimal-search-payload: false
+
+github:
+  token: ""
+
+
+logging:
+  level:
+    com.swp391.jira: DEBUG
+    org.springframework.security: INFO

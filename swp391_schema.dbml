@@ -1,0 +1,319 @@
+Table User {
+  id               integer [primary key]
+  account          varchar
+  role             varchar
+  github_username  varchar [unique]
+  jira_account_id  varchar [unique]
+  status           varchar
+  created_at       timestamp
+  updated_at       timestamp
+}
+
+Table Lecturer {
+  id           integer [primary key]
+  user_id      integer [not null, unique]
+  full_name    varchar
+  email        varchar
+  status       varchar
+  created_at   timestamp
+}
+
+Table Class {
+  id           integer [primary key]
+  class_code   varchar [not null, unique] // e.g., SE1701
+  class_name   varchar
+  major        varchar
+  intake_year  integer
+  department   varchar
+  status       varchar
+
+  lecturer_id  integer // lecturer in charge of this class
+
+  created_at   timestamp
+  updated_at   timestamp
+}
+
+Table Student {
+  id              integer [primary key]
+  user_id         integer [not null, unique]
+  class_id        integer
+  full_name       varchar
+  student_code    varchar [unique]
+  email           varchar [unique]
+  status          varchar
+  created_at      timestamp
+}
+
+Table SWP_Semester {
+  id           integer [primary key]
+  code         varchar [not null, unique]
+  name         varchar
+  start_date   date
+  end_date     date
+  status       varchar
+  created_at   timestamp
+  updated_at   timestamp
+}
+
+// "Project" here is effectively the "Topic" list that exists per semester.
+Table Project {
+  id           integer [primary key]
+  semester_id  integer [not null]
+  project_code varchar
+  project_name varchar
+  description  text
+  status       varchar
+  created_at   timestamp
+  updated_at   timestamp
+
+  // Consider adding uniqueness per semester if needed:
+  // indexes {
+  //   (semester_id, project_code) [unique]
+  // }
+}
+
+Table Student_Group {
+  id                 integer [primary key]
+
+  // Business rule: group belongs to exactly one class in a semester.
+  semester_id        integer [not null]
+  class_id           integer [not null]
+
+  // Group may be created first, then assigned a topic/project later.
+  project_id         integer
+
+  group_code         varchar
+  group_name         varchar
+  description        text
+  status             varchar
+  leader_student_id  integer
+  created_at         timestamp
+  updated_at         timestamp
+
+  indexes {
+    // Allow reuse of group_code across different classes/semesters.
+    (semester_id, class_id, group_code) [unique]
+
+    // Business rule: in one class, one topic(project) can only be chosen by one group.
+    // Note: because project_id is nullable, most DBs allow multiple NULLs under a UNIQUE index.
+    (class_id, project_id) [unique]
+  }
+}
+
+Table Group_Member {
+  id            integer [primary key]
+  group_id      integer [not null]
+  student_id    integer [not null]
+  role_in_group varchar
+  status        varchar
+  joined_at     timestamp
+  left_at       timestamp
+  created_at    timestamp
+  updated_at    timestamp
+
+  indexes {
+    (group_id, student_id) [unique]
+  }
+}
+
+Table Jira_Project {
+  id               integer [primary key]
+  group_id         integer [not null, unique]
+  jira_project_key varchar
+  jira_project_id  varchar
+  jira_base_url    varchar
+  project_name     varchar
+  status           varchar
+  created_at       timestamp
+  updated_at       timestamp
+}
+
+Table Github_Repository {
+  id             integer [primary key]
+
+  // One group can have many repos.
+  group_id       integer [not null]
+
+  repo_url       varchar
+  repo_owner     varchar
+  repo_name      varchar
+  default_branch varchar
+  visibility     varchar
+  is_active      boolean [not null, default: true]
+  created_at     timestamp
+  updated_at     timestamp
+
+  indexes {
+    (group_id, repo_url) [unique]
+    // Alternative (if url not stable): (repo_owner, repo_name) [unique]
+  }
+}
+
+Table Jira_Issue {
+  id               integer [primary key]
+  group_id         integer [not null]
+  jira_issue_id    varchar [not null]
+  jira_issue_key   varchar [not null]
+  issue_type       varchar [not null]
+  summary          varchar
+  description      text
+
+  // Keep this as the latest status pulled from Jira.
+  status           varchar
+
+  // Optional but recommended for your "only push status" workflow:
+  // desired_status   varchar
+
+  priority         varchar
+  parent_issue_key varchar
+  epic_issue_key   varchar
+  assignee_user_id integer
+  reporter_user_id integer
+  jira_created_at  timestamp
+  jira_updated_at  timestamp
+  last_synced_at   timestamp
+  sync_status      varchar
+  sync_error       text
+  created_at       timestamp
+  updated_at       timestamp
+
+  indexes {
+    (group_id, jira_issue_key) [unique]
+    (group_id, jira_issue_id) [unique]
+  }
+}
+
+Table Jira_Sprint {
+  id               integer [primary key]
+  group_id         integer [not null]
+  jira_sprint_id   integer [not null]
+  jira_board_id    integer
+  name             varchar [not null]
+  goal             text
+  state            varchar
+  start_date       timestamp
+  end_date         timestamp
+  complete_date    timestamp
+  last_synced_at   timestamp
+  sync_status      varchar
+  sync_error       text
+  created_at       timestamp
+  updated_at       timestamp
+
+  indexes {
+    (group_id, jira_sprint_id) [unique]
+  }
+}
+
+Table Jira_Issue_Sprint {
+  id               integer [primary key]
+  group_id         integer [not null]
+  jira_issue_id    varchar [not null]
+  jira_sprint_id   integer [not null]
+  added_at         timestamp
+  removed_at       timestamp
+  last_synced_at   timestamp
+  sync_status      varchar
+  sync_error       text
+
+  indexes {
+    (group_id, jira_issue_id, jira_sprint_id) [unique]
+  }
+}
+
+Table Outbound_Sync_Log {
+  id                   integer [primary key]
+  target               varchar
+  entity_type          varchar
+  entity_local_id      integer
+  remote_id            varchar
+  action               varchar
+  requested_by_user_id integer
+  request_payload      json
+  response_payload     json
+  status               varchar
+  error_message        text
+  created_at           timestamp
+}
+
+Table Github_Activity {
+  id                  integer [primary key]
+  group_id            integer [not null]
+  actor_user_id       integer
+  github_username     varchar
+  activity_type       varchar
+  commit_sha          varchar
+  commit_message      text
+  ref_name            varchar
+  pushed_commit_count integer
+  occurred_at         timestamp
+  raw_payload         json
+  github_event_id     varchar
+  last_synced_at      timestamp
+  sync_status         varchar
+  sync_error          text
+
+  indexes {
+    (group_id, github_event_id) [unique]
+  }
+}
+
+Table Report {
+  id                  integer [primary key]
+  group_id            integer [not null]
+  report_type         varchar
+  period_start        date
+  period_end          date
+  title               varchar
+  content             text
+  status              varchar
+  attempt_no          integer
+  feedback            text
+  created_at          timestamp
+  updated_at          timestamp
+  created_by_user_id  integer
+  graded_by_user_id   integer
+}
+
+////////////////////////////////////////////////////
+// RELATIONSHIPS
+////////////////////////////////////////////////////
+Ref: Lecturer.user_id > User.id
+Ref: Student.user_id  > User.id
+
+Ref: Student.class_id > Class.id
+Ref: Class.lecturer_id > Lecturer.id
+
+Ref: Project.semester_id > SWP_Semester.id
+
+Ref: Student_Group.semester_id > SWP_Semester.id
+Ref: Student_Group.class_id > Class.id
+Ref: Student_Group.project_id > Project.id
+Ref: Student_Group.leader_student_id > Student.id
+
+Ref: Group_Member.group_id > Student_Group.id
+Ref: Group_Member.student_id > Student.id
+
+Ref: Jira_Project.group_id > Student_Group.id
+Ref: Github_Repository.group_id > Student_Group.id
+
+Ref: Jira_Issue.group_id > Student_Group.id
+Ref: Jira_Issue.assignee_user_id > User.id
+Ref: Jira_Issue.reporter_user_id > User.id
+
+Ref: Jira_Sprint.group_id > Student_Group.id
+Ref: Jira_Issue_Sprint.group_id > Student_Group.id
+
+Ref: Github_Activity.group_id > Student_Group.id
+Ref: Github_Activity.actor_user_id > User.id
+
+Ref: Report.group_id > Student_Group.id
+Ref: Report.created_by_user_id > User.id
+Ref: Report.graded_by_user_id > User.id
+
+Ref: Outbound_Sync_Log.requested_by_user_id > User.id
+
+// NOTE (business rules to enforce in app/DB):
+// 1) When Student_Group.project_id is set, enforce Project.semester_id == Student_Group.semester_id
+// 2) Student_Group.leader_student_id must be a member of that group
+// 3) Group members should belong to the same class as Student_Group.class_id
