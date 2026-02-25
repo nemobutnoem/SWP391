@@ -2,12 +2,18 @@ package com.swp391.demo.controller;
 
 import com.swp391.demo.entity.User;
 import com.swp391.demo.service.UserService;
+import com.swp391.demo.security.JwtUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.AuthenticationException;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/users")
@@ -17,10 +23,10 @@ public class UserController {
     private UserService userService;
 
     @Autowired
-    private com.swp391.demo.security.JwtUtils jwtUtils;
+    private JwtUtils jwtUtils;
 
     @Autowired
-    private org.springframework.security.authentication.AuthenticationManager authenticationManager;
+    private AuthenticationManager authenticationManager;
 
     @GetMapping
     public List<User> getAllUsers() {
@@ -34,19 +40,24 @@ public class UserController {
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
-        org.springframework.security.core.Authentication authentication = authenticationManager.authenticate(
-                new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(
-                        loginRequest.getUsername(), loginRequest.getPassword()));
+        try {
+            Authentication authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(
+                            loginRequest.getUsername(), loginRequest.getPassword()));
 
-        org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(authentication);
-        String jwt = jwtUtils.generateJwtToken(loginRequest.getUsername());
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+            String jwt = jwtUtils.generateJwtToken(loginRequest.getUsername());
 
-        return ResponseEntity.ok(new JwtResponse(jwt));
+            return ResponseEntity.ok(new JwtResponse(jwt));
+        } catch (AuthenticationException e) {
+            return ResponseEntity.status(401).body("Error: Unauthorized - " + e.getMessage());
+        }
     }
 
     @PutMapping("/{id}/role")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<User> updateRole(@PathVariable Long id, @RequestParam String role) {
+    public ResponseEntity<User> updateRole(@PathVariable Long id, @RequestBody Map<String, String> request) {
+        String role = request.get("role");
         return ResponseEntity.ok(userService.updateUserRole(id, role));
     }
 
@@ -55,7 +66,6 @@ public class UserController {
         private String username;
         private String password;
 
-        // getters and setters
         public String getUsername() {
             return username;
         }

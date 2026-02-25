@@ -1,0 +1,32 @@
+spring:
+  application:
+    name: jiragit
+  datasource:
+    url: jdbc:sqlserver://localhost:1433;databaseName=SWP391_JIRAGIT;encrypt=true;trustServerCertificate=true
+    username: sa
+    password: 12345
+    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.SQLServerDialect
+
+server:
+  port: 8081
+
+logging:
+  level:
+    org.springframework.security: DEBUG
+
+jira:
+  base-url: "https://your-domain.atlassian.net"
+  email: ""
+  api-token: ""
+  debug:
+    minimal-search-payload: false
+
+github:
+  token: ""
