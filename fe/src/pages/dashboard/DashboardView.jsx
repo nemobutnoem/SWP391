@@ -1,72 +1,166 @@
 import React from "react";
+import { PageHeader } from "../../components/common/PageHeader.jsx";
+import { StatCard } from "../../components/common/StatCard.jsx";
+import { StatusBadge } from "../../components/common/StatusComponents.jsx";
+import { Button } from "../../components/common/Button.jsx";
+import { ActivityHeatmap } from "./ActivityHeatmap.jsx";
+import { ContributionScorecards } from "./ContributionScorecards.jsx";
+import { CreateTaskModal } from "./CreateTaskModal.jsx";
 import "./dashboardPage.css";
 
-function Card({ title, children }) {
-  return (
-    <section className="dashCard">
-      <div className="dashCardTitle">{title}</div>
-      <div>{children}</div>
-    </section>
-  );
-}
-
-export function DashboardView({ stats }) {
+export function DashboardView({
+  stats,
+  activities = [],
+  onCreateTask,
+  onExportReport,
+}) {
   const { counts, progressPct } = stats;
+  const [isCreateModalOpen, setIsCreateModalOpen] = React.useState(false);
+  const [isExporting, setIsExporting] = React.useState(false);
+
+  const handleExport = async () => {
+    setIsExporting(true);
+    await onExportReport();
+    setIsExporting(false);
+    alert(
+      "Báo cáo tình trạng dự án đã được xuất thành công! File PDF đang được tải xuống máy của bạn.",
+    );
+  };
 
   return (
-    <div className="dashWrap">
-      <div className="dashTopGrid">
-        <Card title="Overall Progress">
-          <div className="dashBigNumber">{progressPct}%</div>
-          <div className="dashMuted">Based on Done / Total</div>
-        </Card>
+    <div className="dashboard-view">
+      <PageHeader
+        title="Project Overview"
+        description="Monitor your group progress, task metrics, and upcoming milestones."
+        actions={
+          <>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleExport}
+              disabled={isExporting}
+            >
+              {isExporting ? "Exporting..." : "Export Report"}
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setIsCreateModalOpen(true)}
+            >
+              Create Task
+            </Button>
+          </>
+        }
+      />
 
-        <Card title="Open Tasks">
-          <div className="dashStatRow">
-            <span>To Do</span>
-            <b>{counts.TODO}</b>
-          </div>
-          <div className="dashStatRow">
-            <span>In Progress</span>
-            <b>{counts.IN_PROGRESS}</b>
-          </div>
-          <div className="dashStatRow">
-            <span>In Review</span>
-            <b>{counts.IN_REVIEW}</b>
-          </div>
-          <div className="dashStatRow">
-            <span>Done</span>
-            <b>{counts.DONE}</b>
-          </div>
-        </Card>
+      <CreateTaskModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onCreate={onCreateTask}
+      />
 
-        <Card title="Commits This Week">
-          <div className="dashBigNumber">35</div>
-          <div className="dashMuted">Mock data</div>
-        </Card>
-
-        <Card title="Tasks Overdue">
-          <div className="dashBigNumber dashDanger">{counts.OVERDUE}</div>
-          <div className="dashMuted">Need attention</div>
-        </Card>
+      <div className="dashboard-view__grid">
+        <StatCard
+          title="Overall Progress"
+          value={`${progressPct}%`}
+          subtext="Total project completion"
+          trend="success"
+          trendValue="On Track"
+          icon="📈"
+        />
+        <StatCard
+          title="Active Tasks"
+          value={counts.IN_PROGRESS + counts.IN_REVIEW}
+          subtext="Currently being worked on"
+          icon="⚡"
+        />
+        <StatCard
+          title="Completed"
+          value={counts.DONE}
+          subtext="Tasks marked as finished"
+          icon="✅"
+        />
+        <StatCard
+          title="Risk Alerts"
+          value={counts.OVERDUE}
+          subtext="Critical / Overdue tasks"
+          trend={counts.OVERDUE > 0 ? "danger" : "success"}
+          trendValue={counts.OVERDUE > 0 ? "Attention Required" : "Stable"}
+          icon="⚠️"
+        />
       </div>
 
-      <div className="dashBottomGrid">
-        <Card title="Task Status Summary">
-          <div className="dashPlaceholderChart">[Chart placeholder]</div>
-        </Card>
+      <div className="dashboard-view__main-content">
+        <div className="dashboard-view__left-col">
+          <ActivityHeatmap activities={activities} />
 
-        <Card title="Latest Commits">
-          <ul className="dashList">
-            <li>Fix user authentication bug — 2 hours ago</li>
-            <li>Update dashboard components — 4 hours ago</li>
-            <li>Add new API endpoints — 6 hours ago</li>
-            <li>Refactor database queries — 1 day ago</li>
-          </ul>
-          <a className="dashLink" href="/activity">
-            View all
-          </a>
-        </Card>
+          <section className="dashboard-view__section mt-2">
+            <div className="section-header">
+              <h2 className="section-title">Workflow Pipeline</h2>
+              <StatusBadge status="INFO" />
+            </div>
+            <div className="pipeline-grid">
+              <div className="pipeline-item">
+                <span className="pipeline-label">Backlog</span>
+                <StatusBadge status="TODO" />
+                <b className="pipeline-count">{counts.TODO}</b>
+              </div>
+              <div className="pipeline-item">
+                <span className="pipeline-label">In Development</span>
+                <StatusBadge status="IN_PROGRESS" />
+                <b className="pipeline-count">{counts.IN_PROGRESS}</b>
+              </div>
+              <div className="pipeline-item">
+                <span className="pipeline-label">Code Review</span>
+                <StatusBadge status="IN_REVIEW" />
+                <b className="pipeline-count">{counts.IN_REVIEW}</b>
+              </div>
+              <div className="pipeline-item">
+                <span className="pipeline-label">Done</span>
+                <StatusBadge status="DONE" />
+                <b className="pipeline-count">{counts.DONE}</b>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <aside className="dashboard-view__right-col">
+          <section className="dashboard-view__section">
+            <div className="section-header">
+              <h2 className="section-title">Peer Contributions</h2>
+            </div>
+            <ContributionScorecards activities={activities} />
+          </section>
+
+          <section className="dashboard-view__section mt-2">
+            <div className="section-header">
+              <h2 className="section-title">Recent Intelligence</h2>
+            </div>
+            <div className="intel-list">
+              <div className="intel-item">
+                <div className="intel-marker intel-marker--primary"></div>
+                <div className="intel-content">
+                  <p className="intel-text">
+                    Core engine refactored for horizontal scaling.
+                  </p>
+                  <span className="intel-time">2 hours ago</span>
+                </div>
+              </div>
+              <div className="intel-item">
+                <div className="intel-marker intel-marker--success"></div>
+                <div className="intel-content">
+                  <p className="intel-text">
+                    Data persistence layer successfully optimized.
+                  </p>
+                  <span className="intel-time">5 hours ago</span>
+                </div>
+              </div>
+            </div>
+            <a href="/activity" className="dashboard-view__more-link">
+              View full activity stream →
+            </a>
+          </section>
+        </aside>
       </div>
     </div>
   );

@@ -11,7 +11,9 @@ export function MainLayout() {
       <div className="main">
         <Topbar />
         <main className="content">
-          <Outlet />
+          <div className="content__container">
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>

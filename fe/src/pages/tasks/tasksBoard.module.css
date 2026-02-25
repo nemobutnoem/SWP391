@@ -1,155 +1,327 @@
 .page {
-  padding: 16px 18px;
-  width: 100%;
+  animation: fadeIn 0.4s ease-out;
 }
 
-.topbar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 14px;
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-.searchWrap {
+.search-wrap {
   flex: 1;
-  display: flex;
-  justify-content: center;
+  position: relative;
+  max-width: 480px;
 }
 
-.search {
-  width: min(520px, 100%);
-  background: #fff;
-  border: 1px solid #e7e9f2;
-  border-radius: 10px;
-  padding: 10px 12px;
+.search-input {
+  width: 100%;
+  padding: 0.75rem 1rem 0.75rem 2.5rem;
+  background: white;
+  border: 1px solid var(--slate-200);
+  border-radius: var(--radius-md);
+  font-size: 0.9375rem;
+  color: var(--slate-900);
   outline: none;
+  transition: all 0.2s;
+  box-shadow: var(--shadow-sm);
 }
 
-.syncBtn {
-  background: #2b6fff;
-  color: white;
-  border: none;
-  border-radius: 10px;
-  padding: 10px 14px;
-  cursor: pointer;
-  font-weight: 600;
-}
-.syncBtn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+.search-input:focus {
+  border-color: var(--brand-400);
+  box-shadow: 0 0 0 4px var(--brand-50);
 }
 
-.userChip {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
-  border: 1px solid #e7e9f2;
-  border-radius: 999px;
-  background: #fff;
-}
-
-.userAvatar {
-  width: 26px;
-  height: 26px;
-  border-radius: 999px;
-  background: linear-gradient(135deg, #d7d9ff, #bfe0ff);
-}
-.userName {
-  font-size: 14px;
-  color: #1d2433;
+.search-icon {
+  position: absolute;
+  left: 0.875rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--slate-400);
+  font-size: 0.875rem;
 }
 
 .board {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(220px, 1fr));
-  gap: 14px;
-  align-items: start;
+  display: flex;
+  gap: 1.5rem;
+  overflow-x: auto;
+  padding: 0.5rem 0.5rem 2.5rem;
+  align-items: stretch; /* Stretch columns to fill height */
+  min-height: calc(100vh - 250px); /* Ensure a large drop area */
 }
 
+/* Column Styling */
 .col {
-  background: #fff;
-  border: 1px solid #eef0f7;
-  border-radius: 12px;
-  overflow: hidden;
-  min-height: 560px;
+  min-width: 320px;
+  width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1.25rem 1rem;
+  background-color: var(--slate-50); /* Light background for the lane */
+  border: 1px solid var(--slate-100);
+  border-radius: var(--radius-xl);
+  transition: all 0.2s;
+  position: relative;
 }
 
-.colHeader {
-  padding: 12px 12px 10px 12px;
-  color: #fff;
-}
-.colHeaderBlue {
-  background: #3b82f6;
-}
-.colHeaderRed {
-  background: #ef4444;
-}
-.colTitle {
-  font-weight: 800;
-  font-size: 14px;
-}
-.colCount {
-  font-size: 12px;
-  opacity: 0.9;
-  margin-top: 2px;
+/* Vertical line separator between lanes */
+.col:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  top: 10%;
+  bottom: 10%;
+  right: -0.75rem; /* Center between gaps */
+  width: 1px;
+  background: var(--slate-200);
+  opacity: 0.5;
 }
 
-.colBody {
-  padding: 12px;
-  display: grid;
-  gap: 10px;
+.col--active {
+  background-color: var(--slate-100);
+  border-color: var(--brand-300);
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.02);
 }
 
-.card {
-  border: 1px solid #eef0f7;
-  border-radius: 12px;
-  padding: 10px 10px;
-  background: #fff;
-  box-shadow: 0 1px 0 rgba(16, 24, 40, 0.04);
-}
-.cardDanger {
-  border-color: #f7c4c4;
-}
-
-.cardTitle {
-  font-weight: 700;
-  font-size: 13px;
-  color: #0f172a;
-}
-
-.cardMeta {
-  margin-top: 6px;
-  font-size: 11.5px;
-  color: #64748b;
-}
-.dueDanger {
-  color: #ef4444;
-  font-weight: 700;
-}
-
-.cardFooter {
+.col-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-top: 10px;
-}
-.avatar {
-  width: 18px;
-  height: 18px;
-  border-radius: 999px;
-  background: #e6e8f2;
-}
-.assignee {
-  font-size: 12px;
-  color: #334155;
+  justify-content: space-between;
+  padding: 0 0.5rem;
 }
 
-/* Responsive: allow horizontal scroll like boards usually do */
-@media (max-width: 1200px) {
-  .board {
-    grid-template-columns: repeat(5, 260px);
-    overflow-x: auto;
-    padding-bottom: 10px;
-  }
+.col-title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 0.9375rem;
+  color: var(--slate-800);
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.col-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.col-indicator--TODO {
+  background: var(--slate-300);
+}
+.col-indicator--IN_PROGRESS {
+  background: var(--info);
+}
+.col-indicator--IN_REVIEW {
+  background: var(--brand-500);
+}
+.col-indicator--DONE {
+  background: var(--success);
+}
+.col-indicator--OVERDUE {
+  background: var(--danger);
+}
+
+.col-count {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--slate-400);
+  background: white;
+  padding: 0.15rem 0.5rem;
+  border-radius: 99px;
+  border: 1px solid var(--slate-200);
+}
+
+.col-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  flex: 1;
+  min-height: 200px;
+  padding: 0.25rem;
+}
+
+/* Card Styling */
+.card {
+  background: white;
+  border: 1px solid var(--slate-200);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--brand-200);
+}
+
+.card:active {
+  cursor: grabbing;
+}
+
+.card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  opacity: 0.8;
+}
+
+.card--TODO::before {
+  background: var(--slate-300);
+}
+.card--IN_PROGRESS::before {
+  background: var(--info);
+}
+.card--IN_REVIEW::before {
+  background: var(--brand-500);
+}
+.card--DONE::before {
+  background: var(--success);
+}
+.card--OVERDUE::before {
+  background: var(--danger);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.75rem;
+}
+
+.card-key-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.card-key {
+  font-size: 0.6875rem;
+  font-weight: 800;
+  color: var(--slate-400);
+  letter-spacing: 0.05em;
+}
+
+.sync-dot {
+  width: 6px;
+  height: 6px;
+  background: var(--success);
+  border-radius: 50%;
+  box-shadow: 0 0 8px var(--success);
+}
+
+.card-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-mini {
+  padding: 0.125rem 0.375rem;
+  background: white;
+  border: 1px solid var(--slate-200);
+  border-radius: 4px;
+  font-size: 0.625rem;
+  font-weight: 700;
+  color: var(--slate-500);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-mini:hover {
+  border-color: var(--brand-400);
+  color: var(--brand-600);
+  background: var(--brand-50);
+}
+
+.card-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--slate-900);
+  line-height: 1.5;
+  margin-bottom: 1.25rem;
+}
+
+.card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 1rem;
+  border-top: 1px solid var(--slate-100);
+}
+
+.card-assignee {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+}
+
+.card-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--brand-100);
+  color: var(--brand-700);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.625rem;
+  font-weight: 800;
+}
+
+.card-name {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--slate-600);
+}
+
+.status-wrap {
+  display: flex;
+  align-items: center;
+}
+
+.status-select {
+  padding: 0.15rem 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--slate-600);
+  background: var(--slate-50);
+  border: 1px solid var(--slate-200);
+  border-radius: var(--radius-sm);
+  outline: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.status-select:hover {
+  border-color: var(--brand-300);
+  background: white;
+}
+
+.card-due {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--slate-400);
+}
+
+.card-due--danger {
+  color: var(--danger);
+  background: var(--danger-light);
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
 }

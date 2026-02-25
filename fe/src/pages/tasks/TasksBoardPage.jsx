@@ -1,17 +1,24 @@
 import React, { useMemo, useState } from "react";
 import { TasksBoardView } from "./TasksBoardView.jsx";
-import { MOCK_TASKS } from "../../features/tasks/mock/mockTasks.js";
+import { getJiraTasks } from "../../services/mockDb.service.js";
 import { effectiveStatus } from "../../features/tasks/taskStats.js";
 
 export function TasksBoardPage() {
   const [query, setQuery] = useState("");
   const [isSyncing, setIsSyncing] = useState(false);
+  const [localTasks, setLocalTasks] = useState(() => getJiraTasks());
+
+  const handleStatusChange = (taskId, newStatus) => {
+    setLocalTasks((prev) =>
+      prev.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t)),
+    );
+  };
 
   const tasks = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return MOCK_TASKS;
-    return MOCK_TASKS.filter((t) => (t.title || "").toLowerCase().includes(q));
-  }, [query]);
+    if (!q) return localTasks;
+    return localTasks.filter((t) => (t.title || "").toLowerCase().includes(q));
+  }, [query, localTasks]);
 
   const columns = useMemo(() => {
     const base = {
@@ -23,7 +30,7 @@ export function TasksBoardPage() {
     };
 
     for (const t of tasks) {
-      const st = effectiveStatus(t); // DONE không bị overdue
+      const st = effectiveStatus(t);
       (base[st] ?? base.TODO).push(t);
     }
     return base;
@@ -31,8 +38,10 @@ export function TasksBoardPage() {
 
   const onSync = async () => {
     setIsSyncing(true);
+    // Simulation of fetching fresh data
     try {
-      await new Promise((r) => setTimeout(r, 700));
+      await new Promise((r) => setTimeout(r, 800));
+      setLocalTasks(getJiraTasks());
     } finally {
       setIsSyncing(false);
     }
@@ -45,6 +54,7 @@ export function TasksBoardPage() {
       isSyncing={isSyncing}
       onSync={onSync}
       columns={columns}
+      onStatusChange={handleStatusChange}
     />
   );
 }

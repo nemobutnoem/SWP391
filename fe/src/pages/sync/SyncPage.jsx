@@ -1,40 +1,142 @@
-import React, { useEffect, useState } from "react";
-import { contextService } from "../../services/context/context.service.js";
-import { syncService } from "../../services/integrations/sync.service.js";
+import React, { useState, useMemo } from "react";
+import {
+  getJiraProjects,
+  getGithubRepositories,
+  getSyncLogs,
+} from "../../services/mockDb.service.js";
+import { PageHeader } from "../../components/common/PageHeader.jsx";
+import { Button } from "../../components/common/Button.jsx";
+import { LoadingSpinner } from "../../components/common/LoadingSpinner.jsx";
+import { Badge } from "../../components/common/Badge.jsx";
+import "./sync.css";
 
 export function SyncPage() {
-  const [groupId, setGroupId] = useState(null);
-  const [logs, setLogs] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const jiraProjects = useMemo(() => getJiraProjects(), []);
+  const githubRepos = useMemo(() => getGithubRepositories(), []);
+  const initialLogs = useMemo(() => getSyncLogs(), []);
 
-  useEffect(() => {
-    contextService.getMyContext().then((ctx) => setGroupId(ctx.group?.id));
-  }, []);
+  const [logs, setLogs] = useState(initialLogs);
+  const [syncing, setSyncing] = useState(false);
+  const [syncTarget, setSyncTarget] = useState("");
 
-  useEffect(() => {
-    if (!groupId) return;
-    syncService.listLogs(groupId).then(setLogs);
-  }, [groupId]);
-
-  async function onSync() {
-    if (!groupId) return;
-    setLoading(true);
-    try {
-      await syncService.syncNow(groupId);
-      const next = await syncService.listLogs(groupId);
-      setLogs(next);
-    } finally {
-      setLoading(false);
-    }
-  }
+  const handleSync = (target) => {
+    setSyncTarget(target);
+    setSyncing(true);
+    setTimeout(() => {
+      const newLog = {
+        id: Date.now(),
+        action: `Synchronized ${target} data for the group`,
+        status: "OK",
+        at: new Date().toISOString(),
+      };
+      setLogs([newLog, ...logs]);
+      setSyncing(false);
+    }, 1500);
+  };
 
   return (
-    <div>
-      <h2>Sync</h2>
-      <button onClick={onSync} disabled={loading || !groupId}>
-        {loading ? "Syncing..." : "Sync now"}
-      </button>
-      <pre>{JSON.stringify(logs, null, 2)}</pre>
+    <div className="sync-page">
+      <PageHeader
+        title="Integration Hub"
+        description="Manage your Jira and GitHub connections. Sync tasks and code activities to keep the team on track."
+      />
+
+      <div className="sync-grid">
+        <div className="sync-main-col">
+          <section className="sync-card">
+            <div className="card-header-icon">
+              <span className="icon-badge jira">J</span>
+              <h3>Jira Integration</h3>
+            </div>
+            <div className="integration-list">
+              {jiraProjects.map((p) => (
+                <div key={p.id} className="integration-item">
+                  <div className="item-details">
+                    <span className="item-title">
+                      {p.jira_project_key} - Project
+                    </span>
+                    <span className="item-meta">{p.jira_base_url}</span>
+                  </div>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => handleSync("Jira")}
+                    disabled={syncing}
+                  >
+                    Sync Now
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="sync-card mt-2">
+            <div className="card-header-icon">
+              <span className="icon-badge github">G</span>
+              <h3>GitHub Repositories</h3>
+            </div>
+            <div className="integration-list">
+              {githubRepos.map((r) => (
+                <div key={r.id} className="integration-item">
+                  <div className="item-details">
+                    <span className="item-title">{r.repo_name}</span>
+                    <span className="item-meta">{r.repo_url}</span>
+                  </div>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => handleSync("GitHub")}
+                    disabled={syncing}
+                  >
+                    Fetch Commits
+                  </Button>
+                </div>
+              ))}
+              <button className="add-repo-btn">
+                + Link another repository
+              </button>
+            </div>
+          </section>
+        </div>
+
+        <aside className="sync-side-col">
+          <section className="sync-card h-full">
+            <div className="section-header-simple">
+              <h3>Recent Actions</h3>
+              <Badge variant="neutral" size="sm">
+                Audit Log
+              </Badge>
+            </div>
+            <div className="audit-log">
+              {logs.map((log) => (
+                <div key={log.id} className="audit-item">
+                  <div
+                    className={`log-indicator ${log.status === "OK" ? "success" : "error"}`}
+                  ></div>
+                  <div className="log-body">
+                    <p className="log-msg">{log.action}</p>
+                    <span className="log-date">
+                      {new Date(log.at).toLocaleTimeString()}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        </aside>
+      </div>
+
+      {syncing && (
+        <div className="sync-overlay">
+          <div className="sync-modal">
+            <LoadingSpinner />
+            <div className="sync-status">Updating {syncTarget} Data...</div>
+            <p className="sync-sub">
+              Talking to external APIs and updating local cache.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
