@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Modal } from "../../components/common/Modal.jsx";
 import { Button } from "../../components/common/Button.jsx";
 
@@ -9,20 +9,11 @@ export function UserFormModal({
   initialData = null,
   defaultRole = "STUDENT",
 }) {
-  const [formData, setFormData] = useState({
-    full_name: "",
-    email: "",
-    role: defaultRole,
-    student_code: "",
-    major: "SE",
-    department: "Software Engineering",
-    github_username: "",
-  });
-
-  useEffect(() => {
-    if (isOpen) {
-      if (initialData) {
-        setFormData({
+  // Parent truyền `key` để remount khi initialData thay đổi,
+  // nên lazy init chạy fresh mỗi lần mở modal – không cần useEffect.
+  const [formData, setFormData] = useState(() =>
+    initialData
+      ? {
           full_name: initialData.full_name || "",
           email: initialData.email || "",
           role: initialData.student_code ? "STUDENT" : "LECTURER",
@@ -30,9 +21,8 @@ export function UserFormModal({
           major: initialData.major || "SE",
           department: initialData.department || "Software Engineering",
           github_username: initialData.github_username || "",
-        });
-      } else {
-        setFormData({
+        }
+      : {
           full_name: "",
           email: "",
           role: defaultRole,
@@ -40,10 +30,8 @@ export function UserFormModal({
           major: "SE",
           department: "Software Engineering",
           github_username: "",
-        });
-      }
-    }
-  }, [isOpen, initialData, defaultRole]);
+        },
+  );
 
   const handleChange = (e) => {
     const { name, value } = e.target;
