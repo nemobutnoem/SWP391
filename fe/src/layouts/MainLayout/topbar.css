@@ -1,0 +1,103 @@
+.topbar {
+  height: 64px;
+  background: var(--bg-topbar);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 22px;
+}
+
+.topbarTitle {
+  font-weight: 700;
+  color: var(--text);
+}
+
+.topbarRight {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.userWrap {
+  position: relative;
+}
+
+.userBtn {
+  border: 1px solid var(--border);
+  background: white;
+  border-radius: 999px;
+  padding: 6px 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: white;
+  background: #111827;
+}
+
+.userName {
+  font-size: 13px;
+  color: var(--text);
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chev {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  width: 220px;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 12px 30px rgba(16, 24, 40, 0.12);
+  overflow: hidden;
+}
+
+.dropdownHeader {
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.dropdownName {
+  font-weight: 700;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.dropdownRole {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.ddItem {
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.ddItem:hover {
+  background: #f9fafb;
+}
