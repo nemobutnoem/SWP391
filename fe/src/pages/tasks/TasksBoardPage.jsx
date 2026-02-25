@@ -1,38 +1,79 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { TasksBoardView } from "./TasksBoardView.jsx";
-import { MOCK_TASKS } from "../../features/tasks/mock/mockTasks.js";
 import { effectiveStatus } from "../../features/tasks/taskStats.js";
+import { jiraTaskService } from "../../services/jiraTasks/jiraTask.service.js";
+import { syncService } from "../../services/sync/sync.service.js";
+
+const DEFAULT_GROUP_ID = 1;
+
+function normalizeJiraTask(t) {
+  return {
+    id: String(t.id),
+    title: t.title ?? t.summary ?? t.jira_issue_key ?? `Task #${t.id}`,
+    dueDate: t.dueDate ?? t.due_date ?? t.jira_due_date ?? t.duedate ?? "",
+    assigneeName:
+      t.assigneeName ??
+      t.assignee_name ??
+      t.assignee ??
+      (t.assignee_user_id ? `User #${t.assignee_user_id}` : "Unassigned"),
+    status: t.status ?? "TODO",
+    _raw: t,
+  };
+}
 
 export function TasksBoardPage() {
-  const [query, setQuery] = useState("");
-  const [isSyncing, setIsSyncing] = useState(false);
+  const [groupId] = useState(DEFAULT_GROUP_ID);
 
-  const tasks = useMemo(() => {
+  const [query, setQuery] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [tasks, setTasks] = useState([]);
+
+  const loadTasks = async () => {
+    setIsLoading(true);
+    try {
+      const data = await jiraTaskService.listByGroup(groupId);
+
+      // DEBUG (để biết vì sao trống)
+      console.log("groupId =", groupId);
+      console.log("jiraTaskService.listByGroup returned:", data);
+
+      setTasks((Array.isArray(data) ? data : []).map(normalizeJiraTask));
+    } catch (e) {
+      console.error("Load tasks failed:", e);
+      setTasks([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadTasks();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groupId]);
+
+  const filteredTasks = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return MOCK_TASKS;
-    return MOCK_TASKS.filter((t) => (t.title || "").toLowerCase().includes(q));
-  }, [query]);
+    if (!q) return tasks;
+    return tasks.filter((t) => (t.title || "").toLowerCase().includes(q));
+  }, [query, tasks]);
 
   const columns = useMemo(() => {
-    const base = {
-      TODO: [],
-      IN_PROGRESS: [],
-      IN_REVIEW: [],
-      DONE: [],
-      OVERDUE: [],
-    };
-
-    for (const t of tasks) {
-      const st = effectiveStatus(t); // DONE không bị overdue
+    const base = { TODO: [], IN_PROGRESS: [], IN_REVIEW: [], DONE: [], OVERDUE: [] };
+    for (const t of filteredTasks) {
+      const st = effectiveStatus(t);
       (base[st] ?? base.TODO).push(t);
     }
     return base;
-  }, [tasks]);
+  }, [filteredTasks]);
 
   const onSync = async () => {
     setIsSyncing(true);
     try {
-      await new Promise((r) => setTimeout(r, 700));
+      await syncService.syncAll();
+      await loadTasks();
+    } catch (e) {
+      console.error("Sync failed:", e);
     } finally {
       setIsSyncing(false);
     }
@@ -42,9 +83,10 @@ export function TasksBoardPage() {
     <TasksBoardView
       query={query}
       onQueryChange={setQuery}
-      isSyncing={isSyncing}
-      onSync={onSync}
       columns={columns}
+      onSync={onSync}
+      isSyncing={isSyncing}
+      isLoading={isLoading}
     />
   );
 }

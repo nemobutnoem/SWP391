@@ -13,14 +13,19 @@ function TaskCard({ task, tone = "normal" }) {
   return (
     <div className={`${styles.card} ${tone === "danger" ? styles.cardDanger : ""}`}>
       <div className={styles.cardTitle}>{task.title}</div>
+
       <div className={styles.cardMeta}>
         <div className={styles.cardDue}>
-          Due: <span className={tone === "danger" ? styles.dueDanger : ""}>{task.dueDate}</span>
+          Due:{" "}
+          <span className={tone === "danger" ? styles.dueDanger : ""}>
+            {task.dueDate || "-"}
+          </span>
         </div>
       </div>
+
       <div className={styles.cardFooter}>
         <div className={styles.avatar} aria-hidden />
-        <div className={styles.assignee}>{task.assigneeName}</div>
+        <div className={styles.assignee}>{task.assigneeName || "Unassigned"}</div>
       </div>
     </div>
   );
@@ -44,7 +49,16 @@ function Column({ title, theme, tasks }) {
   );
 }
 
-export function TasksBoardView({ query, onQueryChange, isSyncing, onSync, columns }) {
+export function TasksBoardView({
+  query,
+  onQueryChange,
+  isSyncing,
+  onSync,
+  columns,
+  isLoading = false,
+}) {
+  const busy = isLoading || isSyncing;
+
   return (
     <div className={styles.page}>
       <div className={styles.topbar}>
@@ -53,14 +67,18 @@ export function TasksBoardView({ query, onQueryChange, isSyncing, onSync, column
             className={styles.search}
             value={query}
             onChange={(e) => onQueryChange(e.target.value)}
-            placeholder="Search tasks..."
+            placeholder={isLoading ? "Loading tasks..." : "Search tasks..."}
+            disabled={busy}
           />
         </div>
 
-        <button className={styles.syncBtn} onClick={onSync} disabled={isSyncing}>
+        <button className={styles.syncBtn} onClick={onSync} disabled={busy}>
           {isSyncing ? "Syncing..." : "Sync with Jira & GitHub"}
         </button>
 
+        <div className={styles.statusText}>
+          {isLoading ? "Loading..." : isSyncing ? "Syncing..." : ""}
+        </div>
       </div>
 
       <div className={styles.board}>
