@@ -2,61 +2,21 @@ import React from "react";
 import { PageHeader } from "../../components/common/PageHeader.jsx";
 import { StatCard } from "../../components/common/StatCard.jsx";
 import { StatusBadge } from "../../components/common/StatusComponents.jsx";
-import { Button } from "../../components/common/Button.jsx";
 import { ActivityHeatmap } from "./ActivityHeatmap.jsx";
 import { ContributionScorecards } from "./ContributionScorecards.jsx";
-import { CreateTaskModal } from "./CreateTaskModal.jsx";
 import "./dashboardPage.css";
 
 export function DashboardView({
   stats,
   activities = [],
-  onCreateTask,
-  onExportReport,
 }) {
   const { counts, progressPct } = stats;
-  const [isCreateModalOpen, setIsCreateModalOpen] = React.useState(false);
-  const [isExporting, setIsExporting] = React.useState(false);
-
-  const handleExport = async () => {
-    setIsExporting(true);
-    await onExportReport();
-    setIsExporting(false);
-    alert(
-      "Báo cáo tình trạng dự án đã được xuất thành công! File PDF đang được tải xuống máy của bạn.",
-    );
-  };
 
   return (
     <div className="dashboard-view">
       <PageHeader
         title="Project Overview"
         description="Monitor your group progress, task metrics, and upcoming milestones."
-        actions={
-          <>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={handleExport}
-              disabled={isExporting}
-            >
-              {isExporting ? "Exporting..." : "Export Report"}
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => setIsCreateModalOpen(true)}
-            >
-              Create Task
-            </Button>
-          </>
-        }
-      />
-
-      <CreateTaskModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        onCreate={onCreateTask}
       />
 
       <div className="dashboard-view__grid">
