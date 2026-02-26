@@ -27,7 +27,7 @@ export function Sidebar() {
       <div className="brand">
         <NavLink to="/dashboard" className="brandLink">
           <div className="brandIcon">N</div>
-          <span>Nemobutnoem</span>
+          <span>SWP</span>
         </NavLink>
       </div>
 
