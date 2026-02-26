@@ -17,20 +17,44 @@ export function SyncPage() {
   const [syncTarget, setSyncTarget] = useState("");
 
   useEffect(() => {
-    jiraProjectService.list().then(setJiraProjects);
-    githubRepositoryService.list().then(setGithubRepos);
-    syncLogService.list().then(setLogs);
+    jiraProjectService
+      .list()
+      .then((data) => {
+        console.log("[SyncPage] Jira projects loaded:", Array.isArray(data) ? data.length : data);
+        setJiraProjects(data);
+      })
+      .catch((e) => console.error("[SyncPage] Jira projects load failed:", e));
+
+    githubRepositoryService
+      .list()
+      .then((data) => {
+        console.log("[SyncPage] GitHub repos loaded:", Array.isArray(data) ? data.length : data);
+        setGithubRepos(data);
+      })
+      .catch((e) => console.error("[SyncPage] GitHub repos load failed:", e));
+
+    syncLogService
+      .list()
+      .then((data) => {
+        console.log("[SyncPage] Sync logs loaded:", Array.isArray(data) ? data.length : data);
+        setLogs(data);
+      })
+      .catch((e) => console.error("[SyncPage] Sync logs load failed:", e));
   }, []);
 
-  const handleSync = async (target) => {
+  const handleSync = async (target, jiraProjectKey) => {
     const t = String(target || "").trim().toLowerCase();
-    setSyncTarget(target);
+    setSyncTarget(t === "jira" ? "Jira" : t === "github" ? "GitHub" : String(target || ""));
     setSyncing(true);
     try {
       let res;
-      if (t === "jira") res = await syncService.syncJira();
+      console.log("[SyncPage] Sync start:", { target: t, jiraProjectKey });
+
+      if (t === "jira") res = await syncService.syncJira({ projectKey: jiraProjectKey });
       else if (t === "github") res = await syncService.syncGithub();
       else res = await syncService.syncAll();
+
+      console.log("[SyncPage] Sync response:", res);
 
       const newLog = {
         id: Date.now(),
@@ -41,9 +65,21 @@ export function SyncPage() {
       };
       setLogs((prev) => [newLog, ...prev]);
 
-      // best-effort reload from server (if server keeps logs)
-      syncLogService.list().then(setLogs).catch(() => {});
+      // Best-effort reload from server (if server keeps logs).
+      // Do NOT overwrite local log list with an empty array.
+      syncLogService
+        .list()
+        .then((serverLogs) => {
+          if (Array.isArray(serverLogs) && serverLogs.length > 0) {
+            console.log("[SyncPage] Server logs received:", serverLogs.length);
+            setLogs(serverLogs);
+          } else {
+            console.log("[SyncPage] Server logs empty; keeping local logs");
+          }
+        })
+        .catch((e) => console.warn("[SyncPage] Sync logs reload failed:", e));
     } catch (e) {
+      console.error("[SyncPage] sync failed:", e);
       const newLog = {
         id: Date.now(),
         action: `Synchronized ${target} data`,
@@ -52,7 +88,6 @@ export function SyncPage() {
         detail: e?.message || "Sync failed",
       };
       setLogs((prev) => [newLog, ...prev]);
-      console.error("[SyncPage] sync failed:", e);
     } finally {
       setSyncing(false);
     }

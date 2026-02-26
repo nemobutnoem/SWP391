@@ -29,12 +29,7 @@ public class JiraService {
 
 	@Transactional
 	public int syncIssues(Integer groupId, String projectKey, UserPrincipal principal) {
-		// Leader usually triggers sync; you can relax this if needed.
 		ensureMember(groupId, principal);
-		String role = principal.getRole() == null ? "" : principal.getRole();
-		if (!role.equalsIgnoreCase("TEAM_LEAD")) {
-			throw new SecurityException("Only TEAM_LEAD can trigger Jira sync");
-		}
 
 		jiraProjectRepository.findByGroupId(groupId).ifPresentOrElse(
 				jp -> {
@@ -58,23 +53,42 @@ public class JiraService {
 		boolean isLast = false;
 		do {
 			var search = jiraClient.searchIssues(cfg.baseUrl(), cfg.email(), cfg.apiToken(), jql, nextPageToken, 100);
-			for (var issueNode : search.path("issues")) {
+			// Jira may return results under `issues` (classic search) or `values` (enhanced search).
+			JsonNode issuesNode = search.path("issues");
+			if (issuesNode == null || !issuesNode.isArray()) {
+				issuesNode = search.path("values");
+			}
+			if (issuesNode != null && issuesNode.isArray()) {
+				for (var issueNode : issuesNode) {
 				String jiraIssueId = issueNode.path("id").asText();
 				String jiraIssueKey = issueNode.path("key").asText();
 				var fields = issueNode.path("fields");
 				String summary = fields.path("summary").asText(null);
 				String issueType = fields.path("issuetype").path("name").asText(null);
 				String status = fields.path("status").path("name").asText(null);
+				String updated = fields.path("updated").asText(null);
+				java.time.LocalDateTime jiraUpdatedAt = null;
+				try {
+					if (updated != null && !updated.isBlank()) {
+						jiraUpdatedAt = java.time.LocalDateTime.ofInstant(java.time.Instant.parse(updated), java.time.ZoneOffset.UTC);
+					}
+				} catch (Exception ignored) {
+					// Best-effort only.
+				}
 
-				var entity = jiraIssueRepository.findByGroupIdAndJiraIssueId(groupId, jiraIssueId).orElseGet(JiraIssueEntity::new);
+				var entity = jiraIssueRepository.findByGroupIdAndJiraIssueId(groupId, jiraIssueId)
+						.or(() -> jiraIssueRepository.findByGroupIdAndJiraIssueKey(groupId, jiraIssueKey))
+						.orElseGet(JiraIssueEntity::new);
 				entity.setGroupId(groupId);
 				entity.setJiraIssueId(jiraIssueId);
 				entity.setJiraIssueKey(jiraIssueKey);
 				entity.setIssueType(issueType == null ? "" : issueType);
 				entity.setSummary(summary);
 				entity.setStatus(status);
+				entity.setJiraUpdatedAt(jiraUpdatedAt);
 				jiraIssueRepository.save(entity);
 				upserted++;
+				}
 			}
 
 			isLast = search.path("isLast").asBoolean(false);

@@ -35,7 +35,7 @@ export function SyncView({ jiraProjects, githubRepos, logs, syncing, syncTarget,
                   <Button
                     variant="secondary"
                     size="sm"
-                    onClick={() => onSync("Jira")}
+                    onClick={() => onSync("jira", p.jira_project_key)}
                     disabled={syncing}
                   >
                     Sync Now
@@ -60,7 +60,7 @@ export function SyncView({ jiraProjects, githubRepos, logs, syncing, syncTarget,
                   <Button
                     variant="secondary"
                     size="sm"
-                    onClick={() => onSync("GitHub")}
+                    onClick={() => onSync("github")}
                     disabled={syncing}
                   >
                     Fetch Commits

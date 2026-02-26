@@ -69,7 +69,7 @@ export function DashboardPage() {
     try {
       // tùy service của bạn nhận groupId hay không:
       // await syncService.syncAll(groupId);
-      await syncService.syncAll();
+      await syncService.syncAll({ groupId });
 
       await load();
     } catch (e) {

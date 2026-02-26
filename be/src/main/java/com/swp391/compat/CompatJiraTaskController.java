@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.swp391.group.GroupMemberRepository;
 import com.swp391.jira.JiraIssueEntity;
 import com.swp391.jira.JiraIssueRepository;
+import com.swp391.jira.JiraService;
 import com.swp391.security.UserPrincipal;
 import com.swp391.student.StudentRepository;
 import jakarta.validation.Valid;
@@ -22,6 +23,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class CompatJiraTaskController {
 	private final JiraIssueRepository jiraIssueRepository;
+	private final JiraService jiraService;
 	private final StudentRepository studentRepository;
 	private final GroupMemberRepository memberRepository;
 
@@ -64,9 +66,43 @@ public class CompatJiraTaskController {
 	public JiraTaskDto updateStatus(@PathVariable Integer taskId, @Valid @RequestBody UpdateStatusRequest req, Authentication auth) {
 		var issue = jiraIssueRepository.findById(taskId)
 				.orElseThrow(() -> new IllegalArgumentException("Jira task not found"));
-		ensureMember(issue.getGroupId(), (UserPrincipal) auth.getPrincipal());
-		issue.setStatus(req.status());
+		UserPrincipal principal = (UserPrincipal) auth.getPrincipal();
+		ensureMember(issue.getGroupId(), principal);
+
+		// Push status to Jira as well (so Jira changes, not just local DB).
+		// Convert common app statuses like IN_PROGRESS -> "In Progress" for Jira workflows.
+		String jiraStatusName = toJiraStatusName(req.status());
+		if (issue.getJiraIssueKey() != null && !issue.getJiraIssueKey().isBlank()) {
+			jiraService.pushStatus(issue.getGroupId(), issue.getJiraIssueKey(), jiraStatusName, principal);
+		}
+
+		issue.setStatus(jiraStatusName);
 		return toDto(jiraIssueRepository.save(issue));
+	}
+
+	private static String toJiraStatusName(String raw) {
+		String v = raw == null ? "" : raw.trim();
+		if (v.isEmpty()) return v;
+		String upper = v.toUpperCase();
+		// Common mapping for Jira default workflows
+		if (upper.equals("TODO") || upper.equals("TO_DO") || upper.equals("TO DO")) return "To Do";
+		if (upper.equals("IN_PROGRESS") || upper.equals("IN PROGRESS") || upper.equals("INPROGRESS")) return "In Progress";
+		if (upper.equals("IN_REVIEW") || upper.equals("IN REVIEW") || upper.equals("INREVIEW")) return "In Review";
+		if (upper.equals("DONE")) return "Done";
+
+		// Fallback: make it title case and replace underscores.
+		String spaced = v.replace('_', ' ').replaceAll("\\s+", " ").trim();
+		String[] parts = spaced.split(" ");
+		StringBuilder sb = new StringBuilder();
+		for (int i = 0; i < parts.length; i++) {
+			String p = parts[i];
+			if (p.isEmpty()) continue;
+			String lower = p.toLowerCase();
+			String word = Character.toUpperCase(lower.charAt(0)) + lower.substring(1);
+			if (sb.length() > 0) sb.append(' ');
+			sb.append(word);
+		}
+		return sb.length() == 0 ? v : sb.toString();
 	}
 
 	private JiraTaskDto toDto(JiraIssueEntity e) {

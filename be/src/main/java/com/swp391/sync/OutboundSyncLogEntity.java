@@ -27,7 +27,7 @@ public class OutboundSyncLogEntity {
 	@Column(name = "remote_id")
 	private String remoteId;
 
-	@Column(name = "action")
+	@Column(name = "action", length = 255)
 	private String action;
 
 	@Column(name = "requested_by_user_id")

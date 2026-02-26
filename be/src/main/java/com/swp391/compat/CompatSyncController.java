@@ -6,6 +6,8 @@ import com.swp391.jira.JiraProjectRepository;
 import com.swp391.jira.JiraService;
 import com.swp391.security.UserPrincipal;
 import com.swp391.student.StudentRepository;
+import com.swp391.sync.OutboundSyncLogEntity;
+import com.swp391.sync.OutboundSyncLogRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -25,6 +27,7 @@ public class CompatSyncController {
 	private final JiraProjectRepository jiraProjectRepository;
 	private final StudentRepository studentRepository;
 	private final GroupMemberRepository memberRepository;
+	private final OutboundSyncLogRepository outboundSyncLogRepository;
 
 	public record SyncRequest(Integer groupId, String projectKey) {
 	}
@@ -50,6 +53,43 @@ public class CompatSyncController {
 		return row;
 	}
 
+	private void writeSyncLog(UserPrincipal principal, Integer groupId, String target, String action, String remoteId, boolean ok, String errorMessage) {
+		OutboundSyncLogEntity log = new OutboundSyncLogEntity();
+		log.setTarget(target);
+		log.setEntityType("Group");
+		log.setEntityLocalId(groupId);
+		log.setRemoteId(remoteId);
+		log.setAction(action);
+		log.setRequestedByUserId(principal.getUserId());
+		log.setStatus(ok ? "SUCCESS" : "FAILED");
+		log.setErrorMessage(ok ? null : errorMessage);
+		outboundSyncLogRepository.save(log);
+	}
+
+	private static String summarizeFailures(List<Map<String, Object>>... resultLists) {
+		int failed = 0;
+		String first = null;
+		for (List<Map<String, Object>> list : resultLists) {
+			if (list == null) continue;
+			for (Map<String, Object> row : list) {
+				Object okObj = row.get("ok");
+				boolean ok = okObj instanceof Boolean b && b;
+				if (!ok) {
+					failed++;
+					if (first == null) {
+						Object msg = row.get("message");
+						first = msg == null ? null : String.valueOf(msg);
+					}
+				}
+			}
+		}
+		if (failed <= 0) return null;
+		if (first == null || first.isBlank()) {
+			return "Some sync operations failed (" + failed + ")";
+		}
+		return "Some sync operations failed (" + failed + "): " + first;
+	}
+
 	@PostMapping("/all")
 	public Map<String, Object> syncAll(@RequestBody(required = false) SyncRequest request, Authentication auth) {
 		UserPrincipal principal = (UserPrincipal) auth.getPrincipal();
@@ -71,15 +111,20 @@ public class CompatSyncController {
 						.filter(s -> s != null && !s.isBlank())
 						.orElse(projectKeyOverride);
 				if (projectKey == null || projectKey.isBlank()) {
-					jiraResults.add(resultRow(groupId, false, "Missing Jira project key for this group", Map.of()));
+					String msg = "Missing Jira project key for this group";
+					jiraResults.add(resultRow(groupId, false, msg, Map.of()));
+					writeSyncLog(principal, groupId, "jira", "sync_issues", null, false, msg);
 					allOk = false;
 				} else {
 					int upserted = jiraService.syncIssues(groupId, projectKey.trim(), principal);
 					jiraUpsertedTotal += upserted;
 					jiraResults.add(resultRow(groupId, true, "Synced Jira issues", Map.of("upserted", upserted, "projectKey", projectKey.trim())));
+					writeSyncLog(principal, groupId, "jira", "sync_issues", projectKey.trim(), true, null);
 				}
 			} catch (Exception ex) {
-				jiraResults.add(resultRow(groupId, false, ex.getMessage(), Map.of()));
+				String msg = ex.getMessage();
+				jiraResults.add(resultRow(groupId, false, msg, Map.of()));
+				writeSyncLog(principal, groupId, "jira", "sync_issues", projectKeyOverride, false, msg);
 				allOk = false;
 			}
 
@@ -88,25 +133,30 @@ public class CompatSyncController {
 				int inserted = githubService.syncCommits(groupId, principal);
 				githubInsertedTotal += inserted;
 				githubResults.add(resultRow(groupId, true, "Synced GitHub commits", Map.of("inserted", inserted)));
+				writeSyncLog(principal, groupId, "github", "sync_commits", null, true, null);
 			} catch (Exception ex) {
-				githubResults.add(resultRow(groupId, false, ex.getMessage(), Map.of()));
+				String msg = ex.getMessage();
+				githubResults.add(resultRow(groupId, false, msg, Map.of()));
+				writeSyncLog(principal, groupId, "github", "sync_commits", null, false, msg);
 				allOk = false;
 			}
 		}
 
-		return Map.of(
-				"ok", allOk,
-				"startedAt", startedAt.toString(),
-				"finishedAt", Instant.now().toString(),
-				"jira", Map.of(
-						"totalUpserted", jiraUpsertedTotal,
-						"results", jiraResults
-				),
-				"github", Map.of(
-						"totalInserted", githubInsertedTotal,
-						"results", githubResults
-				)
-		);
+		String message = allOk ? null : summarizeFailures(jiraResults, githubResults);
+		Map<String, Object> payload = new LinkedHashMap<>();
+		payload.put("ok", allOk);
+		if (message != null) payload.put("message", message);
+		payload.put("startedAt", startedAt.toString());
+		payload.put("finishedAt", Instant.now().toString());
+		payload.put("jira", Map.of(
+				"totalUpserted", jiraUpsertedTotal,
+				"results", jiraResults
+		));
+		payload.put("github", Map.of(
+				"totalInserted", githubInsertedTotal,
+				"results", githubResults
+		));
+		return payload;
 	}
 
 	@PostMapping("/jira")
@@ -126,26 +176,33 @@ public class CompatSyncController {
 						.filter(s -> s != null && !s.isBlank())
 						.orElse(projectKeyOverride);
 				if (projectKey == null || projectKey.isBlank()) {
-					results.add(resultRow(groupId, false, "Missing Jira project key for this group", Map.of()));
+					String msg = "Missing Jira project key for this group";
+					results.add(resultRow(groupId, false, msg, Map.of()));
+					writeSyncLog(principal, groupId, "jira", "sync_issues", null, false, msg);
 					allOk = false;
 					continue;
 				}
 				int upserted = jiraService.syncIssues(groupId, projectKey.trim(), principal);
 				totalUpserted += upserted;
 				results.add(resultRow(groupId, true, "Synced Jira issues", Map.of("upserted", upserted, "projectKey", projectKey.trim())));
+				writeSyncLog(principal, groupId, "jira", "sync_issues", projectKey.trim(), true, null);
 			} catch (Exception ex) {
-				results.add(resultRow(groupId, false, ex.getMessage(), Map.of()));
+				String msg = ex.getMessage();
+				results.add(resultRow(groupId, false, msg, Map.of()));
+				writeSyncLog(principal, groupId, "jira", "sync_issues", projectKeyOverride, false, msg);
 				allOk = false;
 			}
 		}
 
-		return Map.of(
-				"ok", allOk,
-				"startedAt", startedAt.toString(),
-				"finishedAt", Instant.now().toString(),
-				"totalUpserted", totalUpserted,
-				"results", results
-		);
+		String message = allOk ? null : summarizeFailures(results);
+		Map<String, Object> payload = new LinkedHashMap<>();
+		payload.put("ok", allOk);
+		if (message != null) payload.put("message", message);
+		payload.put("startedAt", startedAt.toString());
+		payload.put("finishedAt", Instant.now().toString());
+		payload.put("totalUpserted", totalUpserted);
+		payload.put("results", results);
+		return payload;
 	}
 
 	@PostMapping("/github")
@@ -162,18 +219,23 @@ public class CompatSyncController {
 				int inserted = githubService.syncCommits(groupId, principal);
 				totalInserted += inserted;
 				results.add(resultRow(groupId, true, "Synced GitHub commits", Map.of("inserted", inserted)));
+				writeSyncLog(principal, groupId, "github", "sync_commits", null, true, null);
 			} catch (Exception ex) {
-				results.add(resultRow(groupId, false, ex.getMessage(), Map.of()));
+				String msg = ex.getMessage();
+				results.add(resultRow(groupId, false, msg, Map.of()));
+				writeSyncLog(principal, groupId, "github", "sync_commits", null, false, msg);
 				allOk = false;
 			}
 		}
 
-		return Map.of(
-				"ok", allOk,
-				"startedAt", startedAt.toString(),
-				"finishedAt", Instant.now().toString(),
-				"totalInserted", totalInserted,
-				"results", results
-		);
+		String message = allOk ? null : summarizeFailures(results);
+		Map<String, Object> payload = new LinkedHashMap<>();
+		payload.put("ok", allOk);
+		if (message != null) payload.put("message", message);
+		payload.put("startedAt", startedAt.toString());
+		payload.put("finishedAt", Instant.now().toString());
+		payload.put("totalInserted", totalInserted);
+		payload.put("results", results);
+		return payload;
 	}
 }

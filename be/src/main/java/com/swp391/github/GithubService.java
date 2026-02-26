@@ -8,9 +8,11 @@ import com.swp391.repo.GithubRepositoryRepository;
 import com.swp391.security.UserPrincipal;
 import com.swp391.student.StudentRepository;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestClientResponseException;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -21,6 +23,8 @@ import java.util.Map;
 @Service
 @RequiredArgsConstructor
 public class GithubService {
+	private static final Logger log = LoggerFactory.getLogger(GithubService.class);
+
 	private final GitHubClient gitHubClient;
 	private final GithubActivityRepository activityRepository;
 	private final GithubRepositoryRepository repoRepository;
@@ -41,20 +45,36 @@ public class GithubService {
 		return new GithubStatsResponse(groupId, map);
 	}
 
-	@Transactional
 	public int syncCommits(Integer groupId, UserPrincipal principal) {
 		ensureMember(groupId, principal);
-		String role = principal.getRole() == null ? "" : principal.getRole();
-		if (!role.equalsIgnoreCase("TEAM_LEAD")) {
-			throw new SecurityException("Only TEAM_LEAD can trigger GitHub sync");
-		}
 		String token = integrationService.resolveGithubToken(groupId);
 		int inserted = 0;
 		for (var repo : repoRepository.findByGroupId(groupId)) {
+			if (repo.getIsActive() != null && !repo.getIsActive()) {
+				continue;
+			}
 			if (repo.getRepoOwner() == null || repo.getRepoName() == null) {
 				continue;
 			}
-			JsonNode commits = gitHubClient.listCommits(repo.getRepoOwner(), repo.getRepoName(), null, token);
+			JsonNode commits;
+			try {
+				commits = gitHubClient.listCommits(repo.getRepoOwner(), repo.getRepoName(), null, token);
+			} catch (RestClientResponseException ex) {
+				String body = null;
+				try {
+					body = ex.getResponseBodyAsString();
+				} catch (Exception ignored) {
+					// ignore
+				}
+				log.warn(
+						"GitHub list commits failed for {}/{} (status={}): {}",
+						repo.getRepoOwner(),
+						repo.getRepoName(),
+						ex.getStatusCode().value(),
+						body
+				);
+				continue;
+			}
 			if (commits == null || !commits.isArray()) {
 				continue;
 			}

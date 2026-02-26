@@ -90,7 +90,7 @@ export function TasksBoardPage() {
     try {
       // tuỳ syncService của bạn có nhận groupId hay không
       // await syncService.syncAll(groupId);
-      await syncService.syncAll();
+      await syncService.syncAll({ groupId });
       await load();
     } catch (e) {
       console.error("[TasksBoard] sync failed:", e);
