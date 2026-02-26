@@ -1,0 +1,249 @@
+.srs-builder {
+  animation: fadeIn 0.4s ease-out;
+  height: calc(100vh - 120px);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header & Toggle */
+.builder-actions {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.view-toggle {
+  display: flex;
+  background: var(--slate-100);
+  padding: 0.25rem;
+  border-radius: var(--radius-lg);
+  gap: 0.25rem;
+}
+
+.toggle-btn {
+  padding: 0.5rem 1rem;
+  border: none;
+  background: none;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--slate-500);
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  transition: all 0.2s;
+}
+
+.toggle-btn.active {
+  background: white;
+  color: var(--brand-600);
+  box-shadow: var(--shadow-sm);
+}
+
+.save-status {
+  font-size: 0.75rem;
+  color: var(--slate-400);
+  font-weight: 500;
+}
+
+/* Builder Container */
+.builder-container {
+  flex: 1;
+  margin-top: 2rem;
+  overflow: hidden;
+}
+
+/* Matrix Board Styling */
+.matrix-board {
+  display: flex;
+  gap: 1.5rem;
+  height: 100%;
+  overflow-x: auto;
+  padding-bottom: 2rem;
+}
+
+.matrix-col {
+  flex: 1;
+  min-width: 320px;
+  background: var(--slate-50);
+  border-radius: var(--radius-xl);
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--slate-200);
+  transition: all 0.2s;
+}
+
+.matrix-col:hover {
+  background: var(--slate-100);
+  border-color: var(--slate-300);
+}
+
+.matrix-col-header {
+  padding: 1.25rem;
+  border-top: 4px solid var(--slate-400);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: white;
+}
+
+.matrix-col-title {
+  font-size: 0.8125rem;
+  font-weight: 800;
+  color: var(--slate-900);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.matrix-col-count {
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: var(--slate-100);
+  padding: 0.2rem 0.6rem;
+  border-radius: 20px;
+  color: var(--slate-600);
+}
+
+.matrix-col-body {
+  flex: 1;
+  padding: 1rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.matrix-empty-hint {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed var(--slate-200);
+  border-radius: var(--radius-lg);
+  color: var(--slate-400);
+  font-size: 0.875rem;
+  font-style: italic;
+}
+
+/* Task Card Styling */
+.matrix-task-card {
+  background: white;
+  padding: 1rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--slate-200);
+  box-shadow: var(--shadow-sm);
+  cursor: grab;
+  transition: all 0.2s;
+}
+
+.matrix-task-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--brand-300);
+}
+
+.task-card-key {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--brand-600);
+  background: var(--brand-50);
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+}
+
+.task-card-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--slate-700);
+  margin: 0.75rem 0;
+  line-height: 1.4;
+}
+
+.task-card-actions {
+  display: flex;
+  gap: 0.4rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--slate-50);
+}
+
+.task-card-actions button {
+  width: 24px;
+  height: 24px;
+  font-size: 0.625rem;
+  font-weight: 800;
+  border: 1px solid var(--slate-200);
+  background: white;
+  border-radius: 4px;
+  color: var(--slate-400);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.task-card-actions button:hover {
+  background: var(--brand-500);
+  color: white;
+  border-color: var(--brand-500);
+}
+
+.task-card-actions .btn-unmap:hover {
+  background: var(--danger);
+  border-color: var(--danger);
+}
+
+/* Document Preview Styling */
+.document-preview {
+  height: 100%;
+  overflow-y: auto;
+  padding-bottom: 4rem;
+}
+
+.preview-paper {
+  background: white;
+  max-width: 850px;
+  margin: 0 auto;
+  padding: 5rem 4rem;
+  box-shadow: var(--shadow-xl);
+  min-height: 100vh;
+}
+
+.paper-header {
+  text-align: center;
+  border-bottom: 2px solid var(--slate-900);
+  margin-bottom: 4rem;
+  padding-bottom: 2rem;
+}
+
+.paper-header h1 {
+  font-size: 1.5rem;
+  letter-spacing: 0.1em;
+  color: var(--slate-900);
+}
+
+.preview-section {
+  margin-bottom: 3rem;
+}
+
+.preview-section h3 {
+  font-size: 1.125rem;
+  font-weight: 800;
+  color: var(--slate-900);
+  margin-bottom: 1.5rem;
+  text-transform: uppercase;
+  border-left: 4px solid var(--brand-500);
+  padding-left: 1rem;
+}
+
+.preview-list {
+  list-style: decimal inside;
+  color: var(--slate-700);
+}
+
+.preview-list li {
+  margin-bottom: 0.75rem;
+  padding-left: 1rem;
+  font-size: 1rem;
+}
+
+.no-tasks {
+  font-style: italic;
+  color: var(--slate-400);
+}
