@@ -20,6 +20,12 @@ public class GroupController {
 		return groupService.myGroups(auth);
 	}
 
+	// Compatibility endpoint for the frontend, which calls GET /groups
+	@GetMapping("/groups")
+	public List<GroupSummary> listGroups(Authentication auth) {
+		return groupService.myGroups(auth);
+	}
+
 	@PostMapping("/groups/{groupId}/topic")
 	public void selectTopic(@PathVariable Integer groupId, @Valid @RequestBody SelectTopicRequest req, Authentication auth) {
 		groupService.selectTopic(groupId, req.projectId(), auth);

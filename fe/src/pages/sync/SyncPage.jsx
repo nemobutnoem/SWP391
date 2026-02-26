@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { jiraProjectService } from "../../services/jiraProjects/jiraProject.service.js";
 import { githubRepositoryService } from "../../services/githubRepositories/githubRepository.service.js";
 import { syncLogService } from "../../services/syncLogs/syncLog.service.js";
+import { syncService } from "../../services/sync/sync.service.js";
 import { SyncView } from "./SyncView.jsx";
 import "./sync.css";
 
@@ -21,19 +22,40 @@ export function SyncPage() {
     syncLogService.list().then(setLogs);
   }, []);
 
-  const handleSync = (target) => {
+  const handleSync = async (target) => {
+    const t = String(target || "").trim().toLowerCase();
     setSyncTarget(target);
     setSyncing(true);
-    setTimeout(() => {
+    try {
+      let res;
+      if (t === "jira") res = await syncService.syncJira();
+      else if (t === "github") res = await syncService.syncGithub();
+      else res = await syncService.syncAll();
+
       const newLog = {
         id: Date.now(),
-        action: `Synchronized ${target} data for the group`,
-        status: "OK",
+        action: `Synchronized ${target} data`,
+        status: res?.ok ? "OK" : "ERROR",
         at: new Date().toISOString(),
+        detail: res?.message,
       };
       setLogs((prev) => [newLog, ...prev]);
+
+      // best-effort reload from server (if server keeps logs)
+      syncLogService.list().then(setLogs).catch(() => {});
+    } catch (e) {
+      const newLog = {
+        id: Date.now(),
+        action: `Synchronized ${target} data`,
+        status: "ERROR",
+        at: new Date().toISOString(),
+        detail: e?.message || "Sync failed",
+      };
+      setLogs((prev) => [newLog, ...prev]);
+      console.error("[SyncPage] sync failed:", e);
+    } finally {
       setSyncing(false);
-    }, 1500);
+    }
   };
 
   return (
