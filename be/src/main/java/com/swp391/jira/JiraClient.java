@@ -24,6 +24,7 @@ public class JiraClient {
 			"summary",
 			"issuetype",
 			"status",
+			"duedate",
 			"updated",
 			"created"
 	);

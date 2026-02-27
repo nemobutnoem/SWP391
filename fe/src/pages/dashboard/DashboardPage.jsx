@@ -10,8 +10,6 @@ import { jiraTaskService } from "../../services/jiraTasks/jiraTask.service.js";
 import { githubActivityService } from "../../services/githubActivities/githubActivity.service.js";
 import { syncService } from "../../services/sync/sync.service.js";
 
-const DEFAULT_GROUP_ID = 1;
-
 function normalizeStatus(s) {
   const v = String(s ?? "").trim().toUpperCase();
   if (v === "TODO" || v === "TO_DO" || v === "TO DO") return "TODO";
@@ -41,8 +39,6 @@ export function DashboardPage() {
   const isAdmin = user?.role === ROLES.ADMIN;
   const isLecturer = user?.role === ROLES.LECTURER;
 
-  const [groupId] = useState(DEFAULT_GROUP_ID);
-
   const [tasks, setTasks] = useState([]);
   const [activities, setActivities] = useState([]);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -51,8 +47,8 @@ export function DashboardPage() {
 
   const load = async () => {
     const [taskData, activityData] = await Promise.all([
-      jiraTaskService.listByGroup(groupId),
-      githubActivityService.listByGroup(groupId),
+      jiraTaskService.list(),
+      githubActivityService.list(),
     ]);
 
     setTasks((Array.isArray(taskData) ? taskData : []).map(normalizeJiraTask));
@@ -62,14 +58,12 @@ export function DashboardPage() {
   useEffect(() => {
     load().catch((e) => console.error("[Dashboard] load failed:", e));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [groupId]);
+  }, []);
 
   const handleSync = async () => {
     setIsSyncing(true);
     try {
-      // tùy service của bạn nhận groupId hay không:
-      // await syncService.syncAll(groupId);
-      await syncService.syncAll({ groupId });
+      await syncService.syncAll();
 
       await load();
     } catch (e) {

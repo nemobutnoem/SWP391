@@ -9,15 +9,47 @@ const COLUMN_META = [
   { key: "OVERDUE", title: "Overdue" },
 ];
 
+function parseDateOnlyToMs(value) {
+  // Jira `duedate` is typically yyyy-MM-dd (date-only). Parse as UTC midnight to avoid TZ drift.
+  if (!value) return null;
+  const s = String(value).trim();
+  const m = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/.exec(s);
+  if (m) {
+    const y = Number(m[1]);
+    const mo = Number(m[2]);
+    const d = Number(m[3]);
+    const ms = Date.UTC(y, mo - 1, d);
+    return Number.isNaN(ms) ? null : ms;
+  }
+  const dt = new Date(s);
+  const ms = dt.getTime();
+  return Number.isNaN(ms) ? null : ms;
+}
+
+function formatDueDate(value) {
+  const ms = parseDateOnlyToMs(value);
+  if (ms == null) return "-";
+  try {
+    return new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      timeZone: "UTC",
+    }).format(new Date(ms));
+  } catch {
+    return String(value);
+  }
+}
+
 function isOverdue(task, statusKey) {
   // Nếu task đã được đưa vào cột OVERDUE từ columns thì tone danger
   if (statusKey === "OVERDUE") return true;
 
   // Optional: nếu có dueDate và quá hạn thì cũng danger
   if (!task?.dueDate) return false;
-  const d = new Date(task.dueDate);
-  if (Number.isNaN(d.getTime())) return false;
-  return d.getTime() < Date.now();
+  const ms = parseDateOnlyToMs(task.dueDate);
+  if (ms == null) return false;
+  return ms < Date.now();
 }
 
 function TaskCard({ task, statusKey }) {
@@ -39,7 +71,7 @@ function TaskCard({ task, statusKey }) {
         <div className={styles.cardDue}>
           Due:{" "}
           <span className={overdue ? styles.dueDanger : ""}>
-            {task.dueDate || "-"}
+            {formatDueDate(task.dueDate)}
           </span>
         </div>
       </div>

@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Getter
@@ -35,6 +36,9 @@ public class JiraIssueEntity {
 
 	@Column(name = "status")
 	private String status;
+
+	@Column(name = "jira_due_date")
+	private LocalDate jiraDueDate;
 
 	@Column(name = "jira_updated_at")
 	private LocalDateTime jiraUpdatedAt;

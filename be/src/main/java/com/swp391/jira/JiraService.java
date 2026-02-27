@@ -66,11 +66,21 @@ public class JiraService {
 				String summary = fields.path("summary").asText(null);
 				String issueType = fields.path("issuetype").path("name").asText(null);
 				String status = fields.path("status").path("name").asText(null);
+				String dueDate = fields.path("duedate").asText(null);
 				String updated = fields.path("updated").asText(null);
 				java.time.LocalDateTime jiraUpdatedAt = null;
 				try {
 					if (updated != null && !updated.isBlank()) {
 						jiraUpdatedAt = java.time.LocalDateTime.ofInstant(java.time.Instant.parse(updated), java.time.ZoneOffset.UTC);
+					}
+				} catch (Exception ignored) {
+					// Best-effort only.
+				}
+
+				java.time.LocalDate jiraDueDate = null;
+				try {
+					if (dueDate != null && !dueDate.isBlank()) {
+						jiraDueDate = java.time.LocalDate.parse(dueDate);
 					}
 				} catch (Exception ignored) {
 					// Best-effort only.
@@ -85,6 +95,7 @@ public class JiraService {
 				entity.setIssueType(issueType == null ? "" : issueType);
 				entity.setSummary(summary);
 				entity.setStatus(status);
+				entity.setJiraDueDate(jiraDueDate);
 				entity.setJiraUpdatedAt(jiraUpdatedAt);
 				jiraIssueRepository.save(entity);
 				upserted++;

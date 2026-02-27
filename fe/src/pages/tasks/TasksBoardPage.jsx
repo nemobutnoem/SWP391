@@ -5,8 +5,6 @@ import { effectiveStatus } from "../../features/tasks/taskStats.js";
 import { jiraTaskService } from "../../services/jiraTasks/jiraTask.service.js";
 import { syncService } from "../../services/sync/sync.service.js";
 
-const DEFAULT_GROUP_ID = 1;
-
 function normalizeStatus(s) {
   const v = String(s ?? "").trim().toUpperCase();
   if (v === "TODO" || v === "TO DO" || v === "TO_DO") return "TODO";
@@ -31,14 +29,12 @@ function normalizeJiraTask(t) {
 }
 
 export function TasksBoardPage() {
-  const [groupId] = useState(DEFAULT_GROUP_ID);
-
   const [query, setQuery] = useState("");
   const [isSyncing, setIsSyncing] = useState(false);
   const [tasks, setTasks] = useState([]);
 
   const load = async () => {
-    const data = await jiraTaskService.listByGroup(groupId);
+    const data = await jiraTaskService.list();
     const list = Array.isArray(data) ? data : [];
     setTasks(list.map(normalizeJiraTask));
   };
@@ -46,7 +42,7 @@ export function TasksBoardPage() {
   useEffect(() => {
     load().catch((e) => console.error("[TasksBoard] load failed:", e));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [groupId]);
+  }, []);
 
   const handleStatusChange = async (taskId, newStatus) => {
     // optimistic UI: update trước cho mượt
@@ -88,9 +84,7 @@ export function TasksBoardPage() {
   const onSync = async () => {
     setIsSyncing(true);
     try {
-      // tuỳ syncService của bạn có nhận groupId hay không
-      // await syncService.syncAll(groupId);
-      await syncService.syncAll({ groupId });
+      await syncService.syncAll();
       await load();
     } catch (e) {
       console.error("[TasksBoard] sync failed:", e);

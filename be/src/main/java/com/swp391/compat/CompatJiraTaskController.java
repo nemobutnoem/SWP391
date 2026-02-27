@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
@@ -34,7 +35,8 @@ public class CompatJiraTaskController {
 			String title,
 			String summary,
 			String description,
-			String status
+			String status,
+			LocalDate dueDate
 	) {
 	}
 
@@ -114,7 +116,8 @@ public class CompatJiraTaskController {
 				title,
 				e.getSummary(),
 				e.getDescription(),
-				e.getStatus()
+			e.getStatus(),
+			e.getJiraDueDate()
 		);
 	}
 
