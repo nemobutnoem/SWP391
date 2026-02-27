@@ -13,7 +13,7 @@ export function Sidebar() {
 
   const isAdmin = role === ROLES.ADMIN;
   const isLecturer = role === ROLES.LECTURER;
-  const isStudent = role === ROLES.STUDENT;
+  const isTeam = role === ROLES.TEAM_LEAD || role === ROLES.TEAM_MEMBER;
 
   const userInitials =
     user?.name
@@ -70,7 +70,7 @@ export function Sidebar() {
         )}
 
         {/* Student Section */}
-        {isStudent && (
+        {isTeam && (
           <div className="navGroup">
             <div className="navLabel">My Project</div>
             <NavLink to="/tasks" className={navClass}>

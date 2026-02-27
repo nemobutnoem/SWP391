@@ -26,7 +26,7 @@ export const authMock = {
     return readStorage();
   },
 
-  async loginFake({ role = "Student", name = "User" } = {}) {
+  async loginFake({ role = "TEAM_MEMBER", name = "User" } = {}) {
     await sleep(120);
     const next = { user: { id: "fake-1", name: name || "User", role } };
     writeStorage(next);

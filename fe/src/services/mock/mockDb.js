@@ -19,7 +19,7 @@ const rawMockDb = {
     user: {
       id: 1,
       account: "student01",
-      role: "Student",
+      role: "TEAM_MEMBER",
       email: "student01@fpt.edu.vn",
       github_username: "anhnv_se123",
       jira_account_id: "jira-anhnv-101",

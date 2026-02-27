@@ -31,9 +31,10 @@ function mapBackendRoleToUiRole(role) {
   const r = String(role).toUpperCase();
   if (r === "ADMIN") return ROLES.ADMIN;
   if (r === "LECTURER") return ROLES.LECTURER;
-  if (r === "STUDENT") return ROLES.STUDENT;
-  // backend seed uses TEAM_LEAD / TEAM_MEMBER; treat both as Student UI role
-  if (r === "TEAM_LEAD" || r === "TEAM_MEMBER") return ROLES.STUDENT;
+  if (r === "TEAM_LEAD") return ROLES.TEAM_LEAD;
+  if (r === "TEAM_MEMBER") return ROLES.TEAM_MEMBER;
+  // backward compat (old FE tokens / mock)
+  if (r === "STUDENT") return ROLES.TEAM_MEMBER;
   return role;
 }
 

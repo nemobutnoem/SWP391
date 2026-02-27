@@ -1,17 +1,13 @@
 export const ROLES = {
   ADMIN: "Admin",
   LECTURER: "Lecturer",
-  STUDENT: "Student",
-
-  // group roles (not user.role)
-  LEADER: "Leader",
-  MEMBER: "Member",
+  TEAM_LEAD: "TEAM_LEAD",
+  TEAM_MEMBER: "TEAM_MEMBER",
 };
 
 export const ROLE_LABELS = {
   [ROLES.ADMIN]: "Admin",
   [ROLES.LECTURER]: "Lecturer",
-  [ROLES.STUDENT]: "Student",
-  [ROLES.LEADER]: "Team Leader",
-  [ROLES.MEMBER]: "Team Member",
+  [ROLES.TEAM_LEAD]: "Team Leader",
+  [ROLES.TEAM_MEMBER]: "Team Member",
 };

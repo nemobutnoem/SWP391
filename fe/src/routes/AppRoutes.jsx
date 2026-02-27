@@ -48,7 +48,7 @@ export function AppRoutes() {
           </Route>
 
           {/* Student - Project & Task Management */}
-          <Route element={<RoleGuard allow={[ROLES.STUDENT]} />}>
+          <Route element={<RoleGuard allow={[ROLES.TEAM_LEAD, ROLES.TEAM_MEMBER]} />}>
             <Route path="/tasks" element={<TasksBoardPage />} />
             <Route path="/srs" element={<SRSBuilderPage />} />
             <Route path="/activity" element={<ActivityPage />} />

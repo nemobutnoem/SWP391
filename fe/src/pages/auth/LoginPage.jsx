@@ -8,7 +8,7 @@ export function LoginPage() {
   const { loginFake, login } = useAuth();
   const navigate = useNavigate();
 
-  const [role, setRole] = useState(ROLES.STUDENT);
+  const [role, setRole] = useState(ROLES.TEAM_MEMBER);
   const [name, setName] = useState("");
 
   const [account, setAccount] = useState("lead1");
@@ -16,7 +16,7 @@ export function LoginPage() {
   const [error, setError] = useState("");
 
   const roleOptions = useMemo(
-    () => [ROLES.ADMIN, ROLES.LECTURER, ROLES.STUDENT],
+    () => [ROLES.ADMIN, ROLES.LECTURER, ROLES.TEAM_LEAD, ROLES.TEAM_MEMBER],
     []
   );
 
