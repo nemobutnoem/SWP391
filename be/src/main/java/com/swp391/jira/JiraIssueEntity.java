@@ -37,6 +37,9 @@ public class JiraIssueEntity {
 	@Column(name = "status")
 	private String status;
 
+	@Column(name = "priority")
+	private String priority;
+
 	@Column(name = "assignee_user_id")
 	private Integer assigneeUserId;
 

@@ -22,4 +22,13 @@ export const jiraTaskApi = {
     const res = await http.patch(`/jira-tasks/${taskId}`, payload);
     return res.data;
   },
+
+  async updateFields(taskId, fields) {
+    const payload = {
+      ...(fields?.dueDate !== undefined ? { dueDate: fields.dueDate ?? "" } : {}),
+      ...(fields?.priority !== undefined ? { priority: fields.priority ?? "" } : {}),
+    };
+    const res = await http.patch(`/jira-tasks/${taskId}`, payload);
+    return res.data;
+  },
 };

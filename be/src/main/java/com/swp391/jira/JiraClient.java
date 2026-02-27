@@ -24,6 +24,7 @@ public class JiraClient {
 			"summary",
 			"issuetype",
 			"assignee",
+			"priority",
 			"status",
 			"duedate",
 			"updated",
@@ -66,6 +67,17 @@ public class JiraClient {
 		body.put("accountId", accountId);
 		buildClient(baseUrl, email, apiToken).put()
 				.uri("/rest/api/3/issue/{issueKey}/assignee", issueKey)
+				.contentType(MediaType.APPLICATION_JSON)
+				.body(body)
+				.retrieve()
+				.toBodilessEntity();
+	}
+
+	public void updateIssueFields(String baseUrl, String email, String apiToken, String issueKey, Map<String, Object> fields) {
+		Map<String, Object> body = new LinkedHashMap<>();
+		body.put("fields", fields);
+		buildClient(baseUrl, email, apiToken).put()
+				.uri("/rest/api/3/issue/{issueKey}", issueKey)
 				.contentType(MediaType.APPLICATION_JSON)
 				.body(body)
 				.retrieve()

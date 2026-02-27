@@ -58,4 +58,24 @@ export const jiraTaskMock = {
     item.updated_at = new Date().toISOString();
     return { ...item };
   },
+
+  async updateFields(taskId, fields) {
+    await sleep(220);
+    const item = (mockDb.jiraTasks || []).find(
+      (t) => Number(t.id) === Number(taskId),
+    );
+    if (!item) throw new Error("Task not found");
+
+    if (fields?.dueDate !== undefined) {
+      const v = String(fields.dueDate ?? "").trim();
+      item.dueDate = v;
+    }
+    if (fields?.priority !== undefined) {
+      const p = String(fields.priority ?? "").trim();
+      item.priority = p;
+    }
+
+    item.updated_at = new Date().toISOString();
+    return { ...item };
+  },
 };

@@ -37,6 +37,7 @@ public class CompatJiraTaskController {
 			String summary,
 			String description,
 			String status,
+			String priority,
 			LocalDate dueDate,
 			Integer assigneeUserId,
 			String assigneeName
@@ -46,7 +47,10 @@ public class CompatJiraTaskController {
 	public record UpdateTaskRequest(
 			String status,
 			@JsonProperty("assigneeUserId") Integer assigneeUserId,
-			@JsonProperty("assignee_user_id") Integer assigneeUserIdSnake
+			@JsonProperty("assignee_user_id") Integer assigneeUserIdSnake,
+			String dueDate,
+			@JsonProperty("due_date") String dueDateSnake,
+			String priority
 	) {
 	}
 
@@ -108,6 +112,41 @@ public class CompatJiraTaskController {
 			changed = true;
 		}
 
+		String dueDateRaw = req.dueDate() != null ? req.dueDate() : req.dueDateSnake();
+		if (dueDateRaw != null || req.priority() != null) {
+			java.util.Map<String, Object> fields = new java.util.LinkedHashMap<>();
+
+			if (dueDateRaw != null) {
+				LocalDate parsed = null;
+				String s = dueDateRaw.trim();
+				if (!s.isEmpty()) {
+					try {
+						parsed = LocalDate.parse(s);
+					} catch (Exception ex) {
+						throw new IllegalArgumentException("Invalid dueDate, expected yyyy-MM-dd");
+					}
+				}
+				fields.put("duedate", parsed == null ? null : parsed.toString());
+				issue.setJiraDueDate(parsed);
+			}
+
+			if (req.priority() != null) {
+				String p = req.priority().trim();
+				if (p.isEmpty()) {
+					fields.put("priority", null);
+					issue.setPriority(null);
+				} else {
+					fields.put("priority", java.util.Map.of("name", p));
+					issue.setPriority(p);
+				}
+			}
+
+			if (issue.getJiraIssueKey() != null && !issue.getJiraIssueKey().isBlank()) {
+				jiraService.pushFields(issue.getGroupId(), issue.getJiraIssueKey(), fields, principal);
+			}
+			changed = true;
+		}
+
 		if (!changed) {
 			throw new IllegalArgumentException("No changes requested");
 		}
@@ -155,6 +194,7 @@ public class CompatJiraTaskController {
 				e.getSummary(),
 				e.getDescription(),
 			e.getStatus(),
+				e.getPriority(),
 			e.getJiraDueDate(),
 			e.getAssigneeUserId(),
 			assigneeName

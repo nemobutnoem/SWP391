@@ -24,6 +24,7 @@ function normalizeJiraTask(t) {
     groupId: Number(t.groupId ?? t.group_id ?? 0),
     title: t.title ?? t.summary ?? t.jira_issue_key ?? `Task #${t.id}`,
     dueDate: t.dueDate ?? t.due_date ?? "",
+    priority: t.priority ?? "",
     assigneeName: t.assigneeName ?? t.assignee_name ?? t.assignee ?? "Unassigned",
     assigneeUserId: t.assigneeUserId ?? t.assignee_user_id ?? null,
     status: normalizeStatus(t.status),
@@ -143,6 +144,34 @@ export function TasksBoardPage() {
     }
   };
 
+  const handleDueDateChange = async (taskId, newDueDate) => {
+    const v = newDueDate == null ? "" : String(newDueDate);
+    setTasks((prev) =>
+      prev.map((t) => (Number(t.id) === Number(taskId) ? { ...t, dueDate: v } : t)),
+    );
+    try {
+      await jiraTaskService.updateFields(taskId, { dueDate: v });
+      await load();
+    } catch (e) {
+      console.error("[TasksBoard] update dueDate failed:", e);
+      await load();
+    }
+  };
+
+  const handlePriorityChange = async (taskId, newPriority) => {
+    const v = newPriority == null ? "" : String(newPriority);
+    setTasks((prev) =>
+      prev.map((t) => (Number(t.id) === Number(taskId) ? { ...t, priority: v } : t)),
+    );
+    try {
+      await jiraTaskService.updateFields(taskId, { priority: v });
+      await load();
+    } catch (e) {
+      console.error("[TasksBoard] update priority failed:", e);
+      await load();
+    }
+  };
+
   const filteredTasks = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return tasks;
@@ -186,6 +215,8 @@ export function TasksBoardPage() {
       onStatusChange={handleStatusChange}
       membersByGroupId={membersByGroupId}
       onAssigneeChange={handleAssigneeChange}
+      onDueDateChange={handleDueDateChange}
+      onPriorityChange={handlePriorityChange}
     />
   );
 }

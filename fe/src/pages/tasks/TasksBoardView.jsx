@@ -51,8 +51,21 @@ function isOverdue(task, statusKey) {
   return ms < Date.now();
 }
 
-function TaskCard({ task, statusKey, assigneeOptions, onAssigneeChange }) {
+function TaskCard({
+  task,
+  statusKey,
+  assigneeOptions,
+  onAssigneeChange,
+  onDueDateChange,
+  onPriorityChange,
+}) {
   const overdue = isOverdue(task, statusKey);
+
+	const [priorityDraft, setPriorityDraft] = React.useState(task.priority || "");
+
+	React.useEffect(() => {
+		setPriorityDraft(task.priority || "");
+	}, [task.priority]);
 
   const handleDragStart = (e) => {
     e.dataTransfer.setData("taskId", task.id.toString());
@@ -72,6 +85,27 @@ function TaskCard({ task, statusKey, assigneeOptions, onAssigneeChange }) {
           <span className={overdue ? styles.dueDanger : ""}>
             {formatDueDate(task.dueDate)}
           </span>
+        </div>
+
+        <div className={styles.cardEditRow}>
+          <input
+            className={styles.inlineInput}
+            type="date"
+            value={task.dueDate || ""}
+            onChange={(e) => onDueDateChange?.(task.id, e.target.value)}
+            onDragStart={(e) => e.stopPropagation()}
+          />
+          <input
+            className={styles.inlineInput}
+            placeholder="Priority"
+            value={priorityDraft}
+            onChange={(e) => setPriorityDraft(e.target.value)}
+            onBlur={(e) => onPriorityChange?.(task.id, e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") onPriorityChange?.(task.id, e.target.value);
+            }}
+            onDragStart={(e) => e.stopPropagation()}
+          />
         </div>
       </div>
       <div className={styles.cardFooter}>
@@ -100,7 +134,16 @@ function TaskCard({ task, statusKey, assigneeOptions, onAssigneeChange }) {
   );
 }
 
-function Column({ title, statusKey, tasks, onStatusChange, membersByGroupId, onAssigneeChange }) {
+function Column({
+  title,
+  statusKey,
+  tasks,
+  onStatusChange,
+  membersByGroupId,
+  onAssigneeChange,
+  onDueDateChange,
+  onPriorityChange,
+}) {
   const [isOver, setIsOver] = React.useState(false);
 
   const handleDragOver = (e) => {
@@ -151,6 +194,8 @@ function Column({ title, statusKey, tasks, onStatusChange, membersByGroupId, onA
             statusKey={statusKey}
             assigneeOptions={membersByGroupId?.[t.groupId] ?? []}
             onAssigneeChange={onAssigneeChange}
+            onDueDateChange={onDueDateChange}
+            onPriorityChange={onPriorityChange}
           />
         ))}
       </div>
@@ -168,6 +213,8 @@ export function TasksBoardView({
   onStatusChange,
   membersByGroupId,
   onAssigneeChange,
+	onDueDateChange,
+	onPriorityChange,
 }) {
   return (
     <div className={styles.page}>
@@ -196,6 +243,8 @@ export function TasksBoardView({
             onStatusChange={onStatusChange}
             membersByGroupId={membersByGroupId}
             onAssigneeChange={onAssigneeChange}
+			onDueDateChange={onDueDateChange}
+			onPriorityChange={onPriorityChange}
           />
         ))}
       </div>

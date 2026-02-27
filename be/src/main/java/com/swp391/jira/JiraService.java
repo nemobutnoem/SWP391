@@ -73,6 +73,7 @@ public class JiraService {
 				String issueType = fields.path("issuetype").path("name").asText(null);
 				String status = fields.path("status").path("name").asText(null);
 					String assigneeAccountId = fields.path("assignee").path("accountId").asText(null);
+					String priority = fields.path("priority").path("name").asText(null);
 				String dueDate = fields.path("duedate").asText(null);
 				String updated = fields.path("updated").asText(null);
 				java.time.LocalDateTime jiraUpdatedAt = null;
@@ -102,6 +103,7 @@ public class JiraService {
 				entity.setIssueType(issueType == null ? "" : issueType);
 				entity.setSummary(summary);
 				entity.setStatus(status);
+					entity.setPriority(priority);
 					Integer assigneeUserId = null;
 					if (assigneeAccountId != null && !assigneeAccountId.isBlank()) {
 						assigneeUserId = userRepository.findByJiraAccountId(assigneeAccountId)
@@ -214,6 +216,43 @@ public class JiraService {
 
 		try {
 			jiraClient.assignIssue(cfg.baseUrl(), cfg.email(), cfg.apiToken(), issueKey, accountId);
+			log.setStatus("SUCCESS");
+			outboundSyncLogRepository.save(log);
+		} catch (Exception ex) {
+			log.setStatus("FAILED");
+			log.setErrorMessage(ex.getMessage());
+			outboundSyncLogRepository.save(log);
+			throw ex;
+		}
+	}
+
+	@Transactional
+	public void pushFields(Integer groupId, String issueKey, java.util.Map<String, Object> fields, UserPrincipal principal) {
+		ensureMember(groupId, principal);
+		var issue = jiraIssueRepository.findByGroupIdAndJiraIssueKey(groupId, issueKey)
+				.orElseThrow(() -> new IllegalArgumentException("Issue not found locally for this group"));
+
+		var cfg = integrationService.resolveJiraConfig(groupId);
+		if (cfg.baseUrl() == null || cfg.email() == null || cfg.apiToken() == null) {
+			throw new IllegalStateException("Jira integration is not configured for this group");
+		}
+
+		if (fields == null || fields.isEmpty()) {
+			throw new IllegalArgumentException("No fields to update");
+		}
+
+		OutboundSyncLogEntity log = new OutboundSyncLogEntity();
+		log.setTarget("jira");
+		log.setEntityType("Jira_Issue");
+		log.setEntityLocalId(issue.getId());
+		log.setRemoteId(issueKey);
+		log.setAction("update_fields");
+		log.setRequestedByUserId(principal.getUserId());
+		log.setStatus("PENDING");
+		log = outboundSyncLogRepository.save(log);
+
+		try {
+			jiraClient.updateIssueFields(cfg.baseUrl(), cfg.email(), cfg.apiToken(), issueKey, fields);
 			log.setStatus("SUCCESS");
 			outboundSyncLogRepository.save(log);
 		} catch (Exception ex) {
