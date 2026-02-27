@@ -4,7 +4,6 @@ import styles from "./tasksBoard.module.css";
 const COLUMN_META = [
   { key: "TODO", title: "Backlog" },
   { key: "IN_PROGRESS", title: "In Progress" },
-  { key: "IN_REVIEW", title: "Review" },
   { key: "DONE", title: "Completed" },
   { key: "OVERDUE", title: "Overdue" },
 ];
@@ -87,6 +86,9 @@ function Column({ title, statusKey, tasks, onStatusChange }) {
   const [isOver, setIsOver] = React.useState(false);
 
   const handleDragOver = (e) => {
+    // OVERDUE is a computed lane (based on due date), not a real status in Jira.
+    // Keep it read-only: don't allow dropping tasks into it.
+    if (statusKey === "OVERDUE") return;
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
     setIsOver(true);
@@ -95,6 +97,7 @@ function Column({ title, statusKey, tasks, onStatusChange }) {
   const handleDragLeave = () => setIsOver(false);
 
   const handleDrop = (e) => {
+    if (statusKey === "OVERDUE") return;
     e.preventDefault();
     setIsOver(false);
 
@@ -102,7 +105,7 @@ function Column({ title, statusKey, tasks, onStatusChange }) {
     if (!taskIdString) return;
 
     const taskId = parseInt(taskIdString, 10);
-    onStatusChange?.(taskId, statusKey === "OVERDUE" ? "TODO" : statusKey);
+    onStatusChange?.(taskId, statusKey);
   };
 
   return (

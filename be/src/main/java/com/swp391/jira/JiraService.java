@@ -49,6 +49,7 @@ public class JiraService {
 		}
 		String jql = "project = " + projectKey + " ORDER BY updated DESC";
 		int upserted = 0;
+		java.util.Set<String> seenIssueKeys = new java.util.HashSet<>();
 		String nextPageToken = null;
 		boolean isLast = false;
 		do {
@@ -62,6 +63,9 @@ public class JiraService {
 				for (var issueNode : issuesNode) {
 				String jiraIssueId = issueNode.path("id").asText();
 				String jiraIssueKey = issueNode.path("key").asText();
+				if (jiraIssueKey != null && !jiraIssueKey.isBlank()) {
+					seenIssueKeys.add(jiraIssueKey);
+				}
 				var fields = issueNode.path("fields");
 				String summary = fields.path("summary").asText(null);
 				String issueType = fields.path("issuetype").path("name").asText(null);
@@ -106,6 +110,18 @@ public class JiraService {
 			String tokenFromResponse = search.path("nextPageToken").asText(null);
 			nextPageToken = (tokenFromResponse == null || tokenFromResponse.isBlank()) ? null : tokenFromResponse;
 		} while (!isLast && nextPageToken != null);
+
+		// IMPORTANT: If an issue was deleted in Jira, it will no longer show up in search results.
+		// Our local DB is a cache, so we need to prune missing issues to keep the web UI consistent.
+		// Only do this after we have finished paging through the whole result set.
+		var existing = jiraIssueRepository.findByGroupId(groupId);
+		var toDelete = existing.stream()
+				.filter(e -> e.getJiraIssueKey() != null && !e.getJiraIssueKey().isBlank())
+				.filter(e -> !seenIssueKeys.contains(e.getJiraIssueKey()))
+				.toList();
+		if (!toDelete.isEmpty()) {
+			jiraIssueRepository.deleteAll(toDelete);
+		}
 		return upserted;
 	}
 

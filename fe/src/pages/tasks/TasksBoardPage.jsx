@@ -10,8 +10,9 @@ function normalizeStatus(s) {
   if (v === "TODO" || v === "TO DO" || v === "TO_DO") return "TODO";
   if (v === "IN_PROGRESS" || v === "IN PROGRESS" || v === "INPROGRESS")
     return "IN_PROGRESS";
+  // UI does not have a separate Review lane; treat it as In Progress.
   if (v === "IN_REVIEW" || v === "IN REVIEW" || v === "INREVIEW")
-    return "IN_REVIEW";
+    return "IN_PROGRESS";
   if (v === "DONE") return "DONE";
   return "TODO";
 }
@@ -69,7 +70,6 @@ export function TasksBoardPage() {
     const base = {
       TODO: [],
       IN_PROGRESS: [],
-      IN_REVIEW: [],
       DONE: [],
       OVERDUE: [],
     };

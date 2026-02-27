@@ -12,6 +12,10 @@ export function isOverdue(dueDate) {
 export function effectiveStatus(task) {
   if (task?.status === "DONE") return "DONE";
   if (isOverdue(task?.dueDate)) return "OVERDUE";
+
+  // No separate Review lane in UI; treat review as in progress.
+  if (task?.status === "IN_REVIEW") return "IN_PROGRESS";
+
   return task?.status || "TODO";
 }
 
