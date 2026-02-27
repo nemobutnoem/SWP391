@@ -6,5 +6,6 @@ import java.util.Optional;
 
 public interface UserRepository extends JpaRepository<UserEntity, Integer> {
 	Optional<UserEntity> findByAccount(String account);
+	Optional<UserEntity> findByJiraAccountId(String jiraAccountId);
 }
 

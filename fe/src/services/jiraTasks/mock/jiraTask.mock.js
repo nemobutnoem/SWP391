@@ -37,4 +37,25 @@ export const jiraTaskMock = {
     item.updated_at = new Date().toISOString();
     return { ...item };
   },
+
+  async updateAssignee(taskId, assigneeUserId) {
+    await sleep(220);
+    const item = (mockDb.jiraTasks || []).find(
+      (t) => Number(t.id) === Number(taskId),
+    );
+    if (!item) throw new Error("Task not found");
+
+    const uid = assigneeUserId == null ? 0 : Number(assigneeUserId);
+    if (!uid || uid <= 0) {
+      item.assigneeUserId = null;
+      item.assigneeName = "Unassigned";
+    } else {
+      item.assigneeUserId = uid;
+      const student = (mockDb.students || []).find((s) => Number(s.user_id) === uid);
+      item.assigneeName = student?.full_name || `User ${uid}`;
+    }
+
+    item.updated_at = new Date().toISOString();
+    return { ...item };
+  },
 };

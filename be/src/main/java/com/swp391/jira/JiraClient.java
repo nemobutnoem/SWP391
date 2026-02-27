@@ -23,6 +23,7 @@ public class JiraClient {
 	private static final List<String> DEFAULT_SEARCH_FIELDS = List.of(
 			"summary",
 			"issuetype",
+			"assignee",
 			"status",
 			"duedate",
 			"updated",
@@ -55,6 +56,18 @@ public class JiraClient {
 				.uri("/rest/api/3/issue/{issueKey}/transitions", issueKey)
 				.contentType(MediaType.APPLICATION_JSON)
 				.body("{\"transition\":{\"id\":\"" + transitionId + "\"}}")
+				.retrieve()
+				.toBodilessEntity();
+	}
+
+	public void assignIssue(String baseUrl, String email, String apiToken, String issueKey, String accountId) {
+		Map<String, Object> body = new LinkedHashMap<>();
+		// Jira Cloud expects `accountId`. Setting it to null unassigns.
+		body.put("accountId", accountId);
+		buildClient(baseUrl, email, apiToken).put()
+				.uri("/rest/api/3/issue/{issueKey}/assignee", issueKey)
+				.contentType(MediaType.APPLICATION_JSON)
+				.body(body)
 				.retrieve()
 				.toBodilessEntity();
 	}

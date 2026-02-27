@@ -6,6 +6,15 @@ import { Badge } from "../../components/common/Badge.jsx";
 import "./dashboardPage.css";
 
 export function AdminDashboardView({ adminStats, systemLogs }) {
+  const stats = adminStats || {
+    totalGroups: 0,
+    allocatedGroups: 0,
+    allocationPct: 0,
+    activeLecturers: 0,
+  };
+
+  const logs = Array.isArray(systemLogs) ? systemLogs : [];
+
   return (
     <div className="dashboard-view admin-dashboard">
       <PageHeader
@@ -26,21 +35,21 @@ export function AdminDashboardView({ adminStats, systemLogs }) {
       <div className="dashboard-view__grid">
         <StatCard
           title="Total Groups"
-          value={adminStats.totalGroups}
+          value={stats.totalGroups}
           subtext="Active in current semester"
           icon="👥"
         />
         <StatCard
           title="Topic Allocation"
-          value={`${adminStats.allocatedGroups}/${adminStats.totalGroups}`}
+          value={`${stats.allocatedGroups}/${stats.totalGroups}`}
           subtext="Groups with assigned topics"
-          trend={adminStats.allocationPct > 80 ? "success" : "warning"}
-          trendValue={`${adminStats.allocationPct}%`}
+          trend={stats.allocationPct > 80 ? "success" : "warning"}
+          trendValue={`${stats.allocationPct}%`}
           icon="📋"
         />
         <StatCard
           title="Active Lecturers"
-          value={adminStats.activeLecturers}
+          value={stats.activeLecturers}
           subtext="Supervising projects"
           icon="👨‍🏫"
         />
@@ -143,7 +152,7 @@ export function AdminDashboardView({ adminStats, systemLogs }) {
               <h2 className="section-title">System Activity</h2>
             </div>
             <div className="intel-list">
-              {systemLogs.map((log, i) => (
+              {logs.map((log, i) => (
                 <div key={i} className="intel-item">
                   <div
                     className={`intel-marker intel-marker--${log.type}`}

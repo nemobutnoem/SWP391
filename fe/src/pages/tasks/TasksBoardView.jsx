@@ -51,7 +51,7 @@ function isOverdue(task, statusKey) {
   return ms < Date.now();
 }
 
-function TaskCard({ task, statusKey }) {
+function TaskCard({ task, statusKey, assigneeOptions, onAssigneeChange }) {
   const overdue = isOverdue(task, statusKey);
 
   const handleDragStart = (e) => {
@@ -76,13 +76,31 @@ function TaskCard({ task, statusKey }) {
       </div>
       <div className={styles.cardFooter}>
         <div className={styles.avatar} aria-hidden />
-        <div className={styles.assignee}>{task.assigneeName || "Unassigned"}</div>
+        <div className={styles.assignee}>
+          <select
+            className={styles.assigneeSelect}
+            value={task.assigneeUserId ?? ""}
+            onChange={(e) => {
+              const v = e.target.value;
+              const uid = v === "" ? null : Number(v);
+              onAssigneeChange?.(task.id, task.groupId, uid);
+            }}
+            onDragStart={(e) => e.stopPropagation()}
+          >
+            <option value="">Unassigned</option>
+            {(assigneeOptions || []).map((m) => (
+              <option key={m.userId} value={m.userId}>
+                {m.name}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
     </div>
   );
 }
 
-function Column({ title, statusKey, tasks, onStatusChange }) {
+function Column({ title, statusKey, tasks, onStatusChange, membersByGroupId, onAssigneeChange }) {
   const [isOver, setIsOver] = React.useState(false);
 
   const handleDragOver = (e) => {
@@ -127,7 +145,13 @@ function Column({ title, statusKey, tasks, onStatusChange }) {
 
       <div className={styles["col-body"]}>
         {tasks.map((t) => (
-          <TaskCard key={t.id} task={t} statusKey={statusKey} />
+          <TaskCard
+            key={t.id}
+            task={t}
+            statusKey={statusKey}
+            assigneeOptions={membersByGroupId?.[t.groupId] ?? []}
+            onAssigneeChange={onAssigneeChange}
+          />
         ))}
       </div>
     </div>
@@ -142,6 +166,8 @@ export function TasksBoardView({
   onSync,
   columns,
   onStatusChange,
+  membersByGroupId,
+  onAssigneeChange,
 }) {
   return (
     <div className={styles.page}>
@@ -168,6 +194,8 @@ export function TasksBoardView({
             statusKey={col.key}
             tasks={columns[col.key] ?? []}
             onStatusChange={onStatusChange}
+            membersByGroupId={membersByGroupId}
+            onAssigneeChange={onAssigneeChange}
           />
         ))}
       </div>

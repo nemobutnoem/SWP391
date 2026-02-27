@@ -41,7 +41,8 @@ export function LoginPage() {
 
       {!env.useMock && (
         <div style={{ marginBottom: 12, fontSize: 12, opacity: 0.8 }}>
-          Seed accounts (SQL Server): <b>lead1 / Lead@123</b> or <b>mem1 / Mem@123</b>
+          Seed accounts (SQL Server):
+          <b> lead1 / Lead@123</b>, <b>mem1 / Mem@123</b>, <b>admin1 / Admin@123</b>, <b>lec1 / Lec@123</b>
         </div>
       )}
 
@@ -86,7 +87,7 @@ export function LoginPage() {
               <input
                 value={account}
                 onChange={(e) => setAccount(e.target.value)}
-                placeholder="lead1"
+                placeholder="lead1 | mem1 | admin1 | lec1"
                 style={{ width: "100%", padding: 8 }}
                 autoComplete="username"
               />
@@ -98,7 +99,7 @@ export function LoginPage() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Lead@123"
+                placeholder="Lead@123 | Mem@123 | Admin@123 | Lec@123"
                 style={{ width: "100%", padding: 8 }}
                 autoComplete="current-password"
               />

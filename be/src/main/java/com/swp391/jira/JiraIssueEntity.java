@@ -37,6 +37,12 @@ public class JiraIssueEntity {
 	@Column(name = "status")
 	private String status;
 
+	@Column(name = "assignee_user_id")
+	private Integer assigneeUserId;
+
+	@Column(name = "reporter_user_id")
+	private Integer reporterUserId;
+
 	@Column(name = "jira_due_date")
 	private LocalDate jiraDueDate;
 

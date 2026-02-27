@@ -15,4 +15,11 @@ export const jiraTaskApi = {
     const res = await http.patch(`/jira-tasks/${taskId}`, { status });
     return res.data;
   },
+
+  async updateAssignee(taskId, assigneeUserId) {
+    // Use 0 to explicitly request "unassigned" (backend normalizes <=0 -> null)
+    const payload = { assigneeUserId: assigneeUserId == null ? 0 : Number(assigneeUserId) };
+    const res = await http.patch(`/jira-tasks/${taskId}`, payload);
+    return res.data;
+  },
 };

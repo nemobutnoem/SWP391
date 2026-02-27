@@ -290,6 +290,25 @@
   color: var(--slate-600);
 }
 
+.assignee-select {
+  padding: 0.15rem 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--slate-600);
+  background: var(--slate-50);
+  border: 1px solid var(--slate-200);
+  border-radius: var(--radius-sm);
+  outline: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  max-width: 190px;
+}
+
+.assignee-select:hover {
+  border-color: var(--brand-300);
+  background: white;
+}
+
 .status-wrap {
   display: flex;
   align-items: center;

@@ -56,9 +56,19 @@ public class GithubService {
 			if (repo.getRepoOwner() == null || repo.getRepoName() == null) {
 				continue;
 			}
-			JsonNode commits;
+
+			String fallbackBranch = repo.getDefaultBranch() == null || repo.getDefaultBranch().isBlank()
+					? "main"
+					: repo.getDefaultBranch().trim();
+			var branches = new java.util.LinkedHashSet<String>();
 			try {
-				commits = gitHubClient.listCommits(repo.getRepoOwner(), repo.getRepoName(), null, token);
+				JsonNode branchNodes = gitHubClient.listBranches(repo.getRepoOwner(), repo.getRepoName(), token);
+				if (branchNodes != null && branchNodes.isArray()) {
+					for (JsonNode b : branchNodes) {
+						String name = b.path("name").asText(null);
+						if (name != null && !name.isBlank()) branches.add(name);
+					}
+				}
 			} catch (RestClientResponseException ex) {
 				String body = null;
 				try {
@@ -67,43 +77,70 @@ public class GithubService {
 					// ignore
 				}
 				log.warn(
-						"GitHub list commits failed for {}/{} (status={}): {}",
+						"GitHub list branches failed for {}/{} (status={}): {}",
 						repo.getRepoOwner(),
 						repo.getRepoName(),
 						ex.getStatusCode().value(),
 						body
 				);
-				continue;
 			}
-			if (commits == null || !commits.isArray()) {
-				continue;
+			if (branches.isEmpty()) {
+				branches.add(fallbackBranch);
 			}
-			for (JsonNode c : commits) {
-				String sha = c.path("sha").asText(null);
-				if (sha == null) continue;
-				String message = c.path("commit").path("message").asText(null);
-				String authorLogin = c.path("author").path("login").asText(null);
-				String date = c.path("commit").path("author").path("date").asText(null);
-				LocalDateTime occurredAt = null;
-				try {
-					if (date != null) occurredAt = LocalDateTime.ofInstant(Instant.parse(date), ZoneOffset.UTC);
-				} catch (Exception ignored) {
-				}
 
-				GithubActivityEntity a = new GithubActivityEntity();
-				a.setGroupId(groupId);
-				a.setGithubUsername(authorLogin);
-				a.setActivityType("commit");
-				a.setCommitSha(sha);
-				a.setCommitMessage(message);
-				a.setPushedCommitCount(1);
-				a.setOccurredAt(occurredAt);
-				a.setGithubEventId(sha);
+			for (String branchName : branches) {
+				JsonNode commits;
 				try {
-					activityRepository.save(a);
-					inserted++;
-				} catch (DataIntegrityViolationException ignored) {
-					// duplicate sha for group
+					commits = gitHubClient.listCommits(repo.getRepoOwner(), repo.getRepoName(), branchName, null, token);
+				} catch (RestClientResponseException ex) {
+					String body = null;
+					try {
+						body = ex.getResponseBodyAsString();
+					} catch (Exception ignored) {
+						// ignore
+					}
+					log.warn(
+							"GitHub list commits failed for {}/{}@{} (status={}): {}",
+							repo.getRepoOwner(),
+							repo.getRepoName(),
+							branchName,
+							ex.getStatusCode().value(),
+							body
+					);
+					continue;
+				}
+				if (commits == null || !commits.isArray()) {
+					continue;
+				}
+				for (JsonNode c : commits) {
+					String sha = c.path("sha").asText(null);
+					if (sha == null) continue;
+					String message = c.path("commit").path("message").asText(null);
+					String authorLogin = c.path("author").path("login").asText(null);
+					String date = c.path("commit").path("author").path("date").asText(null);
+					LocalDateTime occurredAt = null;
+					try {
+						if (date != null) occurredAt = LocalDateTime.ofInstant(Instant.parse(date), ZoneOffset.UTC);
+					} catch (Exception ignored) {
+					}
+
+					GithubActivityEntity a = new GithubActivityEntity();
+					a.setGroupId(groupId);
+					a.setGithubUsername(authorLogin);
+					a.setActivityType("commit");
+					a.setCommitSha(sha);
+					a.setCommitMessage(message);
+					a.setRefName(branchName);
+					a.setPushedCommitCount(1);
+					a.setOccurredAt(occurredAt);
+					// Make event unique per branch so commits shared across branches still appear under each branch.
+					a.setGithubEventId(branchName + ":" + sha);
+					try {
+						activityRepository.save(a);
+						inserted++;
+					} catch (DataIntegrityViolationException ignored) {
+						// duplicate sha for group
+					}
 				}
 			}
 		}

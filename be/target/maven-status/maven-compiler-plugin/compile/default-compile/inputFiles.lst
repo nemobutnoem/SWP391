@@ -19,6 +19,7 @@ D:\SWP391new\SWP391\be\src\main\java\com\swp391\github\GithubService.java
 D:\SWP391new\SWP391\be\src\main\java\com\swp391\group\dto\GroupSummary.java
 D:\SWP391new\SWP391\be\src\main\java\com\swp391\group\dto\SelectTopicRequest.java
 D:\SWP391new\SWP391\be\src\main\java\com\swp391\group\GroupController.java
+D:\SWP391new\SWP391\be\src\main\java\com\swp391\group\GroupMemberController.java
 D:\SWP391new\SWP391\be\src\main\java\com\swp391\group\GroupMemberEntity.java
 D:\SWP391new\SWP391\be\src\main\java\com\swp391\group\GroupMemberRepository.java
 D:\SWP391new\SWP391\be\src\main\java\com\swp391\group\GroupService.java

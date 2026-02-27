@@ -7,6 +7,7 @@ import com.swp391.security.UserPrincipal;
 import com.swp391.student.StudentRepository;
 import com.swp391.sync.OutboundSyncLogEntity;
 import com.swp391.sync.OutboundSyncLogRepository;
+import com.swp391.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +22,7 @@ public class JiraService {
 	private final StudentRepository studentRepository;
 	private final GroupMemberRepository memberRepository;
 	private final GroupIntegrationService integrationService;
+	private final UserRepository userRepository;
 
 	public java.util.List<JiraIssueEntity> listIssues(Integer groupId, UserPrincipal principal) {
 		ensureMember(groupId, principal);
@@ -70,6 +72,7 @@ public class JiraService {
 				String summary = fields.path("summary").asText(null);
 				String issueType = fields.path("issuetype").path("name").asText(null);
 				String status = fields.path("status").path("name").asText(null);
+					String assigneeAccountId = fields.path("assignee").path("accountId").asText(null);
 				String dueDate = fields.path("duedate").asText(null);
 				String updated = fields.path("updated").asText(null);
 				java.time.LocalDateTime jiraUpdatedAt = null;
@@ -99,6 +102,13 @@ public class JiraService {
 				entity.setIssueType(issueType == null ? "" : issueType);
 				entity.setSummary(summary);
 				entity.setStatus(status);
+					Integer assigneeUserId = null;
+					if (assigneeAccountId != null && !assigneeAccountId.isBlank()) {
+						assigneeUserId = userRepository.findByJiraAccountId(assigneeAccountId)
+								.map(u -> u.getId())
+								.orElse(null);
+					}
+					entity.setAssigneeUserId(assigneeUserId);
 				entity.setJiraDueDate(jiraDueDate);
 				entity.setJiraUpdatedAt(jiraUpdatedAt);
 				jiraIssueRepository.save(entity);
@@ -161,6 +171,49 @@ public class JiraService {
 			}
 			String transitionId = chosen.path("id").asText();
 			jiraClient.transitionIssue(cfg.baseUrl(), cfg.email(), cfg.apiToken(), issueKey, transitionId);
+			log.setStatus("SUCCESS");
+			outboundSyncLogRepository.save(log);
+		} catch (Exception ex) {
+			log.setStatus("FAILED");
+			log.setErrorMessage(ex.getMessage());
+			outboundSyncLogRepository.save(log);
+			throw ex;
+		}
+	}
+
+	@Transactional
+	public void pushAssignee(Integer groupId, String issueKey, Integer assigneeUserId, UserPrincipal principal) {
+		ensureMember(groupId, principal);
+		var issue = jiraIssueRepository.findByGroupIdAndJiraIssueKey(groupId, issueKey)
+				.orElseThrow(() -> new IllegalArgumentException("Issue not found locally for this group"));
+
+		var cfg = integrationService.resolveJiraConfig(groupId);
+		if (cfg.baseUrl() == null || cfg.email() == null || cfg.apiToken() == null) {
+			throw new IllegalStateException("Jira integration is not configured for this group");
+		}
+
+		String accountId = null;
+		if (assigneeUserId != null) {
+			var user = userRepository.findById(assigneeUserId)
+					.orElseThrow(() -> new IllegalArgumentException("Assignee user not found"));
+			accountId = user.getJiraAccountId();
+			if (accountId == null || accountId.isBlank()) {
+				throw new IllegalArgumentException("Selected user does not have jira_account_id configured");
+			}
+		}
+
+		OutboundSyncLogEntity log = new OutboundSyncLogEntity();
+		log.setTarget("jira");
+		log.setEntityType("Jira_Issue");
+		log.setEntityLocalId(issue.getId());
+		log.setRemoteId(issueKey);
+		log.setAction("assign_assignee");
+		log.setRequestedByUserId(principal.getUserId());
+		log.setStatus("PENDING");
+		log = outboundSyncLogRepository.save(log);
+
+		try {
+			jiraClient.assignIssue(cfg.baseUrl(), cfg.email(), cfg.apiToken(), issueKey, accountId);
 			log.setStatus("SUCCESS");
 			outboundSyncLogRepository.save(log);
 		} catch (Exception ex) {

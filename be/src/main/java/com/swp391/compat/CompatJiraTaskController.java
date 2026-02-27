@@ -7,8 +7,8 @@ import com.swp391.jira.JiraIssueRepository;
 import com.swp391.jira.JiraService;
 import com.swp391.security.UserPrincipal;
 import com.swp391.student.StudentRepository;
+import com.swp391.user.UserRepository;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -27,6 +27,7 @@ public class CompatJiraTaskController {
 	private final JiraService jiraService;
 	private final StudentRepository studentRepository;
 	private final GroupMemberRepository memberRepository;
+	private final UserRepository userRepository;
 
 	public record JiraTaskDto(
 			Integer id,
@@ -36,11 +37,17 @@ public class CompatJiraTaskController {
 			String summary,
 			String description,
 			String status,
-			LocalDate dueDate
+			LocalDate dueDate,
+			Integer assigneeUserId,
+			String assigneeName
 	) {
 	}
 
-	public record UpdateStatusRequest(@NotBlank String status) {
+	public record UpdateTaskRequest(
+			String status,
+			@JsonProperty("assigneeUserId") Integer assigneeUserId,
+			@JsonProperty("assignee_user_id") Integer assigneeUserIdSnake
+	) {
 	}
 
 	@GetMapping("/jira-tasks")
@@ -65,20 +72,45 @@ public class CompatJiraTaskController {
 	}
 
 	@PatchMapping("/jira-tasks/{taskId}")
-	public JiraTaskDto updateStatus(@PathVariable Integer taskId, @Valid @RequestBody UpdateStatusRequest req, Authentication auth) {
+	public JiraTaskDto updateTask(@PathVariable Integer taskId, @Valid @RequestBody UpdateTaskRequest req, Authentication auth) {
 		var issue = jiraIssueRepository.findById(taskId)
 				.orElseThrow(() -> new IllegalArgumentException("Jira task not found"));
 		UserPrincipal principal = (UserPrincipal) auth.getPrincipal();
 		ensureMember(issue.getGroupId(), principal);
 
-		// Push status to Jira as well (so Jira changes, not just local DB).
-		// Convert common app statuses like IN_PROGRESS -> "In Progress" for Jira workflows.
-		String jiraStatusName = toJiraStatusName(req.status());
-		if (issue.getJiraIssueKey() != null && !issue.getJiraIssueKey().isBlank()) {
-			jiraService.pushStatus(issue.getGroupId(), issue.getJiraIssueKey(), jiraStatusName, principal);
+		boolean changed = false;
+
+		if (req.status() != null && !req.status().isBlank()) {
+			// Push status to Jira as well (so Jira changes, not just local DB).
+			// Convert common app statuses like IN_PROGRESS -> "In Progress" for Jira workflows.
+			String jiraStatusName = toJiraStatusName(req.status());
+			if (issue.getJiraIssueKey() != null && !issue.getJiraIssueKey().isBlank()) {
+				jiraService.pushStatus(issue.getGroupId(), issue.getJiraIssueKey(), jiraStatusName, principal);
+			}
+			issue.setStatus(jiraStatusName);
+			changed = true;
 		}
 
-		issue.setStatus(jiraStatusName);
+		Integer assigneeUserId = req.assigneeUserId() != null ? req.assigneeUserId() : req.assigneeUserIdSnake();
+		if (assigneeUserId != null) {
+			// 0 (or negative) means "unassigned" from UI.
+			Integer normalizedAssignee = assigneeUserId <= 0 ? null : assigneeUserId;
+			if (normalizedAssignee != null) {
+				var student = studentRepository.findByUserId(normalizedAssignee)
+						.orElseThrow(() -> new IllegalArgumentException("Assignee is not a student"));
+				memberRepository.findByGroupIdAndStudentId(issue.getGroupId(), student.getId())
+						.orElseThrow(() -> new SecurityException("Assignee is not a member of this group"));
+			}
+			if (issue.getJiraIssueKey() != null && !issue.getJiraIssueKey().isBlank()) {
+				jiraService.pushAssignee(issue.getGroupId(), issue.getJiraIssueKey(), normalizedAssignee, principal);
+			}
+			issue.setAssigneeUserId(normalizedAssignee);
+			changed = true;
+		}
+
+		if (!changed) {
+			throw new IllegalArgumentException("No changes requested");
+		}
 		return toDto(jiraIssueRepository.save(issue));
 	}
 
@@ -109,6 +141,12 @@ public class CompatJiraTaskController {
 
 	private JiraTaskDto toDto(JiraIssueEntity e) {
 		String title = e.getSummary();
+		String assigneeName = null;
+		if (e.getAssigneeUserId() != null) {
+			assigneeName = userRepository.findById(e.getAssigneeUserId())
+					.map(u -> u.getAccount())
+					.orElse(null);
+		}
 		return new JiraTaskDto(
 				e.getId(),
 				e.getGroupId(),
@@ -117,7 +155,9 @@ public class CompatJiraTaskController {
 				e.getSummary(),
 				e.getDescription(),
 			e.getStatus(),
-			e.getJiraDueDate()
+			e.getJiraDueDate(),
+			e.getAssigneeUserId(),
+			assigneeName
 		);
 	}
 
