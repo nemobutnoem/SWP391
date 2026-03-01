@@ -2,6 +2,7 @@ package com.swp391.demo.entity.groupmember;
 
 import java.time.LocalDateTime;
 
+import org.hibernate.annotations.CreationTimestamp;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -37,14 +38,17 @@ private String roleInGroup;
 private String status;
 
 @Column(name = "joined_at")
+@CreationTimestamp
 private LocalDateTime joinedAt;
 
 @Column(name = "left_at")
 private LocalDateTime leftAt;
 
 @Column(name = "created_at")
+@CreationTimestamp
 private LocalDateTime createdAt;
 
 @Column(name = "updated_at")
+@CreationTimestamp
 private LocalDateTime updatedAt;
 }
