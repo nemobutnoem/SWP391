@@ -31,14 +31,20 @@ public class GroupMemberServiceImpl implements GroupMemberService {
 
     @Override
     public GroupMember updateMember(Long id, GroupMember groupMember) {
-        if (groupMember.getId() == null) {
-            throw new IllegalArgumentException("Member ID is required for update");
-        }
-        if (!groupMemberRepository.existsById(groupMember.getId())) {
-            throw new IllegalArgumentException("Member not found with id" + groupMember.getId());
-        }
-        GroupMember updateMember = groupMemberRepository.save(groupMember);
-        return updateMember;
+      GroupMember existingMember = groupMemberRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Member not found with id " + id));
+
+    if(groupMember.getRoleInGroup() != null){
+        existingMember.setRoleInGroup(groupMember.getRoleInGroup());
+    }
+
+    if(groupMember.getStatus() != null){
+        existingMember.setStatus(groupMember.getStatus());
+    }
+
+    existingMember.setUpdatedAt(LocalDateTime.now());
+
+    return groupMemberRepository.save(existingMember);
     }
 
     @Override
