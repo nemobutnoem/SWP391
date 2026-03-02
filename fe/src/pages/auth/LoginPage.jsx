@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../store/auth/useAuth.jsx";
 import { ROLES, ROLE_LABELS } from "../../routes/access/roles.js";
 import { env } from "../../app/config/env.js";
+import { Button } from "../../components/common/Button.jsx";
+import "./loginPage.css";
 
 export function LoginPage() {
   const { loginFake, login } = useAuth();
@@ -14,6 +16,7 @@ export function LoginPage() {
   const [account, setAccount] = useState("lead1");
   const [password, setPassword] = useState("Lead@123");
   const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const roleOptions = useMemo(
     () => [ROLES.ADMIN, ROLES.LECTURER, ROLES.TEAM_LEAD, ROLES.TEAM_MEMBER],
@@ -24,53 +27,88 @@ export function LoginPage() {
     e.preventDefault();
     setError("");
     try {
+      setIsSubmitting(true);
       if (env.useMock) {
-        await loginFake({ role, name });
+        await loginFake({ role, name: name || account });
       } else {
         await login({ account, password });
       }
       navigate("/dashboard", { replace: true });
     } catch (err) {
       setError(err?.message || "Login failed");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
+  const onForgotPassword = (e) => {
+    e.preventDefault();
+  };
+
+
   return (
-    <div style={{ maxWidth: 420, margin: "60px auto" }}>
-      <h2>{env.useMock ? "Fake Login" : "Login"}</h2>
+    <div className="auth-page">
+      <div className="auth-card">
+        <header className="auth-header">
+          <div className="auth-logo" aria-hidden="true">
+            SWP
+          </div>
+          <h1 className="auth-title">Software Project Workspace</h1>
+          <p className="auth-subtitle">Student Project Management System</p>
+        </header>
 
-      {!env.useMock && (
-        <div style={{ marginBottom: 12, fontSize: 12, opacity: 0.8 }}>
-          Seed accounts (SQL Server):
-          <b> lead1 / Lead@123</b>, <b>mem1 / Mem@123</b>, <b>admin1 / Admin@123</b>, <b>lec1 / Lec@123</b>
-        </div>
-      )}
+        {error && (
+          <div className="auth-alert auth-alert--danger" role="alert">
+            {error}
+          </div>
+        )}
 
-      {error && (
-        <div style={{ marginBottom: 12, color: "crimson" }}>
-          {error}
-        </div>
-      )}
+        <form onSubmit={onSubmit} className="auth-form">
+          <div className="form-group">
+            <label htmlFor="loginAccount">Username</label>
+            <input
+              id="loginAccount"
+              value={env.useMock ? name : account}
+              onChange={(e) =>
+                env.useMock ? setName(e.target.value) : setAccount(e.target.value)
+              }
+              placeholder={
+                env.useMock
+                  ? "Enter your username"
+                  : "lead1 | mem1 | admin1 | lec1"
+              }
+              autoComplete="username"
+              autoFocus
+            />
+          </div>
 
-      <form onSubmit={onSubmit} style={{ display: "grid", gap: 12 }}>
-        {env.useMock ? (
-          <>
-            <label>
-              Name
+          {!env.useMock && (
+            <div className="form-group">
+              <label htmlFor="loginPassword">Password</label>
               <input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Your name"
-                style={{ width: "100%", padding: 8 }}
+                id="loginPassword"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter your password"
+                autoComplete="current-password"
               />
-            </label>
+            </div>
+          )}
 
-            <label>
-              Role
+          <div className="auth-links">
+            <a className="auth-forgot" href="#" onClick={onForgotPassword}>
+              Forgot password?
+            </a>
+          </div>
+
+          {env.useMock && (
+            <div className="form-group auth-role">
+              <label htmlFor="loginRole">Role</label>
               <select
+                id="loginRole"
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
-                style={{ width: "100%", padding: 8 }}
               >
                 {roleOptions.map((r) => (
                   <option key={r} value={r}>
@@ -78,39 +116,26 @@ export function LoginPage() {
                   </option>
                 ))}
               </select>
-            </label>
-          </>
-        ) : (
-          <>
-            <label>
-              Account
-              <input
-                value={account}
-                onChange={(e) => setAccount(e.target.value)}
-                placeholder="lead1 | mem1 | admin1 | lec1"
-                style={{ width: "100%", padding: 8 }}
-                autoComplete="username"
-              />
-            </label>
+            </div>
+          )}
 
-            <label>
-              Password
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Lead@123 | Mem@123 | Admin@123 | Lec@123"
-                style={{ width: "100%", padding: 8 }}
-                autoComplete="current-password"
-              />
-            </label>
-          </>
-        )}
+          <div className="auth-actions">
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+              className="auth-primary-btn"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Signing in…" : "Login"}
+            </Button>
+          </div>
 
-        <button type="submit" style={{ padding: 10 }}>
-          Login
-        </button>
-      </form>
+          
+        </form>
+
+        <footer className="auth-footer">© SWP Project — Academic Use Only</footer>
+      </div>
     </div>
   );
 }
