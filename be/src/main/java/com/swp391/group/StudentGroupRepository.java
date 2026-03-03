@@ -7,5 +7,6 @@ import java.util.Optional;
 
 public interface StudentGroupRepository extends JpaRepository<StudentGroupEntity, Integer> {
 	List<StudentGroupEntity> findByClassId(Integer classId);
+	List<StudentGroupEntity> findByClassIdIn(java.util.Collection<Integer> classIds);
 	Optional<StudentGroupEntity> findByIdAndClassId(Integer id, Integer classId);
 }

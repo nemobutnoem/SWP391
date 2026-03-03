@@ -56,7 +56,10 @@ export function DashboardPage() {
   };
 
   useEffect(() => {
-    load().catch((e) => console.error("[Dashboard] load failed:", e));
+    // Only load jira tasks / github activities for student roles
+    if (!isAdmin && !isLecturer) {
+      load().catch((e) => console.error("[Dashboard] load failed:", e));
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

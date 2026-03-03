@@ -57,8 +57,11 @@ public class CompatJiraTaskController {
 	@GetMapping("/jira-tasks")
 	public List<JiraTaskDto> list(Authentication auth) {
 		UserPrincipal principal = (UserPrincipal) auth.getPrincipal();
-		var student = studentRepository.findByUserId(principal.getUserId())
-				.orElseThrow(() -> new IllegalArgumentException("Student not found for current user"));
+		var student = studentRepository.findByUserId(principal.getUserId()).orElse(null);
+		if (student == null) {
+			// Non-student users (Lecturer, Admin) – no personal tasks
+			return List.of();
+		}
 		Set<Integer> groupIds = memberRepository.findByStudentId(student.getId()).stream()
 				.map(m -> m.getGroupId())
 				.collect(Collectors.toSet());

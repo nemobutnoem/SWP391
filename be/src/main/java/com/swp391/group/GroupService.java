@@ -1,6 +1,9 @@
 package com.swp391.group;
 
+import com.swp391.clazz.ClassEntity;
+import com.swp391.clazz.ClassRepository;
 import com.swp391.group.dto.GroupSummary;
+import com.swp391.lecturer.LecturerRepository;
 import com.swp391.project.ProjectRepository;
 import com.swp391.security.Role;
 import com.swp391.security.UserPrincipal;
@@ -12,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -20,16 +24,49 @@ public class GroupService {
 	private final StudentGroupRepository groupRepository;
 	private final GroupMemberRepository memberRepository;
 	private final ProjectRepository projectRepository;
+	private final LecturerRepository lecturerRepository;
+	private final ClassRepository classRepository;
 
 	public List<GroupSummary> myGroups(Authentication auth) {
 		UserPrincipal principal = (UserPrincipal) auth.getPrincipal();
+		String role = principal.getRole();
+
+		// Lecturer: return groups in classes they teach
+		if ("Lecturer".equalsIgnoreCase(role)) {
+			return lecturerGroups(principal.getUserId());
+		}
+
+		// Admin: return all groups
+		if ("Admin".equalsIgnoreCase(role)) {
+			return groupRepository.findAll().stream()
+					.map(this::toSummary)
+					.toList();
+		}
+
+		// Student / Team Lead / Team Member
 		var student = studentRepository.findByUserId(principal.getUserId())
 				.orElseThrow(() -> new IllegalArgumentException("Student not found for current user"));
 		return memberRepository.findByStudentId(student.getId()).stream()
 				.map(m -> groupRepository.findById(m.getGroupId()).orElse(null))
 				.filter(g -> g != null)
-				.map(g -> new GroupSummary(g.getId(), g.getGroupCode(), g.getGroupName(), g.getSemesterId(), g.getClassId(), g.getProjectId(), g.getLeaderStudentId()))
+				.map(this::toSummary)
 				.toList();
+	}
+
+	private List<GroupSummary> lecturerGroups(Integer userId) {
+		var lecturer = lecturerRepository.findByUserId(userId).orElse(null);
+		if (lecturer == null) return List.of();
+		var classes = classRepository.findByLecturerId(lecturer.getId());
+		if (classes.isEmpty()) return List.of();
+		var classIds = classes.stream().map(ClassEntity::getId).collect(Collectors.toSet());
+		return groupRepository.findByClassIdIn(classIds).stream()
+				.map(this::toSummary)
+				.toList();
+	}
+
+	private GroupSummary toSummary(StudentGroupEntity g) {
+		return new GroupSummary(g.getId(), g.getGroupCode(), g.getGroupName(),
+				g.getSemesterId(), g.getClassId(), g.getProjectId(), g.getLeaderStudentId());
 	}
 
 	@Transactional

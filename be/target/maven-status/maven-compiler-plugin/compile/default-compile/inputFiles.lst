@@ -2,10 +2,14 @@ D:\SWP391new\SWP391\be\src\main\java\com\swp391\auth\AuthController.java
 D:\SWP391new\SWP391\be\src\main\java\com\swp391\auth\dto\AuthResponse.java
 D:\SWP391new\SWP391\be\src\main\java\com\swp391\auth\dto\LoginRequest.java
 D:\SWP391new\SWP391\be\src\main\java\com\swp391\auth\dto\RegisterRequest.java
+D:\SWP391new\SWP391\be\src\main\java\com\swp391\clazz\ClassEntity.java
+D:\SWP391new\SWP391\be\src\main\java\com\swp391\clazz\ClassRepository.java
 D:\SWP391new\SWP391\be\src\main\java\com\swp391\common\api\ApiError.java
 D:\SWP391new\SWP391\be\src\main\java\com\swp391\common\api\GlobalExceptionHandler.java
 D:\SWP391new\SWP391\be\src\main\java\com\swp391\compat\CompatGithubActivityController.java
 D:\SWP391new\SWP391\be\src\main\java\com\swp391\compat\CompatGithubRepositoryController.java
+D:\SWP391new\SWP391\be\src\main\java\com\swp391\compat\CompatGradeController.java
+D:\SWP391new\SWP391\be\src\main\java\com\swp391\compat\CompatGroupMemberController.java
 D:\SWP391new\SWP391\be\src\main\java\com\swp391\compat\CompatJiraProjectController.java
 D:\SWP391new\SWP391\be\src\main\java\com\swp391\compat\CompatJiraTaskController.java
 D:\SWP391new\SWP391\be\src\main\java\com\swp391\compat\CompatSyncController.java
@@ -40,6 +44,8 @@ D:\SWP391new\SWP391\be\src\main\java\com\swp391\jira\JiraIssueRepository.java
 D:\SWP391new\SWP391\be\src\main\java\com\swp391\jira\JiraProjectEntity.java
 D:\SWP391new\SWP391\be\src\main\java\com\swp391\jira\JiraProjectRepository.java
 D:\SWP391new\SWP391\be\src\main\java\com\swp391\jira\JiraService.java
+D:\SWP391new\SWP391\be\src\main\java\com\swp391\lecturer\LecturerEntity.java
+D:\SWP391new\SWP391\be\src\main\java\com\swp391\lecturer\LecturerRepository.java
 D:\SWP391new\SWP391\be\src\main\java\com\swp391\project\ProjectEntity.java
 D:\SWP391new\SWP391\be\src\main\java\com\swp391\project\ProjectRepository.java
 D:\SWP391new\SWP391\be\src\main\java\com\swp391\repo\dto\AddRepoRequest.java
