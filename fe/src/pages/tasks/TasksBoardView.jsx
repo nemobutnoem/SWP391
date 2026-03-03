@@ -1,5 +1,6 @@
 import React from "react";
 import styles from "./tasksBoard.module.css";
+import { Button } from "../../components/common/Button.jsx";
 
 const COLUMN_META = [
   { key: "TODO", title: "Backlog" },
@@ -74,29 +75,29 @@ function TaskCard({
 
   return (
     <div
-      className={`${styles.card} ${overdue ? styles.cardDanger : ""}`}
+      className={`${styles.card} ${styles[overdue ? "card--OVERDUE" : `card--${statusKey}`] ?? ""}`}
       draggable
       onDragStart={handleDragStart}
     >
-      <div className={styles.cardTitle}>{task.title}</div>
-      <div className={styles.cardMeta}>
-        <div className={styles.cardDue}>
+      <div className={styles["card-title"]}>{task.title}</div>
+      <div>
+        <div className={styles["card-due"]}>
           Due:{" "}
-          <span className={overdue ? styles.dueDanger : ""}>
+          <span className={overdue ? styles["card-due--danger"] : ""}>
             {formatDueDate(task.dueDate)}
           </span>
         </div>
 
-        <div className={styles.cardEditRow}>
+        <div className={styles["card-edit-row"]}>
           <input
-            className={styles.inlineInput}
+            className={styles["inline-input"]}
             type="date"
             value={task.dueDate || ""}
             onChange={(e) => onDueDateChange?.(task.id, e.target.value)}
             onDragStart={(e) => e.stopPropagation()}
           />
           <input
-            className={styles.inlineInput}
+            className={styles["inline-input"]}
             placeholder="Priority"
             value={priorityDraft}
             onChange={(e) => setPriorityDraft(e.target.value)}
@@ -108,11 +109,11 @@ function TaskCard({
           />
         </div>
       </div>
-      <div className={styles.cardFooter}>
-        <div className={styles.avatar} aria-hidden />
-        <div className={styles.assignee}>
+      <div className={styles["card-footer"]}>
+        <div className={styles["card-assignee"]}>
+          <div className={styles["card-avatar"]} aria-hidden />
           <select
-            className={styles.assigneeSelect}
+            className={styles["assignee-select"]}
             value={task.assigneeUserId ?? ""}
             onChange={(e) => {
               const v = e.target.value;
@@ -219,18 +220,18 @@ export function TasksBoardView({
   return (
     <div className={styles.page}>
       <div className={styles.topbar}>
-        <div className={styles.searchWrap}>
+        <div className={styles["search-wrap"]}>
           <input
-            className={styles.search}
+            className={styles["search-input"]}
             value={query}
             onChange={(e) => onQueryChange(e.target.value)}
             placeholder="Search tasks..."
           />
         </div>
 
-        <button className={styles.syncBtn} onClick={onSync} disabled={isSyncing}>
+        <Button onClick={onSync} disabled={isSyncing}>
           {isSyncing ? "Syncing..." : "Sync with Jira & GitHub"}
-        </button>
+        </Button>
       </div>
 
       <div className={styles.board}>

@@ -2,6 +2,14 @@
   animation: fadeIn 0.4s ease-out;
 }
 
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 0.5rem 1rem;
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;
