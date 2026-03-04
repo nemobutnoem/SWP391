@@ -12,8 +12,11 @@ D:\SWP391new\SWP391\be\src\main\java\com\swp391\compat\CompatGradeController.jav
 D:\SWP391new\SWP391\be\src\main\java\com\swp391\compat\CompatGroupMemberController.java
 D:\SWP391new\SWP391\be\src\main\java\com\swp391\compat\CompatJiraProjectController.java
 D:\SWP391new\SWP391\be\src\main\java\com\swp391\compat\CompatJiraTaskController.java
+D:\SWP391new\SWP391\be\src\main\java\com\swp391\compat\CompatLecturerController.java
+D:\SWP391new\SWP391\be\src\main\java\com\swp391\compat\CompatProjectController.java
 D:\SWP391new\SWP391\be\src\main\java\com\swp391\compat\CompatSyncController.java
 D:\SWP391new\SWP391\be\src\main\java\com\swp391\compat\CompatSyncLogController.java
+D:\SWP391new\SWP391\be\src\main\java\com\swp391\compat\CompatTopicController.java
 D:\SWP391new\SWP391\be\src\main\java\com\swp391\github\dto\GithubStatsResponse.java
 D:\SWP391new\SWP391\be\src\main\java\com\swp391\github\GithubActivityEntity.java
 D:\SWP391new\SWP391\be\src\main\java\com\swp391\github\GithubActivityRepository.java
