@@ -44,12 +44,12 @@ public class GroupIntegrationService {
 				emptyToNull(jiraBaseUrl),
 				emptyToNull(jiraEmail),
 				hasText(jiraToken),
-				hasText(githubToken)
-		);
+				hasText(githubToken));
 	}
 
 	@Transactional
-	public GroupIntegrationsResponse update(Integer groupId, UpdateGroupIntegrationsRequest request, UserPrincipal principal) {
+	public GroupIntegrationsResponse update(Integer groupId, UpdateGroupIntegrationsRequest request,
+			UserPrincipal principal) {
 		ensureMember(groupId, principal);
 		ensureTeamLead(principal);
 
@@ -91,6 +91,9 @@ public class GroupIntegrationService {
 	}
 
 	private void ensureMember(Integer groupId, UserPrincipal principal) {
+		if (principal.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"))) {
+			return;
+		}
 		var student = studentRepository.findByUserId(principal.getUserId())
 				.orElseThrow(() -> new IllegalArgumentException("Student not found for current user"));
 		memberRepository.findByGroupIdAndStudentId(groupId, student.getId())
@@ -98,6 +101,9 @@ public class GroupIntegrationService {
 	}
 
 	private void ensureTeamLead(UserPrincipal principal) {
+		if (principal.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"))) {
+			return;
+		}
 		String role = principal.getRole() == null ? "" : principal.getRole();
 		if (!role.equalsIgnoreCase("TEAM_LEAD")) {
 			throw new SecurityException("Only TEAM_LEAD can update integration settings");
@@ -111,6 +117,5 @@ public class GroupIntegrationService {
 	private static String emptyToNull(String s) {
 		return hasText(s) ? s.trim() : null;
 	}
-
 
 }
