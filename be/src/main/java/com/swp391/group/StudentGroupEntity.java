@@ -39,6 +39,9 @@ public class StudentGroupEntity {
 	@Column(name = "leader_student_id")
 	private Integer leaderStudentId;
 
+	@Column(name = "lecturer_id")
+	private Integer lecturerId;
+
 	@Column(name = "created_at", insertable = false, updatable = false)
 	private LocalDateTime createdAt;
 

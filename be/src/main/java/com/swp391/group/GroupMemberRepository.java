@@ -7,6 +7,10 @@ import java.util.Optional;
 
 public interface GroupMemberRepository extends JpaRepository<GroupMemberEntity, Integer> {
 	List<GroupMemberEntity> findByStudentId(Integer studentId);
+
 	List<GroupMemberEntity> findByGroupId(Integer groupId);
+
 	Optional<GroupMemberEntity> findByGroupIdAndStudentId(Integer groupId, Integer studentId);
+
+	void deleteByGroupId(Integer groupId);
 }

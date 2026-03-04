@@ -1,5 +1,6 @@
 package com.swp391.common.api;
 
+import com.swp391.common.ApiException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -14,6 +15,13 @@ import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+	@ExceptionHandler(ApiException.class)
+	public ResponseEntity<ApiError> handleApiException(ApiException ex, HttpServletRequest request) {
+		var body = ApiError.of(ex.getStatus().value(), ex.getStatus().getReasonPhrase(), ex.getMessage(),
+				request.getRequestURI(), null);
+		return ResponseEntity.status(ex.getStatus()).body(body);
+	}
+
 	@ExceptionHandler(IllegalArgumentException.class)
 	public ResponseEntity<ApiError> handleIllegalArgument(IllegalArgumentException ex, HttpServletRequest request) {
 		var body = ApiError.of(400, "Bad Request", ex.getMessage(), request.getRequestURI(), null);
@@ -43,7 +51,8 @@ public class GlobalExceptionHandler {
 	}
 
 	@ExceptionHandler(HttpRequestMethodNotSupportedException.class)
-	public ResponseEntity<ApiError> handleMethodNotSupported(HttpRequestMethodNotSupportedException ex, HttpServletRequest request) {
+	public ResponseEntity<ApiError> handleMethodNotSupported(HttpRequestMethodNotSupportedException ex,
+			HttpServletRequest request) {
 		var body = ApiError.of(405, "Method Not Allowed", ex.getMessage(), request.getRequestURI(), null);
 		return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).body(body);
 	}

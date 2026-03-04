@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class GroupIntegrationService {
 	private final GroupIntegrationRepository repository;
+	private final AdminIntegrationRepository adminRepository;
 	private final StudentRepository studentRepository;
 	private final GroupMemberRepository memberRepository;
 
@@ -35,21 +36,21 @@ public class GroupIntegrationService {
 	public GroupIntegrationsResponse get(Integer groupId, UserPrincipal principal) {
 		ensureMember(groupId, principal);
 		var e = repository.findByGroupId(groupId).orElse(null);
-		String jiraBaseUrl = (e != null && hasText(e.getJiraBaseUrl())) ? e.getJiraBaseUrl() : defaultJiraBaseUrl;
-		String jiraEmail = (e != null && hasText(e.getJiraEmail())) ? e.getJiraEmail() : defaultJiraEmail;
-		String jiraToken = (e != null && hasText(e.getJiraApiToken())) ? e.getJiraApiToken() : defaultJiraApiToken;
-		String githubToken = (e != null && hasText(e.getGithubToken())) ? e.getGithubToken() : defaultGithubToken;
+		String jiraBaseUrl = resolve(e != null ? e.getJiraBaseUrl() : null, "jira_base_url", defaultJiraBaseUrl);
+		String jiraEmail = resolve(e != null ? e.getJiraEmail() : null, "jira_email", defaultJiraEmail);
+		String jiraToken = resolve(e != null ? e.getJiraApiToken() : null, "jira_api_token", defaultJiraApiToken);
+		String githubToken = resolve(e != null ? e.getGithubToken() : null, "github_token", defaultGithubToken);
 		return new GroupIntegrationsResponse(
 				groupId,
 				emptyToNull(jiraBaseUrl),
 				emptyToNull(jiraEmail),
 				hasText(jiraToken),
-				hasText(githubToken)
-		);
+				hasText(githubToken));
 	}
 
 	@Transactional
-	public GroupIntegrationsResponse update(Integer groupId, UpdateGroupIntegrationsRequest request, UserPrincipal principal) {
+	public GroupIntegrationsResponse update(Integer groupId, UpdateGroupIntegrationsRequest request,
+			UserPrincipal principal) {
 		ensureMember(groupId, principal);
 		ensureTeamLead(principal);
 
@@ -78,19 +79,40 @@ public class GroupIntegrationService {
 
 	public JiraConfig resolveJiraConfig(Integer groupId) {
 		var e = repository.findByGroupId(groupId).orElse(null);
-		String baseUrl = (e != null && hasText(e.getJiraBaseUrl())) ? e.getJiraBaseUrl() : defaultJiraBaseUrl;
-		String email = (e != null && hasText(e.getJiraEmail())) ? e.getJiraEmail() : defaultJiraEmail;
-		String token = (e != null && hasText(e.getJiraApiToken())) ? e.getJiraApiToken() : defaultJiraApiToken;
+		String baseUrl = resolve(e != null ? e.getJiraBaseUrl() : null, "jira_base_url", defaultJiraBaseUrl);
+		String email = resolve(e != null ? e.getJiraEmail() : null, "jira_email", defaultJiraEmail);
+		String token = resolve(e != null ? e.getJiraApiToken() : null, "jira_api_token", defaultJiraApiToken);
 		return new JiraConfig(emptyToNull(baseUrl), emptyToNull(email), emptyToNull(token));
 	}
 
 	public String resolveGithubToken(Integer groupId) {
 		var e = repository.findByGroupId(groupId).orElse(null);
-		String token = (e != null && hasText(e.getGithubToken())) ? e.getGithubToken() : defaultGithubToken;
+		String token = resolve(e != null ? e.getGithubToken() : null, "github_token", defaultGithubToken);
 		return emptyToNull(token);
 	}
 
+	// ─── resolution order: group config → admin DB config → application.properties
+	// ─
+
+	private String resolve(String groupValue, String adminKey, String propertyDefault) {
+		if (hasText(groupValue))
+			return groupValue;
+		String adminValue = adminRepository.findByConfigKey(adminKey)
+				.map(AdminIntegrationEntity::getConfigValue)
+				.orElse(null);
+		if (hasText(adminValue))
+			return adminValue;
+		return propertyDefault;
+	}
+
+	// ─── access checks ──────────────────────────────────────────────────
+
 	private void ensureMember(Integer groupId, UserPrincipal principal) {
+		String role = principal.getRole() == null ? "" : principal.getRole();
+		// Admin and Lecturer can access any group's integrations
+		if ("Admin".equalsIgnoreCase(role) || "Lecturer".equalsIgnoreCase(role)) {
+			return;
+		}
 		var student = studentRepository.findByUserId(principal.getUserId())
 				.orElseThrow(() -> new IllegalArgumentException("Student not found for current user"));
 		memberRepository.findByGroupIdAndStudentId(groupId, student.getId())
@@ -99,8 +121,8 @@ public class GroupIntegrationService {
 
 	private void ensureTeamLead(UserPrincipal principal) {
 		String role = principal.getRole() == null ? "" : principal.getRole();
-		if (!role.equalsIgnoreCase("TEAM_LEAD")) {
-			throw new SecurityException("Only TEAM_LEAD can update integration settings");
+		if (!role.equalsIgnoreCase("TEAM_LEAD") && !role.equalsIgnoreCase("Admin")) {
+			throw new SecurityException("Only TEAM_LEAD or Admin can update integration settings");
 		}
 	}
 
@@ -111,6 +133,4 @@ public class GroupIntegrationService {
 	private static String emptyToNull(String s) {
 		return hasText(s) ? s.trim() : null;
 	}
-
-
 }
