@@ -71,6 +71,19 @@ export function AuthProvider({ children }) {
         writeStorage(STORAGE_KEY_API, next);
         return next;
       },
+      loginWithGoogle: async ({ credential }) => {
+        const res = await authService.loginWithGoogle({ credential });
+        const next = {
+          user: {
+            id: res?.user?.id || res?.userId || "g-user",
+            name: res?.user?.name || res?.userId || "Google User",
+            role: mapBackendRoleToUiRole(res?.user?.role || res?.role || "TEAM_MEMBER"),
+          },
+        };
+        setSession(next);
+        writeStorage(env.useMock ? STORAGE_KEY_MOCK : STORAGE_KEY_API, next);
+        return next;
+      },
       loginFake: async ({ role, name }) => {
         if (!env.useMock && typeof authService.loginFake !== "function") {
           throw new Error("Fake login is disabled");

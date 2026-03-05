@@ -153,6 +153,25 @@ public class GroupService {
 		return toSummary(entity);
 	}
 
+	// ─── ADMIN ASSIGN TOPIC ──────────────────────────────────────────────
+
+	@Transactional
+	public GroupSummary assignTopic(Integer groupId, Integer projectId, UserPrincipal principal) {
+		ensureAdmin(principal);
+
+		StudentGroupEntity entity = groupRepository.findById(groupId)
+				.orElseThrow(() -> ApiException.notFound("Group not found with id: " + groupId));
+
+		if (projectId != null) {
+			projectRepository.findById(projectId)
+					.orElseThrow(() -> ApiException.notFound("Project not found with id: " + projectId));
+		}
+
+		entity.setProjectId(projectId);
+		groupRepository.save(entity);
+		return toSummary(entity);
+	}
+
 	// ─── SELECT TOPIC ────────────────────────────────────────────────────
 
 	@Transactional

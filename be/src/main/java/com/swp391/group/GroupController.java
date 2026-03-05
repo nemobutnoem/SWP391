@@ -56,4 +56,11 @@ public class GroupController {
 			Authentication auth) {
 		groupService.selectTopic(groupId, req.projectId(), auth);
 	}
+
+	@PutMapping("/groups/{groupId}/topic/admin")
+	public GroupSummary assignTopicByAdmin(@PathVariable Integer groupId,
+			@Valid @RequestBody AssignTopicRequest request,
+			Authentication auth) {
+		return groupService.assignTopic(groupId, request.projectId(), (UserPrincipal) auth.getPrincipal());
+	}
 }

@@ -50,8 +50,24 @@ export function AllocationPage() {
     setExpandedGroupId(expandedGroupId === id ? null : id);
   };
 
-  const handleConfirmAllocation = (groupName) => {
-    alert(`Successfully allocated Topic and Supervisor for group: ${groupName}`);
+  const handleAllocationChange = (groupId, field, value) => {
+    setGroups((prev) =>
+      prev.map((g) => (g.id === groupId ? { ...g, [field]: value ? Number(value) : null } : g))
+    );
+  };
+
+  const handleConfirmAllocation = async (group) => {
+    try {
+      if (group.project_id !== undefined) {
+        await groupService.assignTopicAdmin(group.id, group.project_id);
+      }
+      if (group.lecturer_id !== undefined) {
+        await groupService.assignLecturer(group.id, group.lecturer_id);
+      }
+      alert(`Successfully allocated Topic and Supervisor for group: ${group.group_name}`);
+    } catch (e) {
+      alert("Failed to allocate: " + (e.response?.data?.message || e.message));
+    }
   };
 
   return (
@@ -61,6 +77,7 @@ export function AllocationPage() {
       lecturers={lecturers}
       expandedGroupId={expandedGroupId}
       onToggleExpand={toggleExpand}
+      onAllocationChange={handleAllocationChange}
       onConfirmAllocation={handleConfirmAllocation}
     />
   );

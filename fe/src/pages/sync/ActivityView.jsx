@@ -8,6 +8,7 @@ import { Badge } from "../../components/common/Badge.jsx";
  */
 export function ActivityView({
   activities,
+  allActivities,
   branches,
   actors,
   branchFilter,

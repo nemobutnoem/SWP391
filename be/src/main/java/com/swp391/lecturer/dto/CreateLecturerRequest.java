@@ -1,16 +1,21 @@
 package com.swp391.lecturer.dto;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 
 public record CreateLecturerRequest(
-		@NotBlank(message = "Full name is required")
 		@JsonProperty("full_name") String fullName,
-
-		@Email(message = "Invalid email format")
 		@JsonProperty("email") String email,
-
-		@JsonProperty("status") String status
-) {
+		@JsonProperty("status") String status) {
+	@JsonCreator
+	public CreateLecturerRequest(
+			@JsonProperty("full_name") @NotBlank(message = "Full name is required") String fullName,
+			@JsonProperty("email") @Email(message = "Invalid email format") String email,
+			@JsonProperty("status") String status) {
+		this.fullName = fullName;
+		this.email = email;
+		this.status = status;
+	}
 }

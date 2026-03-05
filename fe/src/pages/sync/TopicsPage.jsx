@@ -26,21 +26,31 @@ export function TopicsPage() {
     setIsModalOpen(true);
   };
 
-  const handleSubmit = (formData) => {
-    if (editingTopic) {
-      setTopics((prev) =>
-        prev.map((t) => t.id === editingTopic.id ? { ...formData, id: t.id } : t),
-      );
-    } else {
-      setTopics((prev) => [{ ...formData, id: Date.now() }, ...prev]);
+  const handleSubmit = async (formData) => {
+    try {
+      if (editingTopic) {
+        await topicService.update(editingTopic.id, formData);
+      } else {
+        await topicService.create(formData);
+      }
+      const updatedTopics = await topicService.list();
+      setTopics(updatedTopics);
+      setIsModalOpen(false);
+    } catch (e) {
+      alert("Error saving topic: " + (e.response?.data?.message || e.message));
     }
-    setIsModalOpen(false);
   };
 
-  const handleArchive = (id) => {
-    setTopics((prev) =>
-      prev.map((t) => t.id === id ? { ...t, status: "ARCHIVED" } : t),
-    );
+  const handleArchive = async (id) => {
+    try {
+      if (window.confirm("Are you sure you want to archive this topic?")) {
+        await topicService.archive(id);
+        const updatedTopics = await topicService.list();
+        setTopics(updatedTopics);
+      }
+    } catch (e) {
+      alert("Failed to archive topic: " + (e.response?.data?.message || e.message));
+    }
   };
 
   return (

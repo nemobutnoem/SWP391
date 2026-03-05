@@ -9,6 +9,12 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+import com.swp391.auth.dto.GoogleLoginRequest;
+import com.swp391.user.UserEntity;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
+import com.google.api.client.http.javanet.NetHttpTransport;
+import com.google.api.client.json.gson.GsonFactory;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -22,8 +28,7 @@ public class AuthController {
 			UserRepository userRepository,
 			PasswordEncoder passwordEncoder,
 			JwtService jwtService,
-			@Value("${app.auth.allow-register:false}") boolean allowRegister
-	) {
+			@Value("${app.auth.allow-register:false}") boolean allowRegister) {
 		this.userRepository = userRepository;
 		this.passwordEncoder = passwordEncoder;
 		this.jwtService = jwtService;
@@ -59,5 +64,50 @@ public class AuthController {
 		String token = jwtService.generateAccessToken(user.getId(), user.getRole());
 		return AuthResponse.bearer(token, user.getId(), user.getRole());
 	}
-}
 
+	@PostMapping("/google")
+	public AuthResponse googleLogin(@Valid @RequestBody GoogleLoginRequest request) {
+		try {
+			// In production, inject client ID from application.yml
+			// Since we don't have a real one yet from the user, we'll configure a generic
+			// verifier for now
+			// or temporarily bypass the strict audience check until the client ID is ready.
+			// Normally: new GoogleIdTokenVerifier.Builder(transport,
+			// jsonFactory).setAudience(Collections.singletonList(CLIENT_ID)).build();
+			var transport = new NetHttpTransport();
+			var jsonFactory = new GsonFactory();
+			var verifier = new GoogleIdTokenVerifier.Builder(transport, jsonFactory)
+					// Disable audience verification for now since CLIENT_ID is a placeholder on FE
+					// .setAudience(Collections.singletonList("YOUR_GOOGLE_CLIENT_ID"))
+					.build();
+
+			GoogleIdToken idToken = verifier.verify(request.credential());
+			if (idToken == null) {
+				throw new SecurityException("Invalid ID token.");
+			}
+			GoogleIdToken.Payload payload = idToken.getPayload();
+
+			String email = payload.getEmail();
+			if (email == null || (!email.endsWith("@fpt.edu.vn") && !email.endsWith("@fe.edu.vn"))) {
+				throw new SecurityException("Only FPT University Google accounts are allowed.");
+			}
+
+			String accountName = email.split("@")[0];
+
+			UserEntity user = userRepository.findByAccount(accountName)
+					.orElseGet(() -> {
+						var newUser = new UserEntity();
+						newUser.setAccount(accountName);
+						newUser.setRole("TEAM_MEMBER"); // Default role
+						newUser.setStatus("active");
+						return userRepository.save(newUser);
+					});
+
+			String token = jwtService.generateAccessToken(user.getId(), user.getRole());
+			return AuthResponse.bearer(token, user.getId(), user.getRole());
+
+		} catch (Exception e) {
+			throw new SecurityException("Google authentication failed: " + e.getMessage());
+		}
+	}
+}

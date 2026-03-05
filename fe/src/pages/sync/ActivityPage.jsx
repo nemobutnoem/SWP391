@@ -48,6 +48,7 @@ export function ActivityPage() {
   return (
     <ActivityView
       activities={filteredActivities}
+      allActivities={allActivities}
       branches={branches}
       actors={actors}
       branchFilter={branchFilter}

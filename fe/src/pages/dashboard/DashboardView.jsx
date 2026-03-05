@@ -2,7 +2,7 @@ import React from "react";
 import { PageHeader } from "../../components/common/PageHeader.jsx";
 import { StatCard } from "../../components/common/StatCard.jsx";
 import { StatusBadge } from "../../components/common/StatusComponents.jsx";
-import { ActivityHeatmap } from "./ActivityHeatmap.jsx";
+import { GitHubInsights } from "../../components/github/GitHubInsights.jsx";
 import { ContributionScorecards } from "./ContributionScorecards.jsx";
 import "./dashboardPage.css";
 
@@ -52,7 +52,9 @@ export function DashboardView({
 
       <div className="dashboard-view__main-content">
         <div className="dashboard-view__left-col">
-          <ActivityHeatmap activities={activities} />
+          <section className="dashboard-view__section">
+            <GitHubInsights activities={activities} />
+          </section>
 
           <section className="dashboard-view__section mt-2">
             <div className="section-header">
@@ -92,34 +94,6 @@ export function DashboardView({
             <ContributionScorecards activities={activities} />
           </section>
 
-          <section className="dashboard-view__section mt-2">
-            <div className="section-header">
-              <h2 className="section-title">Recent Intelligence</h2>
-            </div>
-            <div className="intel-list">
-              <div className="intel-item">
-                <div className="intel-marker intel-marker--primary"></div>
-                <div className="intel-content">
-                  <p className="intel-text">
-                    Core engine refactored for horizontal scaling.
-                  </p>
-                  <span className="intel-time">2 hours ago</span>
-                </div>
-              </div>
-              <div className="intel-item">
-                <div className="intel-marker intel-marker--success"></div>
-                <div className="intel-content">
-                  <p className="intel-text">
-                    Data persistence layer successfully optimized.
-                  </p>
-                  <span className="intel-time">5 hours ago</span>
-                </div>
-              </div>
-            </div>
-            <a href="/activity" className="dashboard-view__more-link">
-              View full activity stream →
-            </a>
-          </section>
         </aside>
       </div>
     </div>

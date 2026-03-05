@@ -14,6 +14,7 @@ export function AllocationView({
   lecturers,
   expandedGroupId,
   onToggleExpand,
+  onAllocationChange,
   onConfirmAllocation,
 }) {
   return (
@@ -77,7 +78,8 @@ export function AllocationView({
                   <td>
                     <select
                       className="table-select"
-                      defaultValue={g.project_id || ""}
+                      value={g.project_id || ""}
+                      onChange={(e) => onAllocationChange(g.id, 'project_id', e.target.value)}
                       onClick={(e) => e.stopPropagation()}
                     >
                       <option value="">Select Topic...</option>
@@ -91,6 +93,8 @@ export function AllocationView({
                   <td>
                     <select
                       className="table-select"
+                      value={g.lecturer_id || ""}
+                      onChange={(e) => onAllocationChange(g.id, 'lecturer_id', e.target.value)}
                       onClick={(e) => e.stopPropagation()}
                     >
                       <option value="">Assign Lecturer...</option>
@@ -115,7 +119,7 @@ export function AllocationView({
                       size="sm"
                       onClick={(e) => {
                         e.stopPropagation();
-                        onConfirmAllocation(g.group_name);
+                        onConfirmAllocation(g);
                       }}
                     >
                       Confirm

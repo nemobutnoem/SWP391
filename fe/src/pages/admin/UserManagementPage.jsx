@@ -44,26 +44,30 @@ export function UserManagementPage() {
     setIsModalOpen(true);
   };
 
-  const handleSubmit = (formData) => {
-    if (formData.role === "STUDENT") {
-      if (editingUser) {
-        setLocalStudents((prev) =>
-          prev.map((s) => s.id === editingUser.id ? { ...formData, id: s.id } : s),
-        );
+  const handleSubmit = async (formData) => {
+    try {
+      if (formData.role === "STUDENT") {
+        if (editingUser) {
+          await studentService.update(editingUser.id, formData);
+        } else {
+          await studentService.create(formData);
+        }
+        const updatedStudents = await studentService.list();
+        setLocalStudents(updatedStudents);
       } else {
-        setLocalStudents((prev) => [{ ...formData, id: Date.now() }, ...prev]);
+        if (editingUser) {
+          await lecturerService.update(editingUser.id, formData);
+        } else {
+          await lecturerService.create(formData);
+        }
+        const updatedLecturers = await lecturerService.list();
+        setLocalLecturers(updatedLecturers);
       }
-    } else {
-      if (editingUser) {
-        setLocalLecturers((prev) =>
-          prev.map((l) => l.id === editingUser.id ? { ...formData, id: l.id } : l),
-        );
-      } else {
-        setLocalLecturers((prev) => [{ ...formData, id: Date.now() }, ...prev]);
-      }
+      setIsModalOpen(false);
+      alert(`Successfully ${editingUser ? "updated" : "created"} user: ${formData.full_name}`);
+    } catch (e) {
+      alert("Error saving user: " + (e.response?.data?.message || e.message));
     }
-    setIsModalOpen(false);
-    alert(`Successfully ${editingUser ? "updated" : "created"} user: ${formData.full_name}`);
   };
 
   const enrichedStudents = useMemo(() => {
@@ -90,14 +94,22 @@ export function UserManagementPage() {
     });
   }, [activeTab, enrichedStudents, localLecturers, searchQuery, majorFilter]);
 
-  const handleDelete = (user) => {
+  const handleDelete = async (user) => {
     if (window.confirm(`Are you sure you want to delete ${user.full_name}?`)) {
-      if (activeTab === "STUDENTS") {
-        setLocalStudents((prev) => prev.filter((s) => s.id !== user.id));
-      } else {
-        setLocalLecturers((prev) => prev.filter((l) => l.id !== user.id));
+      try {
+        if (activeTab === "STUDENTS") {
+          await studentService.remove(user.id);
+          const updated = await studentService.list();
+          setLocalStudents(updated);
+        } else {
+          await lecturerService.remove(user.id);
+          const updated = await lecturerService.list();
+          setLocalLecturers(updated);
+        }
+        alert("User deleted successfully.");
+      } catch (e) {
+        alert("Failed to delete user: " + (e.response?.data?.message || e.message));
       }
-      alert("User deleted successfully.");
     }
   };
 

@@ -5,8 +5,6 @@ import { gradeService } from "../../services/grades/grade.service.js";
 import { MyGroupsView } from "./MyGroupsView.jsx";
 import "../admin/adminManagement.css";
 
-const MY_LECTURER_ID = 2;
-
 /**
  * Container layer - quan ly state, goi service, truyen data + handler xuong View.
  * Khong chua JSX UI truc tiep.
@@ -26,10 +24,8 @@ export function MyGroupsPage() {
     gradeService.list().then(setGrades);
   }, []);
 
-  const myGroups = useMemo(
-    () => allGroups.filter((g) => g.supervisor_id === MY_LECTURER_ID),
-    [allGroups],
-  );
+  // BE already filters groups by role, so allGroups = lecturer's own groups
+  const myGroups = allGroups;
 
   const enrichedGroups = useMemo(() => {
     return myGroups.map((g) => {
@@ -41,7 +37,7 @@ export function MyGroupsPage() {
         });
 
       const groupGrades = grades.filter(
-        (gr) => gr.group_id === g.id && gr.lecturer_id === MY_LECTURER_ID,
+        (gr) => gr.group_id === g.id,
       );
       const gradedGrades = groupGrades.filter((gr) => gr.score !== null);
       const avgScore =

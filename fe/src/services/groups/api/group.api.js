@@ -19,4 +19,14 @@ export const groupApi = {
     const res = await http.get(`/groups/${groupId}/members`);
     return res.data;
   },
+
+  async assignLecturer(groupId, lecturerId) {
+    const res = await http.put(`/groups/${groupId}/lecturer`, { lecturer_id: lecturerId });
+    return res.data;
+  },
+
+  async assignTopicAdmin(groupId, projectId) {
+    const res = await http.put(`/groups/${groupId}/topic/admin`, { project_id: projectId });
+    return res.data;
+  },
 };

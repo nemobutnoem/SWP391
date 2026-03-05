@@ -4,8 +4,6 @@ import { gradeService } from "../../services/grades/grade.service.js";
 import { GradingView } from "./GradingView.jsx";
 import "../admin/adminManagement.css";
 
-const MY_LECTURER_ID = 2;
-
 /**
  * Container layer - quan ly state, goi service, truyen data + handler xuong View.
  * Khong chua JSX UI truc tiep.
@@ -23,10 +21,8 @@ export function GradingPage() {
     gradeService.list().then(setGrades);
   }, []);
 
-  const myGrades = useMemo(
-    () => grades.filter((g) => g.lecturer_id === MY_LECTURER_ID),
-    [grades],
-  );
+  // BE already filters grades by role (lecturer sees only own grades)
+  const myGrades = grades;
 
   const filteredGrades = useMemo(() => {
     if (filterStatus === "ALL") return myGrades;
@@ -39,19 +35,20 @@ export function GradingPage() {
     setDraftFeedback(gr.feedback ?? "");
   };
 
-  const saveGrade = (id) => {
+  const saveGrade = async (id) => {
     const score = parseFloat(draftScore);
     if (isNaN(score) || score < 0 || score > 10) {
       alert("Score must be between 0 and 10.");
       return;
     }
-    setGrades((prev) =>
-      prev.map((g) =>
-        g.id === id
-          ? { ...g, score, feedback: draftFeedback, status: "GRADED" }
-          : g,
-      ),
-    );
+    try {
+      const updated = await gradeService.save(id, { score, feedback: draftFeedback, status: "GRADED" });
+      setGrades((prev) =>
+        prev.map((g) => (g.id === id ? updated : g)),
+      );
+    } catch (err) {
+      alert("Failed to save grade: " + (err.message || err));
+    }
     setEditingId(null);
   };
 

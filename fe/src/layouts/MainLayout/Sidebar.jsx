@@ -53,6 +53,9 @@ export function Sidebar() {
             <NavLink to="/allocations" className={navClass}>
               Group Allocations
             </NavLink>
+            <NavLink to="/admin/integrations" className={navClass}>
+              Integration Settings
+            </NavLink>
           </div>
         )}
 
@@ -76,14 +79,11 @@ export function Sidebar() {
             <NavLink to="/tasks" className={navClass}>
               Working Board
             </NavLink>
-            <NavLink to="/srs" className={navClass}>
-              SRS Builder
-            </NavLink>
-            <NavLink to="/activity" className={navClass}>
-              Code Activities
-            </NavLink>
             <NavLink to="/sync" className={navClass}>
               Jira Synchronizer
+            </NavLink>
+            <NavLink to="/group/integrations" className={navClass}>
+              Integration Settings
             </NavLink>
           </div>
         )}

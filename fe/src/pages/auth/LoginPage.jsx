@@ -4,10 +4,11 @@ import { useAuth } from "../../store/auth/useAuth.jsx";
 import { ROLES, ROLE_LABELS } from "../../routes/access/roles.js";
 import { env } from "../../app/config/env.js";
 import { Button } from "../../components/common/Button.jsx";
+import { GoogleLogin } from "@react-oauth/google";
 import "./loginPage.css";
 
 export function LoginPage() {
-  const { loginFake, login } = useAuth();
+  const { loginFake, login, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
 
   const [role, setRole] = useState(ROLES.TEAM_MEMBER);
@@ -45,6 +46,22 @@ export function LoginPage() {
     e.preventDefault();
   };
 
+  const handleGoogleSuccess = async (credentialResponse) => {
+    setError("");
+    try {
+      setIsSubmitting(true);
+      await loginWithGoogle({ credential: credentialResponse.credential });
+      navigate("/dashboard", { replace: true });
+    } catch (err) {
+      setError(err?.response?.data?.message || err?.message || "Google Login failed");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleGoogleError = () => {
+    setError("Google authentication failed or was cancelled.");
+  };
 
   return (
     <div className="auth-page">
@@ -131,7 +148,20 @@ export function LoginPage() {
             </Button>
           </div>
 
-          
+          <div className="auth-divider" style={{ margin: "20px 0", textAlign: "center", textTransform: "uppercase", fontSize: "0.85rem", color: "#666" }}>
+            <span>Or</span>
+          </div>
+
+          <div className="google-login-container" style={{ display: "flex", justifyContent: "center" }}>
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={handleGoogleError}
+              useOneTap
+              theme="filled_blue"
+              text="continue_with"
+            />
+          </div>
+
         </form>
 
         <footer className="auth-footer">© SWP Project — Academic Use Only</footer>

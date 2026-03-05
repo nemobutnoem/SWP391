@@ -33,6 +33,13 @@ export const authMock = {
     return next;
   },
 
+  async loginWithGoogle({ credential }) {
+    await sleep(120);
+    const next = { user: { id: "fake-google-1", name: "MockUser", role: "TEAM_MEMBER" } };
+    writeStorage(next);
+    return next;
+  },
+
   async logout() {
     await sleep(60);
     writeStorage(null);

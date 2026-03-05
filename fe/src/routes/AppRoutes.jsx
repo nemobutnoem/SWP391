@@ -14,7 +14,6 @@ import { NotFoundPage } from "../pages/auth/NotFoundPage.jsx";
 
 import { MockSmokeTestPage } from "../pages/dev/MockSmokeTestPage.jsx";
 import { TasksBoardPage } from "../pages/tasks/TasksBoardPage.jsx";
-import { SRSBuilderPage } from "../pages/srs/SRSBuilderPage.jsx";
 import { ActivityPage } from "../pages/sync/ActivityPage.jsx";
 import { SyncPage } from "../pages/sync/SyncPage.jsx";
 import { TopicsPage } from "../pages/sync/TopicsPage.jsx";
@@ -22,6 +21,8 @@ import { UserManagementPage } from "../pages/admin/UserManagementPage.jsx";
 import { AllocationPage } from "../pages/admin/AllocationPage.jsx";
 import { MyGroupsPage } from "../pages/lecturer/MyGroupsPage.jsx";
 import { GradingPage } from "../pages/lecturer/GradingPage.jsx";
+import { AdminIntegrationPage } from "../pages/admin/AdminIntegrationPage.jsx";
+import { GroupIntegrationPage } from "../pages/admin/GroupIntegrationPage.jsx";
 
 export function AppRoutes() {
   return (
@@ -39,6 +40,7 @@ export function AppRoutes() {
             <Route path="/topics" element={<TopicsPage />} />
             <Route path="/users" element={<UserManagementPage />} />
             <Route path="/allocations" element={<AllocationPage />} />
+            <Route path="/admin/integrations" element={<AdminIntegrationPage />} />
           </Route>
 
           {/* Lecturer - Academic Management */}
@@ -50,9 +52,9 @@ export function AppRoutes() {
           {/* Student - Project & Task Management */}
           <Route element={<RoleGuard allow={[ROLES.TEAM_LEAD, ROLES.TEAM_MEMBER]} />}>
             <Route path="/tasks" element={<TasksBoardPage />} />
-            <Route path="/srs" element={<SRSBuilderPage />} />
             <Route path="/activity" element={<ActivityPage />} />
             <Route path="/sync" element={<SyncPage />} />
+            <Route path="/group/integrations" element={<GroupIntegrationPage />} />
           </Route>
         </Route>
       </Route>
