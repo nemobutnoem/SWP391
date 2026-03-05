@@ -1,4 +1,50 @@
+# ======================
+# Java / Spring Boot
+# ======================
 target/
 *.log
 *.class
+*.jar
+*.war
+*.ear
+
+# Maven
+.mvn/
+mvnw
+mvnw.cmd
+
+# ======================
+# Node / React
+# ======================
+node_modules/
+dist/
+build/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ======================
+# Environment / Secrets
+# ======================
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# application config chứa token
+application.yml
+application.properties
+
+# ======================
+# IDE
+# ======================
 .idea/
+.vscode/
+*.iml
+
+# ======================
+# OS
+# ======================
+.DS_Store
+Thumbs.db
