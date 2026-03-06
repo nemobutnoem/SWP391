@@ -131,6 +131,7 @@ public class GithubService {
 					a.setCommitSha(sha);
 					a.setCommitMessage(message);
 					a.setRefName(branchName);
+					a.setRepoName(repo.getRepoName());
 					a.setPushedCommitCount(1);
 					a.setOccurredAt(occurredAt);
 					// Make event unique per branch so commits shared across branches still appear under each branch.

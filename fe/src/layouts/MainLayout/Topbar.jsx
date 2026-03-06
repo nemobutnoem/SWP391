@@ -8,7 +8,7 @@ const PATH_LABELS = {
   topics: "Project Topics",
   tasks: "Working Board",
   activity: "Commits Stream",
-  sync: "Jira Synchronizer",
+  sync: "Code Activities",
 };
 
 export function Topbar() {

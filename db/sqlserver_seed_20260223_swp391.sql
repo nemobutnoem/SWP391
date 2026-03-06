@@ -194,15 +194,9 @@ BEGIN TRY
     WHERE id = @groupId AND project_id IS NULL;
 
     /* =========================================================
-       7) GitHub repos
+       7) GitHub repos – no placeholder data; repos are linked
+          via Integration Settings by each group.
        ========================================================= */
-    IF NOT EXISTS (SELECT 1 FROM dbo.github_repositories WHERE group_id = @groupId AND repo_url = N'https://github.com/example-org/swp391-fe')
-        INSERT INTO dbo.github_repositories(group_id, repo_url, repo_owner, repo_name, default_branch, visibility, is_active, created_at, updated_at)
-        VALUES (@groupId, N'https://github.com/example-org/swp391-fe', N'example-org', N'swp391-fe', N'main', N'private', 1, SYSUTCDATETIME(), SYSUTCDATETIME());
-
-    IF NOT EXISTS (SELECT 1 FROM dbo.github_repositories WHERE group_id = @groupId AND repo_url = N'https://github.com/example-org/swp391-be')
-        INSERT INTO dbo.github_repositories(group_id, repo_url, repo_owner, repo_name, default_branch, visibility, is_active, created_at, updated_at)
-        VALUES (@groupId, N'https://github.com/example-org/swp391-be', N'example-org', N'swp391-be', N'main', N'private', 1, SYSUTCDATETIME(), SYSUTCDATETIME());
 
     /* =========================================================
        8) Optional Jira sample data (local cache)

@@ -44,4 +44,7 @@ public class GithubActivityEntity {
 
 	@Column(name = "github_event_id")
 	private String githubEventId;
+
+	@Column(name = "repo_name")
+	private String repoName;
 }

@@ -208,7 +208,9 @@ export function TasksBoardView({
   query,
   onQueryChange,
   isSyncing,
-  onSync,
+  syncTarget,
+  onSyncJira,
+  onSyncGithub,
   columns,
   onStatusChange,
   membersByGroupId,
@@ -228,9 +230,22 @@ export function TasksBoardView({
           />
         </div>
 
-        <button className={styles.syncBtn} onClick={onSync} disabled={isSyncing}>
-          {isSyncing ? "Syncing..." : "Sync with Jira & GitHub"}
-        </button>
+        <div className={styles.syncBtnGroup}>
+          <button
+            className={`${styles.syncBtnJira} ${isSyncing && syncTarget === "jira" ? styles.syncing : ""}`}
+            onClick={onSyncJira}
+            disabled={isSyncing}
+          >
+            {isSyncing && syncTarget === "jira" ? "Syncing..." : "Sync Jira"}
+          </button>
+          <button
+            className={`${styles.syncBtnGithub} ${isSyncing && syncTarget === "github" ? styles.syncing : ""}`}
+            onClick={onSyncGithub}
+            disabled={isSyncing}
+          >
+            {isSyncing && syncTarget === "github" ? "Syncing..." : "Sync GitHub"}
+          </button>
+        </div>
       </div>
 
       <div className={styles.board}>

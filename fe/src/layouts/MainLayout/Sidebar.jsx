@@ -81,7 +81,7 @@ export function Sidebar() {
               Working Board
             </NavLink>
             <NavLink to="/sync" className={navClass}>
-              Jira Synchronizer
+              Code Activities
             </NavLink>
             <NavLink to="/group/integrations" className={navClass}>
               Integration Settings

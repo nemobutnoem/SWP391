@@ -31,8 +31,10 @@ public class CompatGithubActivityController {
 			@JsonProperty("group_id") Integer groupId,
 			@JsonProperty("github_username") String githubUsername,
 			@JsonProperty("activity_type") String activityType,
+			@JsonProperty("commit_sha") String commitSha,
 			@JsonProperty("commit_message") String commitMessage,
 			@JsonProperty("ref_name") String refName,
+			@JsonProperty("repo_name") String repoName,
 			@JsonProperty("pushed_commit_count") Integer pushedCommitCount,
 			@JsonProperty("occurred_at") String occurredAt) {
 	}
@@ -92,8 +94,10 @@ public class CompatGithubActivityController {
 				e.getGroupId(),
 				e.getGithubUsername(),
 				e.getActivityType(),
+				e.getCommitSha(),
 				e.getCommitMessage(),
 				e.getRefName(),
+				e.getRepoName(),
 				e.getPushedCommitCount(),
 				occurredAt);
 	}
