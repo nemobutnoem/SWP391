@@ -370,14 +370,8 @@
   background: white;
 }
 
-/* Sync Button Group */
-.syncBtnGroup {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.syncBtnJira,
-.syncBtnGithub {
+/* Sync Button */
+.syncBtnJira {
   padding: 0.5rem 1rem;
   font-size: 0.8125rem;
   font-weight: 700;
@@ -386,9 +380,6 @@
   cursor: pointer;
   transition: all 0.2s;
   white-space: nowrap;
-}
-
-.syncBtnJira {
   background: #0052cc;
   color: white;
   border-color: #0052cc;
@@ -399,19 +390,7 @@
   border-color: #003d99;
 }
 
-.syncBtnGithub {
-  background: #24292e;
-  color: white;
-  border-color: #24292e;
-}
-
-.syncBtnGithub:hover:not(:disabled) {
-  background: #1b1f23;
-  border-color: #1b1f23;
-}
-
-.syncBtnJira:disabled,
-.syncBtnGithub:disabled {
+.syncBtnJira:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }

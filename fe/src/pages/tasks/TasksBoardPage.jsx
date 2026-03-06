@@ -193,11 +193,8 @@ export function TasksBoardPage() {
     return base;
   }, [filteredTasks]);
 
-  const [syncTarget, setSyncTarget] = useState("");
-
   const onSyncJira = async () => {
     setIsSyncing(true);
-    setSyncTarget("jira");
     try {
       await syncService.syncJira();
       await load();
@@ -205,21 +202,6 @@ export function TasksBoardPage() {
       console.error("[TasksBoard] sync Jira failed:", e);
     } finally {
       setIsSyncing(false);
-      setSyncTarget("");
-    }
-  };
-
-  const onSyncGithub = async () => {
-    setIsSyncing(true);
-    setSyncTarget("github");
-    try {
-      await syncService.syncGithub();
-      await load();
-    } catch (e) {
-      console.error("[TasksBoard] sync GitHub failed:", e);
-    } finally {
-      setIsSyncing(false);
-      setSyncTarget("");
     }
   };
 
@@ -228,9 +210,7 @@ export function TasksBoardPage() {
       query={query}
       onQueryChange={setQuery}
       isSyncing={isSyncing}
-      syncTarget={syncTarget}
       onSyncJira={onSyncJira}
-      onSyncGithub={onSyncGithub}
       columns={columns}
       onStatusChange={handleStatusChange}
       membersByGroupId={membersByGroupId}

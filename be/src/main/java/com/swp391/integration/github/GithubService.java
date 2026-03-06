@@ -48,8 +48,10 @@ public class GithubService {
 	public int syncCommits(Integer groupId, UserPrincipal principal) {
 		ensureMember(groupId, principal);
 		String token = integrationService.resolveGithubToken(groupId);
+		log.debug("syncCommits: groupId={}, tokenPresent={}", groupId, token != null && !token.isBlank());
 		int inserted = 0;
-		for (var repo : repoRepository.findByGroupId(groupId)) {
+		var repos = repoRepository.findByGroupId(groupId);
+		for (var repo : repos) {
 			if (repo.getIsActive() != null && !repo.getIsActive()) {
 				continue;
 			}
@@ -57,12 +59,15 @@ public class GithubService {
 				continue;
 			}
 
+			// Determine effective token: if the stored token returns 401, fall back to no-auth (public repos).
+			String effectiveToken = token;
+
 			String fallbackBranch = repo.getDefaultBranch() == null || repo.getDefaultBranch().isBlank()
 					? "main"
 					: repo.getDefaultBranch().trim();
 			var branches = new java.util.LinkedHashSet<String>();
 			try {
-				JsonNode branchNodes = gitHubClient.listBranches(repo.getRepoOwner(), repo.getRepoName(), token);
+				JsonNode branchNodes = gitHubClient.listBranches(repo.getRepoOwner(), repo.getRepoName(), effectiveToken);
 				if (branchNodes != null && branchNodes.isArray()) {
 					for (JsonNode b : branchNodes) {
 						String name = b.path("name").asText(null);
@@ -70,44 +75,65 @@ public class GithubService {
 					}
 				}
 			} catch (RestClientResponseException ex) {
-				String body = null;
-				try {
-					body = ex.getResponseBodyAsString();
-				} catch (Exception ignored) {
-					// ignore
-				}
-				log.warn(
-						"GitHub list branches failed for {}/{} (status={}): {}",
-						repo.getRepoOwner(),
-						repo.getRepoName(),
-						ex.getStatusCode().value(),
-						body
-				);
-			}
-			if (branches.isEmpty()) {
-				branches.add(fallbackBranch);
-			}
-
-			for (String branchName : branches) {
-				JsonNode commits;
-				try {
-					commits = gitHubClient.listCommits(repo.getRepoOwner(), repo.getRepoName(), branchName, null, token);
-				} catch (RestClientResponseException ex) {
+				if (ex.getStatusCode().value() == 401 && effectiveToken != null && !effectiveToken.isBlank()) {
+					log.warn("GitHub token returned 401 for {}/{}. Retrying without token (public repo fallback).",
+							repo.getRepoOwner(), repo.getRepoName());
+					effectiveToken = null;
+					try {
+						JsonNode branchNodes = gitHubClient.listBranches(repo.getRepoOwner(), repo.getRepoName(), null);
+						if (branchNodes != null && branchNodes.isArray()) {
+							for (JsonNode b : branchNodes) {
+								String name = b.path("name").asText(null);
+								if (name != null && !name.isBlank()) branches.add(name);
+							}
+						}
+					} catch (RestClientResponseException ex2) {
+						log.warn("GitHub list branches also failed without token for {}/{} (status={})",
+								repo.getRepoOwner(), repo.getRepoName(), ex2.getStatusCode().value());
+					}
+				} else {
 					String body = null;
 					try {
 						body = ex.getResponseBodyAsString();
 					} catch (Exception ignored) {
-						// ignore
 					}
-					log.warn(
-							"GitHub list commits failed for {}/{}@{} (status={}): {}",
-							repo.getRepoOwner(),
-							repo.getRepoName(),
-							branchName,
-							ex.getStatusCode().value(),
-							body
-					);
-					continue;
+					log.warn("GitHub list branches failed for {}/{} (status={}): {}",
+							repo.getRepoOwner(), repo.getRepoName(), ex.getStatusCode().value(), body);
+				}
+			}
+			if (branches.isEmpty()) {
+				branches.add(fallbackBranch);
+			}
+			log.debug("syncCommits: repo {}/{} has {} branches", repo.getRepoOwner(), repo.getRepoName(), branches.size());
+
+			final String tokenForCommits = effectiveToken;
+			for (String branchName : branches) {
+				JsonNode commits;
+				try {
+					commits = gitHubClient.listCommits(repo.getRepoOwner(), repo.getRepoName(), branchName, null, tokenForCommits);
+					log.debug("syncCommits: branch '{}' returned {} commits",
+							branchName, commits != null && commits.isArray() ? commits.size() : 0);
+				} catch (RestClientResponseException ex) {
+					if (ex.getStatusCode().value() == 401 && tokenForCommits != null && !tokenForCommits.isBlank()) {
+						log.warn("GitHub token returned 401 for commits on {}/{}@{}. Retrying without token.",
+								repo.getRepoOwner(), repo.getRepoName(), branchName);
+						try {
+							commits = gitHubClient.listCommits(repo.getRepoOwner(), repo.getRepoName(), branchName, null, null);
+						} catch (RestClientResponseException ex2) {
+							log.warn("GitHub list commits also failed without token for {}/{}@{} (status={})",
+									repo.getRepoOwner(), repo.getRepoName(), branchName, ex2.getStatusCode().value());
+							continue;
+						}
+					} else {
+						String body = null;
+						try {
+							body = ex.getResponseBodyAsString();
+						} catch (Exception ignored) {
+						}
+						log.warn("GitHub list commits failed for {}/{}@{} (status={}): {}",
+								repo.getRepoOwner(), repo.getRepoName(), branchName, ex.getStatusCode().value(), body);
+						continue;
+					}
 				}
 				if (commits == null || !commits.isArray()) {
 					continue;
@@ -141,10 +167,13 @@ public class GithubService {
 						inserted++;
 					} catch (DataIntegrityViolationException ignored) {
 						// duplicate sha for group
+					} catch (Exception ex) {
+						log.error("syncCommits: UNEXPECTED save error for sha={} branch={}: {}", sha.substring(0, Math.min(8, sha.length())), branchName, ex.getMessage());
 					}
 				}
 			}
 		}
+		log.info("syncCommits: groupId={} finished, inserted={}", groupId, inserted);
 		return inserted;
 	}
 
