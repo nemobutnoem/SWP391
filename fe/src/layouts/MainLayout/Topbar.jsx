@@ -21,9 +21,10 @@ export function Topbar() {
   const pathLabel = PATH_LABELS[currentPath] || "Page";
 
   const initials = useMemo(() => {
+    const safeName = typeof user?.name === "string" ? user.name : (user?.account || "Guest");
     return (
-      user?.name
-        ?.split(" ")
+      safeName
+        .split(" ")
         .map((n) => n[0])
         .join("")
         .toUpperCase() || "JD"
@@ -55,14 +56,14 @@ export function Topbar() {
             type="button"
           >
             <div className="topbar__avatar">{initials}</div>
-            <span className="topbar__name">{user?.name || "Member"}</span>
+            <span className="topbar__name">{typeof user?.name === "string" ? user.name : (user?.account || "Member")}</span>
             <span className="topbar__chev">{open ? "▴" : "▾"}</span>
           </button>
 
           {open && (
             <div className="dropdown" onMouseLeave={() => setOpen(false)}>
               <div className="dropdown__header">
-                <span className="dropdown__name">{user?.name}</span>
+                <span className="dropdown__name">{typeof user?.name === "string" ? user.name : (user?.account || "Member")}</span>
                 <span className="dropdown__role">{user?.role}</span>
               </div>
               <button className="dropdown__item" type="button">

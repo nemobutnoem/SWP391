@@ -1,6 +1,7 @@
 package com.swp391.student;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.swp391.clazz.ClassRepository;
 import com.swp391.user.UserRepository;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -15,6 +16,7 @@ import java.util.List;
 public class StudentController {
 	private final StudentRepository studentRepository;
 	private final UserRepository userRepository;
+	private final ClassRepository classRepository;
 
 	public record StudentDto(
 			Integer id,
@@ -23,9 +25,10 @@ public class StudentController {
 			@JsonProperty("full_name") String fullName,
 			@JsonProperty("student_code") String studentCode,
 			String email,
+			String major,
 			@JsonProperty("github_username") String githubUsername,
-			String status
-	) {
+			@JsonProperty("semester_id") Integer semesterId,
+			String status) {
 	}
 
 	public record UpsertStudentRequest(
@@ -34,8 +37,9 @@ public class StudentController {
 			@JsonProperty("full_name") @NotBlank String fullName,
 			@JsonProperty("student_code") String studentCode,
 			String email,
-			String status
-	) {
+			String major,
+			@JsonProperty("github_username") String githubUsername,
+			String status) {
 	}
 
 	@GetMapping
@@ -51,13 +55,21 @@ public class StudentController {
 
 	@PostMapping
 	public StudentDto create(@Valid @RequestBody UpsertStudentRequest req) {
+		com.swp391.user.UserEntity user = new com.swp391.user.UserEntity();
+		user.setAccount(req.studentCode() != null ? req.studentCode() : req.email());
+		user.setRole("TEAM_MEMBER");
+		user.setGithubUsername(req.githubUsername());
+		user.setStatus(req.status() != null ? req.status() : "Active");
+		user = userRepository.save(user);
+
 		StudentEntity s = new StudentEntity();
-		s.setUserId(req.userId());
+		s.setUserId(user.getId());
 		s.setClassId(req.classId());
 		s.setFullName(req.fullName());
 		s.setStudentCode(req.studentCode());
 		s.setEmail(req.email());
-		s.setStatus(req.status());
+		s.setMajor(req.major());
+		s.setStatus(req.status() != null ? req.status() : "Active");
 		return toDto(studentRepository.save(s));
 	}
 
@@ -65,12 +77,29 @@ public class StudentController {
 	public StudentDto update(@PathVariable Integer studentId, @Valid @RequestBody UpsertStudentRequest req) {
 		StudentEntity s = studentRepository.findById(studentId)
 				.orElseThrow(() -> new IllegalArgumentException("Student not found"));
-		s.setUserId(req.userId());
 		s.setClassId(req.classId());
 		s.setFullName(req.fullName());
 		s.setStudentCode(req.studentCode());
 		s.setEmail(req.email());
+		s.setMajor(req.major());
 		s.setStatus(req.status());
+
+		if (s.getUserId() != null) {
+			userRepository.findById(s.getUserId()).ifPresent(user -> {
+				user.setGithubUsername(req.githubUsername());
+				if (req.studentCode() != null)
+					user.setAccount(req.studentCode());
+				userRepository.save(user);
+			});
+		} else {
+			com.swp391.user.UserEntity user = new com.swp391.user.UserEntity();
+			user.setAccount(req.studentCode() != null ? req.studentCode() : req.email());
+			user.setRole("TEAM_MEMBER");
+			user.setGithubUsername(req.githubUsername());
+			user.setStatus(req.status() != null ? req.status() : "Active");
+			user = userRepository.save(user);
+			s.setUserId(user.getId());
+		}
 		return toDto(studentRepository.save(s));
 	}
 
@@ -86,6 +115,12 @@ public class StudentController {
 					.map(u -> u.getGithubUsername())
 					.orElse(null);
 		}
+		Integer semesterId = null;
+		if (s.getClassId() != null) {
+			semesterId = classRepository.findById(s.getClassId())
+					.map(c -> c.getSemesterId())
+					.orElse(null);
+		}
 		return new StudentDto(
 				s.getId(),
 				s.getUserId(),
@@ -93,8 +128,9 @@ public class StudentController {
 				s.getFullName(),
 				s.getStudentCode(),
 				s.getEmail(),
+				s.getMajor(),
 				githubUsername,
-				s.getStatus()
-		);
+				semesterId,
+				s.getStatus());
 	}
 }

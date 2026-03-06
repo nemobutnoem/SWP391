@@ -31,6 +31,7 @@ public class ProjectController {
         ProjectEntity project = new ProjectEntity();
         project.setProjectName(req.name());
         project.setDescription(req.description());
+        project.setSemesterId(1); // Default semester to prevent NULL constraint
         project.setStatus(req.status() != null ? req.status() : "Active");
         return projectRepository.save(project);
     }

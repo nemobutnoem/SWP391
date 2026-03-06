@@ -101,6 +101,7 @@ export function UserManagementView({
               <tr>
                 <th>Student Info</th>
                 <th>Mssv</th>
+                <th>Class / Semester</th>
                 <th>Group / Project</th>
                 <th>Status</th>
                 <th className="action-cell">Actions</th>
@@ -136,6 +137,14 @@ export function UserManagementView({
                     <span className="text-secondary">{u.department}</span>
                   )}
                 </td>
+                {activeTab === "STUDENTS" && (
+                  <td>
+                    <div className="class-semester-cell">
+                      <span className="font-semibold">{u.class_name}</span>
+                      <div className="text-xs text-secondary mt-1">{u.semester_name}</div>
+                    </div>
+                  </td>
+                )}
                 <td>
                   {activeTab === "STUDENTS" ? (
                     <div className="group-project-cell">

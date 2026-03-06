@@ -3,8 +3,10 @@ D:\SWP391new\SWP391\be\src\main\java\com\swp391\auth\dto\AuthResponse.java
 D:\SWP391new\SWP391\be\src\main\java\com\swp391\auth\dto\GoogleLoginRequest.java
 D:\SWP391new\SWP391\be\src\main\java\com\swp391\auth\dto\LoginRequest.java
 D:\SWP391new\SWP391\be\src\main\java\com\swp391\auth\dto\RegisterRequest.java
+D:\SWP391new\SWP391\be\src\main\java\com\swp391\clazz\ClassController.java
 D:\SWP391new\SWP391\be\src\main\java\com\swp391\clazz\ClassEntity.java
 D:\SWP391new\SWP391\be\src\main\java\com\swp391\clazz\ClassRepository.java
+D:\SWP391new\SWP391\be\src\main\java\com\swp391\clazz\ClassService.java
 D:\SWP391new\SWP391\be\src\main\java\com\swp391\common\api\ApiError.java
 D:\SWP391new\SWP391\be\src\main\java\com\swp391\common\api\GlobalExceptionHandler.java
 D:\SWP391new\SWP391\be\src\main\java\com\swp391\common\ApiException.java
@@ -81,6 +83,10 @@ D:\SWP391new\SWP391\be\src\main\java\com\swp391\security\RestAuthenticationEntry
 D:\SWP391new\SWP391\be\src\main\java\com\swp391\security\Role.java
 D:\SWP391new\SWP391\be\src\main\java\com\swp391\security\SecurityConfig.java
 D:\SWP391new\SWP391\be\src\main\java\com\swp391\security\UserPrincipal.java
+D:\SWP391new\SWP391\be\src\main\java\com\swp391\semester\SemesterController.java
+D:\SWP391new\SWP391\be\src\main\java\com\swp391\semester\SemesterEntity.java
+D:\SWP391new\SWP391\be\src\main\java\com\swp391\semester\SemesterRepository.java
+D:\SWP391new\SWP391\be\src\main\java\com\swp391\semester\SemesterService.java
 D:\SWP391new\SWP391\be\src\main\java\com\swp391\student\StudentController.java
 D:\SWP391new\SWP391\be\src\main\java\com\swp391\student\StudentEntity.java
 D:\SWP391new\SWP391\be\src\main\java\com\swp391\student\StudentRepository.java

@@ -28,14 +28,14 @@ app:
     allow-register: false
 
 jira:
-  base-url: "https://your-domain.atlassian.net"
-  email: ""
-  api-token: ""
+  base-url: "https://fpt-team-y8wit2i7.atlassian.net"
+  email: "Hoangnvse182984@fpt.edu.vn"
+  api-token: "ATATT3xFfGF0qisPGrtDLoA1cNPlComSkxYphxfD4pRiTziHY4IE-Rybr8XXFEjYB_bSXtGQzAbSCjkKQimYyNriymA46FXMzRoYDiu-_7p-ogpKw5fkJ1u_pG1CHSbqSS_os0mynY9Nn5Tjv-bXo5xo-9mBfQB60hTb-C9f_4IdOvAJKVGWge4=B53D33D3"
   debug:
     minimal-search-payload: false
 
 github:
-  token: ""
+  token: "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"
 
 
 logging:

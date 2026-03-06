@@ -19,6 +19,7 @@ com\swp391\integration\github\GithubActivityEntity.class
 com\swp391\project\ProjectRepository.class
 com\swp391\integration\compat\CompatJiraTaskController.class
 com\swp391\lecturer\dto\UpdateLecturerRequest.class
+com\swp391\semester\SemesterService.class
 com\swp391\common\api\GlobalExceptionHandler.class
 com\swp391\security\SecurityConfig.class
 com\swp391\user\UserEntity.class
@@ -26,6 +27,7 @@ com\swp391\integration\compat\CompatJiraTaskController$JiraTaskDto.class
 com\swp391\student\StudentController$UpsertStudentRequest.class
 com\swp391\security\RestAccessDeniedHandler.class
 com\swp391\integration\GroupIntegrationEntity.class
+com\swp391\semester\SemesterEntity.class
 com\swp391\integration\github\GithubActivityRepository.class
 com\swp391\integration\compat\CompatGithubActivityController.class
 com\swp391\integration\jira\JiraService.class
@@ -47,10 +49,13 @@ com\swp391\group\dto\SelectTopicRequest.class
 com\swp391\integration\dto\GroupIntegrationsResponse.class
 com\swp391\student\StudentRepository.class
 com\swp391\integration\github\GithubController.class
+com\swp391\clazz\ClassController.class
 com\swp391\grade\GradeEntity.class
 com\swp391\repo\GithubRepositoryService.class
 com\swp391\security\JwtAuthenticationFilter.class
+com\swp391\semester\SemesterRepository.class
 com\swp391\repo\GithubRepositoryController.class
+com\swp391\auth\dto\GoogleLoginRequest.class
 com\swp391\integration\GroupIntegrationService$JiraConfig.class
 com\swp391\integration\compat\CompatGithubRepositoryController$GithubRepositoryDto.class
 com\swp391\common\ApiException.class
@@ -72,6 +77,7 @@ com\swp391\lecturer\dto\CreateLecturerRequest.class
 com\swp391\integration\dto\AdminIntegrationsResponse.class
 com\swp391\integration\dto\UpdateGroupIntegrationsRequest.class
 com\swp391\lecturer\LecturerEntity.class
+com\swp391\clazz\ClassService.class
 com\swp391\group\dto\AssignLecturerRequest.class
 com\swp391\integration\compat\CompatProjectController.class
 com\swp391\integration\GroupIntegrationRepository.class
@@ -80,6 +86,7 @@ com\swp391\group\dto\GroupSummary.class
 com\swp391\integration\GroupIntegrationController.class
 com\swp391\student\StudentController$StudentDto.class
 com\swp391\integration\GroupIntegrationService.class
+com\swp391\semester\SemesterController.class
 com\swp391\group\GroupMemberController$GroupMemberDto.class
 com\swp391\integration\compat\CompatJiraProjectController$JiraProjectDto.class
 com\swp391\integration\github\dto\GithubStatsResponse.class

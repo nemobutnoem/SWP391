@@ -15,9 +15,10 @@ export function Sidebar() {
   const isLecturer = role === ROLES.LECTURER;
   const isTeam = role === ROLES.TEAM_LEAD || role === ROLES.TEAM_MEMBER;
 
+  const safeName = typeof user?.name === "string" ? user.name : (user?.account || "Guest");
   const userInitials =
-    user?.name
-      ?.split(" ")
+    safeName
+      .split(" ")
       .map((n) => n[0])
       .join("")
       .toUpperCase() || "JD";
@@ -93,7 +94,7 @@ export function Sidebar() {
         <div className="userCard">
           <div className="userAvatar">{userInitials}</div>
           <div className="userInfo">
-            <div className="userName">{user?.name || "Guest User"}</div>
+            <div className="userName">{safeName}</div>
             <div className="userRole">{role || "No Role"}</div>
           </div>
         </div>

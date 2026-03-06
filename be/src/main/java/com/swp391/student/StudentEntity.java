@@ -28,6 +28,9 @@ public class StudentEntity {
 	@Column(name = "email")
 	private String email;
 
+	@Column(name = "major")
+	private String major;
+
 	@Column(name = "status")
 	private String status;
 }

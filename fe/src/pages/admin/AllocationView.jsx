@@ -9,6 +9,12 @@ import "./adminManagement.css";
  * Không có state, không gọi service.
  */
 export function AllocationView({
+  semesters,
+  classes,
+  selectedSemesterId,
+  selectedClassId,
+  onSemesterChange,
+  onClassChange,
   enrichedGroups,
   topics,
   lecturers,
@@ -30,19 +36,47 @@ export function AllocationView({
       />
 
       <div className="allocation-stats mt-2">
-        <div className="stat-card-mini">
-          <span className="mini-label">Total Groups</span>
-          <span className="mini-value">{enrichedGroups.length}</span>
+        <div style={{ display: "flex", gap: "1rem", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap" }}>
+          <div className="stat-card-mini" style={{ padding: "0.5rem 1rem", minWidth: "180px" }}>
+            <span className="mini-label">Semester</span>
+            <select
+              className="filter-select mt-1 w-full"
+              value={selectedSemesterId}
+              onChange={(e) => onSemesterChange(e.target.value)}
+            >
+              <option value="">All Semesters</option>
+              {semesters.map(s => <option key={s.id} value={s.id}>{s.name} ({s.status})</option>)}
+            </select>
+          </div>
+          <div className="stat-card-mini" style={{ padding: "0.5rem 1rem", minWidth: "180px" }}>
+            <span className="mini-label">Class</span>
+            <select
+              className="filter-select mt-1 w-full"
+              value={selectedClassId}
+              onChange={(e) => onClassChange(e.target.value)}
+              disabled={!selectedSemesterId}
+            >
+              <option value="">All Classes</option>
+              {classes.map(c => <option key={c.id} value={c.id}>{c.class_code} - {c.class_name}</option>)}
+            </select>
+          </div>
         </div>
-        <div className="stat-card-mini">
-          <span className="mini-label">Allocated Topics</span>
-          <span className="mini-value">
-            {enrichedGroups.filter((g) => g.project_id).length} / {enrichedGroups.length}
-          </span>
-        </div>
-        <div className="stat-card-mini">
-          <span className="mini-label">Supervisors</span>
-          <span className="mini-value">{lecturers.length}</span>
+
+        <div style={{ display: "flex", gap: "1rem" }}>
+          <div className="stat-card-mini">
+            <span className="mini-label">Total Groups (Filtered)</span>
+            <span className="mini-value">{enrichedGroups.length}</span>
+          </div>
+          <div className="stat-card-mini">
+            <span className="mini-label">Allocated Topics</span>
+            <span className="mini-value">
+              {enrichedGroups.filter((g) => g.project_id).length} / {enrichedGroups.length}
+            </span>
+          </div>
+          <div className="stat-card-mini">
+            <span className="mini-label">Supervisors Available</span>
+            <span className="mini-value">{lecturers.length}</span>
+          </div>
         </div>
       </div>
 

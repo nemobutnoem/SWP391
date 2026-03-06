@@ -18,6 +18,9 @@ public class ClassEntity {
 	@Column(name = "class_code")
 	private String classCode;
 
+	@Column(name = "semester_id")
+	private Integer semesterId;
+
 	@Column(name = "class_name")
 	private String className;
 

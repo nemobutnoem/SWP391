@@ -27,6 +27,9 @@ public class LecturerEntity {
 	@Column(name = "email")
 	private String email;
 
+	@Column(name = "department")
+	private String department;
+
 	@Column(name = "status")
 	private String status;
 

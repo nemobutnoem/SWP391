@@ -3,6 +3,8 @@ import { groupService } from "../../services/groups/group.service.js";
 import { topicService } from "../../services/topics/topic.service.js";
 import { lecturerService } from "../../services/lecturers/lecturer.service.js";
 import { studentService } from "../../services/students/student.service.js";
+import { classService } from "../../services/classes/class.service.js";
+import { semesterService } from "../../services/semesters/semester.service.js";
 import { AllocationView } from "./AllocationView.jsx";
 import "./adminManagement.css";
 
@@ -19,7 +21,18 @@ export function AllocationPage() {
   const [members, setMembers] = useState([]);
   const [students, setStudents] = useState([]);
 
+  const [semesters, setSemesters] = useState([]);
+  const [classes, setClasses] = useState([]);
+  const [selectedSemesterId, setSelectedSemesterId] = useState("");
+  const [selectedClassId, setSelectedClassId] = useState("");
+
   useEffect(() => {
+    semesterService.list().then(data => {
+      setSemesters(data);
+      const active = data.find(s => s.status.toLowerCase() === "active" || s.status.toLowerCase() === "upcoming");
+      if (active) setSelectedSemesterId(active.id);
+      else if (data.length > 0) setSelectedSemesterId(data[0].id);
+    });
     groupService.list().then(setGroups);
     groupService.listMembers().then(setMembers);
     topicService.list().then(setTopics);
@@ -27,8 +40,32 @@ export function AllocationPage() {
     studentService.list().then(setStudents);
   }, []);
 
+  useEffect(() => {
+    if (selectedSemesterId) {
+      classService.list(selectedSemesterId).then((data) => {
+        setClasses(data);
+        if (data.length > 0) {
+          setSelectedClassId(data[0].id);
+        } else {
+          setSelectedClassId("");
+        }
+      });
+    } else {
+      setClasses([]);
+      setSelectedClassId("");
+    }
+  }, [selectedSemesterId]);
+
   const enrichedGroups = useMemo(() => {
-    return groups.map((g) => {
+    let filteredGroups = groups;
+    if (selectedSemesterId) {
+      filteredGroups = filteredGroups.filter(g => g.semester_id === Number(selectedSemesterId));
+    }
+    if (selectedClassId) {
+      filteredGroups = filteredGroups.filter(g => g.class_id === Number(selectedClassId));
+    }
+
+    return filteredGroups.map((g) => {
       const groupMembers = members
         .filter((m) => m.group_id === g.id)
         .map((m) => {
@@ -44,7 +81,7 @@ export function AllocationPage() {
         topic_name: topic?.name || "Unassigned",
       };
     });
-  }, [groups, members, students, topics]);
+  }, [groups, members, students, topics, selectedSemesterId, selectedClassId]);
 
   const toggleExpand = (id) => {
     setExpandedGroupId(expandedGroupId === id ? null : id);
@@ -72,6 +109,12 @@ export function AllocationPage() {
 
   return (
     <AllocationView
+      semesters={semesters}
+      classes={classes}
+      selectedSemesterId={selectedSemesterId}
+      selectedClassId={selectedClassId}
+      onSemesterChange={(val) => setSelectedSemesterId(val)}
+      onClassChange={(val) => setSelectedClassId(val)}
       enrichedGroups={enrichedGroups}
       topics={topics}
       lecturers={lecturers}
