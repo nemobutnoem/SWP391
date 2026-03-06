@@ -6,4 +6,5 @@ import java.util.Optional;
 
 public interface StudentRepository extends JpaRepository<StudentEntity, Integer> {
 	Optional<StudentEntity> findByUserId(Integer userId);
+	Optional<StudentEntity> findByEmailIgnoreCase(String email);
 }

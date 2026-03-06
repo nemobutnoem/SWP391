@@ -5,6 +5,7 @@ import com.swp391.auth.dto.LoginRequest;
 import com.swp391.auth.dto.RegisterRequest;
 import com.swp391.security.JwtService;
 import com.swp391.user.UserRepository;
+import com.swp391.student.StudentRepository;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -20,16 +21,19 @@ import com.google.api.client.json.gson.GsonFactory;
 @RequestMapping("/api/auth")
 public class AuthController {
 	private final UserRepository userRepository;
+	private final StudentRepository studentRepository;
 	private final PasswordEncoder passwordEncoder;
 	private final JwtService jwtService;
 	private final boolean allowRegister;
 
 	public AuthController(
 			UserRepository userRepository,
+			StudentRepository studentRepository,
 			PasswordEncoder passwordEncoder,
 			JwtService jwtService,
 			@Value("${app.auth.allow-register:false}") boolean allowRegister) {
 		this.userRepository = userRepository;
+		this.studentRepository = studentRepository;
 		this.passwordEncoder = passwordEncoder;
 		this.jwtService = jwtService;
 		this.allowRegister = allowRegister;
@@ -67,47 +71,51 @@ public class AuthController {
 
 	@PostMapping("/google")
 	public AuthResponse googleLogin(@Valid @RequestBody GoogleLoginRequest request) {
+		// Verify Google ID token
+		var transport = new NetHttpTransport();
+		var jsonFactory = new GsonFactory();
+		GoogleIdToken idToken;
 		try {
-			// In production, inject client ID from application.yml
-			// Since we don't have a real one yet from the user, we'll configure a generic
-			// verifier for now
-			// or temporarily bypass the strict audience check until the client ID is ready.
-			// Normally: new GoogleIdTokenVerifier.Builder(transport,
-			// jsonFactory).setAudience(Collections.singletonList(CLIENT_ID)).build();
-			var transport = new NetHttpTransport();
-			var jsonFactory = new GsonFactory();
 			var verifier = new GoogleIdTokenVerifier.Builder(transport, jsonFactory)
-					// Disable audience verification for now since CLIENT_ID is a placeholder on FE
-					// .setAudience(Collections.singletonList("YOUR_GOOGLE_CLIENT_ID"))
 					.build();
-
-			GoogleIdToken idToken = verifier.verify(request.credential());
-			if (idToken == null) {
-				throw new SecurityException("Invalid ID token.");
-			}
-			GoogleIdToken.Payload payload = idToken.getPayload();
-
-			String email = payload.getEmail();
-			if (email == null || (!email.endsWith("@fpt.edu.vn") && !email.endsWith("@fe.edu.vn"))) {
-				throw new SecurityException("Only FPT University Google accounts are allowed.");
-			}
-
-			String accountName = email.split("@")[0];
-
-			UserEntity user = userRepository.findByAccount(accountName)
-					.orElseGet(() -> {
-						var newUser = new UserEntity();
-						newUser.setAccount(accountName);
-						newUser.setRole("TEAM_MEMBER"); // Default role
-						newUser.setStatus("active");
-						return userRepository.save(newUser);
-					});
-
-			String token = jwtService.generateAccessToken(user.getId(), user.getRole());
-			return AuthResponse.bearer(token, user.getId(), user.getRole());
-
+			idToken = verifier.verify(request.credential());
 		} catch (Exception e) {
-			throw new SecurityException("Google authentication failed: " + e.getMessage());
+			throw new SecurityException("Google token verification failed: " + e.getMessage());
 		}
+		if (idToken == null) {
+			throw new SecurityException("Invalid Google ID token.");
+		}
+
+		GoogleIdToken.Payload payload = idToken.getPayload();
+		String email = payload.getEmail();
+		if (email == null || (!email.endsWith("@fpt.edu.vn") && !email.endsWith("@fe.edu.vn"))) {
+			throw new SecurityException("Only FPT University Google accounts are allowed.");
+		}
+
+		String accountName = email.split("@")[0];
+
+		// 1) Try to find existing user by account name
+		UserEntity user = userRepository.findByAccount(accountName).orElse(null);
+
+		// 2) If not found, check if a student record exists with this email
+		//    and use the user linked to that student
+		if (user == null) {
+			var studentOpt = studentRepository.findByEmailIgnoreCase(email);
+			if (studentOpt.isPresent() && studentOpt.get().getUserId() != null) {
+				user = userRepository.findById(studentOpt.get().getUserId()).orElse(null);
+			}
+		}
+
+		// 3) If still not found, create a new user and a matching student record
+		if (user == null) {
+			var newUser = new UserEntity();
+			newUser.setAccount(accountName);
+			newUser.setRole("TEAM_MEMBER");
+			newUser.setStatus("active");
+			user = userRepository.save(newUser);
+		}
+
+		String token = jwtService.generateAccessToken(user.getId(), user.getRole());
+		return AuthResponse.bearer(token, user.getId(), user.getRole());
 	}
 }
