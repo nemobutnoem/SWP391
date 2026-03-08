@@ -3,6 +3,7 @@ package com.swp391.group;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.swp391.security.UserPrincipal;
 import com.swp391.student.StudentRepository;
+import com.swp391.user.UserEntity;
 import com.swp391.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
@@ -53,8 +54,14 @@ public class GroupMemberController {
 							userId,
 							student == null ? null : student.getFullName(),
 							user == null ? null : user.getAccount(),
+<<<<<<< Updated upstream
 							user == null ? null : user.getJiraAccountId(),
 							m.getRoleInGroup());
+=======
+							user == null ? null : UserEntity.normalizeJiraAccountId(user.getJiraAccountId()),
+							m.getRoleInGroup()
+					);
+>>>>>>> Stashed changes
 				})
 				.sorted(Comparator.comparing((GroupMemberDto d) -> d.fullName() == null ? "" : d.fullName()))
 				.toList();

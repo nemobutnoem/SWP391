@@ -5,12 +5,15 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Getter
 @Setter
 @Entity
 @Table(name = "users", schema = "dbo")
 public class UserEntity {
+	public static final String UNSET_JIRA_ACCOUNT_ID_PREFIX = "__UNSET_JIRA__:";
+
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Integer id;
@@ -40,4 +43,22 @@ public class UserEntity {
 	// is a pragmatic addition to support JWT+password login.
 	@Column(name = "password_hash")
 	private String passwordHash;
+
+	@PrePersist
+	@PreUpdate
+	void ensureJiraAccountIdUniqueInSqlServer() {
+		// SQL Server UNIQUE index allows only a single NULL, so we store a unique
+		// placeholder for "unset" Jira account IDs and normalize it in API/business logic.
+		if (jiraAccountId == null || jiraAccountId.isBlank()) {
+			jiraAccountId = UNSET_JIRA_ACCOUNT_ID_PREFIX + UUID.randomUUID();
+		}
+	}
+
+	public static boolean isUnsetJiraAccountId(String jiraAccountId) {
+		return jiraAccountId != null && jiraAccountId.startsWith(UNSET_JIRA_ACCOUNT_ID_PREFIX);
+	}
+
+	public static String normalizeJiraAccountId(String jiraAccountId) {
+		return isUnsetJiraAccountId(jiraAccountId) ? null : jiraAccountId;
+	}
 }
