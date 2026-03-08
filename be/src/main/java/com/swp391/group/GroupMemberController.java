@@ -54,14 +54,9 @@ public class GroupMemberController {
 							userId,
 							student == null ? null : student.getFullName(),
 							user == null ? null : user.getAccount(),
-<<<<<<< Updated upstream
-							user == null ? null : user.getJiraAccountId(),
-							m.getRoleInGroup());
-=======
 							user == null ? null : UserEntity.normalizeJiraAccountId(user.getJiraAccountId()),
 							m.getRoleInGroup()
 					);
->>>>>>> Stashed changes
 				})
 				.sorted(Comparator.comparing((GroupMemberDto d) -> d.fullName() == null ? "" : d.fullName()))
 				.toList();

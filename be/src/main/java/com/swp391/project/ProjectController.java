@@ -1,6 +1,7 @@
 package com.swp391.project;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -23,11 +24,13 @@ public class ProjectController {
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ProjectEntity create(@RequestBody ProjectEntity project) {
         return projectRepository.save(project);
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ProjectEntity update(@PathVariable Integer id, @RequestBody ProjectEntity project) {
         ProjectEntity existing = projectRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Project not found"));
@@ -40,6 +43,7 @@ public class ProjectController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public void delete(@PathVariable Integer id) {
         projectRepository.deleteById(id);
     }
