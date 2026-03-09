@@ -2,8 +2,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import { DashboardView } from "./DashboardView.jsx";
 import { computeTaskStats } from "../../features/tasks/taskStats.js";
 import { useAuth } from "../../store/auth/useAuth.jsx";
-import { AdminDashboardView } from "./AdminDashboardView.jsx";
-import { LecturerDashboardView } from "../lecturer/LecturerDashboardView.jsx";
+import { AdminDashboardPage } from "./AdminDashboardPage.jsx";
+import { LecturerDashboardPage } from "../lecturer/LecturerDashboardPage.jsx";
 import { ROLES } from "../../routes/access/roles.js";
 
 import { jiraTaskService } from "../../services/jiraTasks/jiraTask.service.js";
@@ -77,8 +77,8 @@ export function DashboardPage() {
   };
 
   // Admin/Lecturer giữ nguyên như bạn đang làm (nếu 2 view này đang cần mockDb thì để riêng)
-  if (isAdmin) return <AdminDashboardView />;
-  if (isLecturer) return <LecturerDashboardView />;
+  if (isAdmin) return <AdminDashboardPage />;
+  if (isLecturer) return <LecturerDashboardPage />;
 
   return (
     <DashboardView

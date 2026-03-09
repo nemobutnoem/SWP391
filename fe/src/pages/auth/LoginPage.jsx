@@ -1,12 +1,14 @@
 import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../store/auth/useAuth.jsx";
-import { ROLES, ROLE_LABELS } from "../../routes/access/roles.js";
+import { ROLES } from "../../routes/access/roles.js";
 import { env } from "../../app/config/env.js";
-import { Button } from "../../components/common/Button.jsx";
-import { GoogleLogin } from "@react-oauth/google";
-import "./loginPage.css";
+import { LoginView } from "./LoginView.jsx";
 
+/**
+ * Container layer – quản lý state, gọi service, truyền data + handler xuống View.
+ * Không chứa JSX UI trực tiếp.
+ */
 export function LoginPage() {
   const { loginFake, login, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
@@ -64,108 +66,22 @@ export function LoginPage() {
   };
 
   return (
-    <div className="auth-page">
-      <div className="auth-card">
-        <header className="auth-header">
-          <div className="auth-logo" aria-hidden="true">
-            SWP
-          </div>
-          <h1 className="auth-title">Software Project Workspace</h1>
-          <p className="auth-subtitle">Student Project Management System</p>
-        </header>
-
-        {error && (
-          <div className="auth-alert auth-alert--danger" role="alert">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={onSubmit} className="auth-form">
-          <div className="form-group">
-            <label htmlFor="loginAccount">Username</label>
-            <input
-              id="loginAccount"
-              value={env.useMock ? name : account}
-              onChange={(e) =>
-                env.useMock ? setName(e.target.value) : setAccount(e.target.value)
-              }
-              placeholder={
-                env.useMock
-                  ? "Enter your username"
-                  : "lead1 | mem1 | admin1 | lec1"
-              }
-              autoComplete="username"
-              autoFocus
-            />
-          </div>
-
-          {!env.useMock && (
-            <div className="form-group">
-              <label htmlFor="loginPassword">Password</label>
-              <input
-                id="loginPassword"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter your password"
-                autoComplete="current-password"
-              />
-            </div>
-          )}
-
-          <div className="auth-links">
-            <a className="auth-forgot" href="#" onClick={onForgotPassword}>
-              Forgot password?
-            </a>
-          </div>
-
-          {env.useMock && (
-            <div className="form-group auth-role">
-              <label htmlFor="loginRole">Role</label>
-              <select
-                id="loginRole"
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-              >
-                {roleOptions.map((r) => (
-                  <option key={r} value={r}>
-                    {ROLE_LABELS[r]}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          <div className="auth-actions">
-            <Button
-              type="submit"
-              variant="primary"
-              size="lg"
-              className="auth-primary-btn"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? "Signing in…" : "Login"}
-            </Button>
-          </div>
-
-          <div className="auth-divider" style={{ margin: "20px 0", textAlign: "center", textTransform: "uppercase", fontSize: "0.85rem", color: "#666" }}>
-            <span>Or</span>
-          </div>
-
-          <div className="google-login-container" style={{ display: "flex", justifyContent: "center" }}>
-            <GoogleLogin
-              onSuccess={handleGoogleSuccess}
-              onError={handleGoogleError}
-              useOneTap
-              theme="filled_blue"
-              text="continue_with"
-            />
-          </div>
-
-        </form>
-
-        <footer className="auth-footer">© SWP Project — Academic Use Only</footer>
-      </div>
-    </div>
+    <LoginView
+      account={account}
+      password={password}
+      name={name}
+      role={role}
+      roleOptions={roleOptions}
+      error={error}
+      isSubmitting={isSubmitting}
+      onAccountChange={(e) => setAccount(e.target.value)}
+      onPasswordChange={(e) => setPassword(e.target.value)}
+      onNameChange={(e) => setName(e.target.value)}
+      onRoleChange={(e) => setRole(e.target.value)}
+      onSubmit={onSubmit}
+      onForgotPassword={onForgotPassword}
+      onGoogleSuccess={handleGoogleSuccess}
+      onGoogleError={handleGoogleError}
+    />
   );
 }

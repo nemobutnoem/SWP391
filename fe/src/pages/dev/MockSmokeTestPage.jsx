@@ -4,7 +4,12 @@ import { contextService } from "../../services/context/context.service.js";
 import { jiraTaskService } from "../../services/jiraTasks/jiraTask.service.js";
 import { githubActivityService } from "../../services/githubActivities/githubActivity.service.js";
 import { syncService } from "../../services/integrations/sync.service.js";
+import { MockSmokeTestView } from "./MockSmokeTestView.jsx";
 
+/**
+ * Container layer – quản lý state, gọi service, truyền data + handler xuống View.
+ * Không chứa JSX UI trực tiếp.
+ */
 export function MockSmokeTestPage() {
   const [data, setData] = useState({ loading: true });
 
@@ -46,13 +51,5 @@ export function MockSmokeTestPage() {
     };
   }, []);
 
-  if (data.loading) return <div>Loading mock smoke test...</div>;
-  if (data.error) return <pre style={{ color: "red" }}>{data.error}</pre>;
-
-  return (
-    <div style={{ padding: 16 }}>
-      <h2>Mock Smoke Test</h2>
-      <pre>{JSON.stringify(data, null, 2)}</pre>
-    </div>
-  );
+  return <MockSmokeTestView data={data} />;
 }

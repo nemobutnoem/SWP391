@@ -1,5 +1,4 @@
 import React from "react";
-import { useNavigate } from "react-router-dom";
 import { PageHeader } from "../../components/common/PageHeader.jsx";
 import { StatCard } from "../../components/common/StatCard.jsx";
 import { Button } from "../../components/common/Button.jsx";
@@ -13,13 +12,18 @@ const DEFAULT_ADMIN_STATS = {
   activeLecturers: 0,
 };
 
+/**
+ * Presentation layer – nhận tất cả data và handler qua props.
+ * Không có state, không gọi service.
+ */
 export function AdminDashboardView({
   adminStats = DEFAULT_ADMIN_STATS,
   systemLogs = [],
+  onNavigateSystemLogs,
+  onNavigateSemesters,
 } = {}) {
   const stats = adminStats;
   const logs = Array.isArray(systemLogs) ? systemLogs : [];
-  const navigate = useNavigate();
 
   return (
     <div className="dashboard-view admin-dashboard">
@@ -28,10 +32,10 @@ export function AdminDashboardView({
         description="Monitor system health, enrollment metrics, and project allocation progress across all semesters."
         actions={
           <div className="action-buttons">
-            <Button variant="secondary" size="sm" onClick={() => navigate("/admin/integrations")}>
+            <Button variant="secondary" size="sm" onClick={onNavigateSystemLogs}>
               System Logs
             </Button>
-            <Button variant="primary" size="sm" onClick={() => navigate("/semesters")}>
+            <Button variant="primary" size="sm" onClick={onNavigateSemesters}>
               Manage Semester
             </Button>
           </div>

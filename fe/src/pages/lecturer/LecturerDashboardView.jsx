@@ -1,9 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { groupService } from "../../services/groups/group.service.js";
-import { gradeService } from "../../services/grades/grade.service.js";
-import { jiraTaskService } from "../../services/jiraTasks/jiraTask.service.js";
-import { githubActivityService } from "../../services/githubActivities/githubActivity.service.js";
+import React from "react";
 import { PageHeader } from "../../components/common/PageHeader.jsx";
 import { StatCard } from "../../components/common/StatCard.jsx";
 import { Badge } from "../../components/common/Badge.jsx";
@@ -30,83 +25,36 @@ function daysLeft(dateStr) {
   return Math.ceil(diff / 86400000);
 }
 
-export function LecturerDashboardView() {
-  const navigate = useNavigate();
-
-  const [allGroups, setAllGroups] = useState([]);
-  const [allMembers, setAllMembers] = useState([]);
-  const [grades, setGrades] = useState([]);
-  const [jiraTasks, setJiraTasks] = useState([]);
-  const [githubActivities, setGithubActivities] = useState([]);
-  const [expandedGroupId, setExpandedGroupId] = useState(null);
-  const [activeTab, setActiveTab] = useState({}); // { [groupId]: "tasks" | "activity" }
-
-  useEffect(() => {
-    groupService.list().then(setAllGroups);
-    groupService.listMembers().then(setAllMembers);
-    gradeService.list().then(setGrades);
-    jiraTaskService.list().then(setJiraTasks).catch(() => setJiraTasks([]));
-    githubActivityService.list().then(setGithubActivities).catch(() => setGithubActivities([]));
-  }, []);
-
-  const myGroups = allGroups;
-  const myGrades = grades;
-  const pendingCount = myGrades.filter((g) => g.status === "PENDING").length;
-
-  const totalStudents = useMemo(() => {
-    const ids = new Set(myGroups.map((g) => g.id));
-    return allMembers.filter((m) => ids.has(m.group_id)).length;
-  }, [myGroups, allMembers]);
-
-  // Build per-group data
-  const enrichedGroups = useMemo(() => {
-    return myGroups.map((g) => {
-      const members = allMembers.filter((m) => m.group_id === g.id);
-      const tasks = jiraTasks.filter((t) => t.group_id === g.id);
-      const activities = githubActivities
-        .filter((a) => a.group_id === g.id)
-        .sort((a, b) => new Date(b.occurred_at) - new Date(a.occurred_at));
-      const groupGrades = myGrades.filter((gr) => gr.group_id === g.id);
-
-      const doneTasks = tasks.filter((t) => t.status === "Done" || t.status === "DONE").length;
-      const totalTasks = tasks.length;
-      const overdueTasks = tasks.filter((t) => {
-        const due = t.dueDate || t.due_date;
-        return due && daysLeft(due) < 0 && t.status !== "Done" && t.status !== "DONE";
-      }).length;
-
-      return {
-        ...g,
-        members,
-        tasks,
-        activities,
-        groupGrades,
-        doneTasks,
-        totalTasks,
-        overdueTasks,
-        totalCommits: activities.reduce((s, a) => s + (a.pushed_commit_count || 1), 0),
-      };
-    });
-  }, [myGroups, allMembers, jiraTasks, githubActivities, myGrades]);
-
-  const toggleGroup = (id) => {
-    setExpandedGroupId(expandedGroupId === id ? null : id);
-  };
-
+/**
+ * Presentation layer – nhận tất cả data và handler qua props.
+ * Không có state, không gọi service.
+ */
+export function LecturerDashboardView({
+  enrichedGroups,
+  totalStudents,
+  pendingCount,
+  totalTasks,
+  completedTasks,
+  expandedGroupId,
+  activeTab,
+  onToggleGroup,
+  onSetTab,
+  onNavigateMyGroups,
+  onNavigateGrading,
+}) {
   const getTab = (groupId) => activeTab[groupId] || "tasks";
-  const setTab = (groupId, tab) => setActiveTab((prev) => ({ ...prev, [groupId]: tab }));
 
   return (
     <div className="dashboard-view">
       <PageHeader
         title="Lecturer Dashboard 👋"
-        description={`You supervise ${myGroups.length} group(s) with ${totalStudents} students. ${pendingCount} pending grade(s).`}
+        description={`You supervise ${enrichedGroups.length} group(s) with ${totalStudents} students. ${pendingCount} pending grade(s).`}
         actions={
           <div className="action-buttons">
-            <Button variant="secondary" size="sm" onClick={() => navigate("/classes")}>
+            <Button variant="secondary" size="sm" onClick={onNavigateMyGroups}>
               My Groups
             </Button>
-            <Button variant="primary" size="sm" onClick={() => navigate("/grading")}>
+            <Button variant="primary" size="sm" onClick={onNavigateGrading}>
               Grade Now ({pendingCount})
             </Button>
           </div>
@@ -115,7 +63,7 @@ export function LecturerDashboardView() {
 
       {/* KPI Row */}
       <div className="dashboard-view__grid">
-        <StatCard title="Groups" value={myGroups.length} subtext="Supervised" icon="📋" />
+        <StatCard title="Groups" value={enrichedGroups.length} subtext="Supervised" icon="📋" />
         <StatCard title="Students" value={totalStudents} subtext="Under guidance" icon="🧑‍🎓" />
         <StatCard
           title="Pending Grades"
@@ -126,8 +74,8 @@ export function LecturerDashboardView() {
         />
         <StatCard
           title="Total Tasks"
-          value={jiraTasks.length}
-          subtext={`${jiraTasks.filter((t) => t.status === "Done" || t.status === "DONE").length} completed`}
+          value={totalTasks}
+          subtext={`${completedTasks} completed`}
           icon="✅"
         />
       </div>
@@ -151,7 +99,7 @@ export function LecturerDashboardView() {
           return (
             <div key={g.id} className={`lecturer-group-card ${isExpanded ? "lecturer-group-card--expanded" : ""}`}>
               {/* Group Header - always visible */}
-              <div className="lecturer-group-header" onClick={() => toggleGroup(g.id)}>
+              <div className="lecturer-group-header" onClick={() => onToggleGroup(g.id)}>
                 <div className="lecturer-group-info">
                   <span className="lecturer-group-icon">{isExpanded ? "📂" : "📁"}</span>
                   <div>
@@ -179,25 +127,25 @@ export function LecturerDashboardView() {
                   <div className="lecturer-tabs">
                     <button
                       className={`lecturer-tab ${tab === "tasks" ? "lecturer-tab--active" : ""}`}
-                      onClick={() => setTab(g.id, "tasks")}
+                      onClick={() => onSetTab(g.id, "tasks")}
                     >
                       📋 Jira Tasks ({g.tasks.length})
                     </button>
                     <button
                       className={`lecturer-tab ${tab === "activity" ? "lecturer-tab--active" : ""}`}
-                      onClick={() => setTab(g.id, "activity")}
+                      onClick={() => onSetTab(g.id, "activity")}
                     >
                       ⬆️ GitHub Activity ({g.activities.length})
                     </button>
                     <button
                       className={`lecturer-tab ${tab === "grades" ? "lecturer-tab--active" : ""}`}
-                      onClick={() => setTab(g.id, "grades")}
+                      onClick={() => onSetTab(g.id, "grades")}
                     >
                       📝 Grades ({g.groupGrades.length})
                     </button>
                     <button
                       className={`lecturer-tab ${tab === "insights" ? "lecturer-tab--active" : ""}`}
-                      onClick={() => setTab(g.id, "insights")}
+                      onClick={() => onSetTab(g.id, "insights")}
                     >
                       📊 Insights
                     </button>
@@ -297,7 +245,7 @@ export function LecturerDashboardView() {
                       {g.groupGrades.length === 0 ? (
                         <div className="text-secondary" style={{ padding: "1rem" }}>
                           No grades yet.{" "}
-                          <Button variant="ghost" size="sm" onClick={() => navigate("/grading")}>
+                          <Button variant="ghost" size="sm" onClick={onNavigateGrading}>
                             Go to Grading
                           </Button>
                         </div>
