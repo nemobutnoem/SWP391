@@ -150,19 +150,6 @@ public class GithubService {
 					} catch (Exception ignored) {
 					}
 
-					// Fetch commit detail to get additions/deletions stats
-					Integer additions = null;
-					Integer deletions = null;
-					try {
-						JsonNode detail = gitHubClient.getCommit(repo.getRepoOwner(), repo.getRepoName(), sha, tokenForCommits);
-						if (detail != null && detail.has("stats")) {
-							additions = detail.path("stats").path("additions").asInt(0);
-							deletions = detail.path("stats").path("deletions").asInt(0);
-						}
-					} catch (Exception ex2) {
-						log.debug("syncCommits: could not fetch detail for sha={}: {}", sha.substring(0, Math.min(8, sha.length())), ex2.getMessage());
-					}
-
 					GithubActivityEntity a = new GithubActivityEntity();
 					a.setGroupId(groupId);
 					a.setGithubUsername(authorLogin);
@@ -173,8 +160,6 @@ public class GithubService {
 					a.setRepoName(repo.getRepoName());
 					a.setPushedCommitCount(1);
 					a.setOccurredAt(occurredAt);
-					a.setAdditions(additions);
-					a.setDeletions(deletions);
 					// Make event unique per branch so commits shared across branches still appear under each branch.
 					a.setGithubEventId(branchName + ":" + sha);
 					try {
@@ -204,8 +189,10 @@ public class GithubService {
 		}
 
 		var missing = activityRepository.findByGroupIdAndAdditionsIsNull(groupId);
+		int limit = Math.min(missing.size(), 50);
 		int updated = 0;
-		for (var act : missing) {
+		for (int i = 0; i < limit; i++) {
+			var act = missing.get(i);
 			if (act.getCommitSha() == null) continue;
 			String[] ownerName = repoLookup.get(act.getRepoName());
 			if (ownerName == null) continue;

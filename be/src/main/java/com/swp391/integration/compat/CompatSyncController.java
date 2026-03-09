@@ -218,8 +218,9 @@ public class CompatSyncController {
 		for (Integer groupId : resolveGroupIds(principal, groupIdOverride)) {
 			try {
 				int inserted = githubService.syncCommits(groupId, principal);
+				int backfilled = githubService.backfillStats(groupId);
 				totalInserted += inserted;
-				results.add(resultRow(groupId, true, "Synced GitHub commits", Map.of("inserted", inserted)));
+				results.add(resultRow(groupId, true, "Synced GitHub commits", Map.of("inserted", inserted, "backfilled", backfilled)));
 				writeSyncLog(principal, groupId, "github", "sync_commits", null, true, null);
 			} catch (Exception ex) {
 				String msg = ex.getMessage();

@@ -45,6 +45,7 @@ com\swp391\integration\github\GitHubClient.class
 com\swp391\integration\compat\CompatGroupMemberController.class
 com\swp391\group\dto\UpdateGroupRequest.class
 com\swp391\integration\compat\CompatGithubActivityController$GithubActivityDto.class
+com\swp391\group\GroupMemberController$UpdateRoleRequest.class
 com\swp391\group\dto\SelectTopicRequest.class
 com\swp391\integration\dto\GroupIntegrationsResponse.class
 com\swp391\student\StudentRepository.class
@@ -101,6 +102,8 @@ com\swp391\group\StudentGroupRepository.class
 com\swp391\integration\jira\dto\UpdateJiraStatusRequest.class
 com\swp391\integration\jira\JiraIssueRepository.class
 com\swp391\group\StudentGroupEntity.class
+com\swp391\clazz\ClassController$UpsertClassRequest.class
+com\swp391\semester\SemesterController$UpsertSemesterRequest.class
 com\swp391\security\RestAuthenticationEntryPoint.class
 com\swp391\repo\GithubRepositoryEntity.class
 com\swp391\student\StudentController.class
