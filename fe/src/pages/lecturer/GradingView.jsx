@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useState } from "react";
 import { PageHeader } from "../../components/common/PageHeader.jsx";
 import { Badge } from "../../components/common/Badge.jsx";
 import { Button } from "../../components/common/Button.jsx";
+import { Modal } from "../../components/common/Modal.jsx";
 import "../admin/adminManagement.css";
 
 /**
@@ -22,12 +23,36 @@ export function GradingView({
   onSaveGrade,
   onCancelEdit,
   stats,
+  showCreateModal,
+  onOpenCreateModal,
+  onCloseCreateModal,
+  onCreateMilestone,
 }) {
+  const [newGroupId, setNewGroupId] = useState("");
+  const [newMilestone, setNewMilestone] = useState("");
+  const [newDate, setNewDate] = useState("");
+
+  const handleCreate = () => {
+    if (!newGroupId || !newMilestone) {
+      alert("Please select a group and enter a milestone name.");
+      return;
+    }
+    onCreateMilestone({ group_id: Number(newGroupId), milestone: newMilestone, date: newDate || null });
+    setNewGroupId("");
+    setNewMilestone("");
+    setNewDate("");
+  };
+
   return (
     <div className="user-mgmt-page">
       <PageHeader
         title="Grading & Reviews"
         description="Review submitted milestones and provide scores with constructive feedback for your groups."
+        actions={
+          <Button variant="primary" onClick={onOpenCreateModal}>
+            + Create Milestone
+          </Button>
+        }
       />
 
       {/* Mini stats */}
@@ -195,6 +220,32 @@ export function GradingView({
           </tbody>
         </table>
       </div>
+
+      {showCreateModal && (
+        <Modal title="Create Milestone" isOpen={showCreateModal} onClose={onCloseCreateModal}>
+          <div className="form-group" style={{ marginBottom: "1rem" }}>
+            <label className="form-label">Group *</label>
+            <select className="form-select" value={newGroupId} onChange={(e) => setNewGroupId(e.target.value)}>
+              <option value="">Select a group...</option>
+              {allGroups.map((g) => (
+                <option key={g.id} value={g.id}>{g.group_name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="form-group" style={{ marginBottom: "1rem" }}>
+            <label className="form-label">Milestone Name *</label>
+            <input className="form-input" placeholder="e.g. Sprint 1 Review" value={newMilestone} onChange={(e) => setNewMilestone(e.target.value)} />
+          </div>
+          <div className="form-group" style={{ marginBottom: "1.5rem" }}>
+            <label className="form-label">Due Date</label>
+            <input className="form-input" type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} />
+          </div>
+          <div className="modal-actions">
+            <Button variant="ghost" onClick={onCloseCreateModal}>Cancel</Button>
+            <Button variant="primary" onClick={handleCreate}>Create</Button>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

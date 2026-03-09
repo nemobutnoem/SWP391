@@ -8,4 +8,6 @@ public interface ClassRepository extends JpaRepository<ClassEntity, Integer> {
 	List<ClassEntity> findByLecturerId(Integer lecturerId);
 
 	List<ClassEntity> findBySemesterId(Integer semesterId);
+
+	boolean existsByClassCode(String classCode);
 }

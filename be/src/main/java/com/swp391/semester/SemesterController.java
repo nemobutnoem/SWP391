@@ -1,11 +1,12 @@
 package com.swp391.semester;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -13,6 +14,14 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SemesterController {
     private final SemesterService semesterService;
+
+    public record UpsertSemesterRequest(
+            @NotBlank String code,
+            @NotBlank String name,
+            @JsonProperty("start_date") LocalDate startDate,
+            @JsonProperty("end_date") LocalDate endDate,
+            String status) {
+    }
 
     @GetMapping
     public List<SemesterEntity> list() {
@@ -27,5 +36,20 @@ public class SemesterController {
     @GetMapping("/{id}")
     public SemesterEntity getById(@PathVariable Integer id) {
         return semesterService.getById(id);
+    }
+
+    @PostMapping
+    public SemesterEntity create(@Valid @RequestBody UpsertSemesterRequest req) {
+        return semesterService.create(req);
+    }
+
+    @PutMapping("/{id}")
+    public SemesterEntity update(@PathVariable Integer id, @Valid @RequestBody UpsertSemesterRequest req) {
+        return semesterService.update(id, req);
+    }
+
+    @DeleteMapping("/{id}")
+    public void delete(@PathVariable Integer id) {
+        semesterService.delete(id);
     }
 }

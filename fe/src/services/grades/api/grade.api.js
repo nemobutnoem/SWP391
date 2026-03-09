@@ -20,4 +20,9 @@ export const gradeApi = {
     const res = await http.put(`/grades/${gradeId}`, data);
     return res.data;
   },
+
+  async create(data) {
+    const res = await http.post("/grades", data);
+    return res.data;
+  },
 };

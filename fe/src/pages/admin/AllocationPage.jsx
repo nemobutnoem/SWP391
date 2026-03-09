@@ -74,14 +74,17 @@ export function AllocationPage() {
         });
 
       const topic = topics.find((t) => t.id === g.project_id);
+      const cls = classes.find((c) => c.id === g.class_id);
+      const classLecturer = cls?.lecturer_id ? lecturers.find((l) => l.id === cls.lecturer_id) : null;
 
       return {
         ...g,
         members: groupMembers,
         topic_name: topic?.name || "Unassigned",
+        class_lecturer_name: classLecturer?.full_name || null,
       };
     });
-  }, [groups, members, students, topics, selectedSemesterId, selectedClassId]);
+  }, [groups, members, students, topics, classes, lecturers, selectedSemesterId, selectedClassId]);
 
   const toggleExpand = (id) => {
     setExpandedGroupId(expandedGroupId === id ? null : id);
@@ -98,10 +101,7 @@ export function AllocationPage() {
       if (group.project_id !== undefined) {
         await groupService.assignTopicAdmin(group.id, group.project_id);
       }
-      if (group.lecturer_id !== undefined) {
-        await groupService.assignLecturer(group.id, group.lecturer_id);
-      }
-      alert(`Successfully allocated Topic and Supervisor for group: ${group.group_name}`);
+      alert(`Successfully allocated Topic for group: ${group.group_name}`);
     } catch (e) {
       alert("Failed to allocate: " + (e.response?.data?.message || e.message));
     }
@@ -117,7 +117,6 @@ export function AllocationPage() {
       onClassChange={(val) => setSelectedClassId(val)}
       enrichedGroups={enrichedGroups}
       topics={topics}
-      lecturers={lecturers}
       expandedGroupId={expandedGroupId}
       onToggleExpand={toggleExpand}
       onAllocationChange={handleAllocationChange}

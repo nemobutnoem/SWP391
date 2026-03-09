@@ -51,6 +51,9 @@ export function Sidebar() {
             <NavLink to="/users" className={navClass}>
               User Management
             </NavLink>
+            <NavLink to="/semesters" className={navClass}>
+              Semesters & Classes
+            </NavLink>
             <NavLink to="/allocations" className={navClass}>
               Group Allocations
             </NavLink>
@@ -69,6 +72,9 @@ export function Sidebar() {
             </NavLink>
             <NavLink to="/grading" className={navClass}>
               Grading
+            </NavLink>
+            <NavLink to="/srs" className={navClass}>
+              SRS Requirements
             </NavLink>
           </div>
         )}

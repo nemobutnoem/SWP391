@@ -100,18 +100,33 @@ export function UserManagementPage() {
     });
   }, [localStudents, groups, members, projects, classes, semesters]);
 
+  const enrichedLecturers = useMemo(() => {
+    return localLecturers.map((l) => {
+      const managedClasses = classes.filter((c) => c.lecturer_id === l.id);
+      const managedGroups = managedClasses.flatMap((c) => groups.filter((g) => g.class_id === c.id));
+      return { ...l, managed_class_count: managedClasses.length, managed_group_count: managedGroups.length };
+    });
+  }, [localLecturers, classes, groups]);
+
   const filteredData = useMemo(() => {
-    const data = activeTab === "STUDENTS" ? enrichedStudents : localLecturers;
+    const data = activeTab === "STUDENTS" ? enrichedStudents : enrichedLecturers;
     return data.filter((u) => {
       const nameMatch = u.full_name.toLowerCase().includes(searchQuery.toLowerCase());
       const codeMatch = u.student_code && u.student_code.toLowerCase().includes(searchQuery.toLowerCase());
       const majorMatch = majorFilter === "ALL" || u.major === majorFilter;
       return (nameMatch || codeMatch) && majorMatch;
     });
-  }, [activeTab, enrichedStudents, localLecturers, searchQuery, majorFilter]);
+  }, [activeTab, enrichedStudents, enrichedLecturers, searchQuery, majorFilter]);
 
   const handleDelete = async (user) => {
-    if (window.confirm(`Are you sure you want to delete ${user.full_name}?`)) {
+    let warning = `Are you sure you want to delete ${user.full_name}?`;
+    if (activeTab === "LECTURERS") {
+      const classCount = classes.filter(c => c.lecturer_id === user.id).length;
+      if (classCount > 0) {
+        warning = `${user.full_name} is assigned to ${classCount} class(es). Unassign them first before deleting. Continue?`;
+      }
+    }
+    if (window.confirm(warning)) {
       try {
         if (activeTab === "STUDENTS") {
           await studentService.remove(user.id);
@@ -147,6 +162,7 @@ export function UserManagementPage() {
       onDelete={handleDelete}
       studentCount={localStudents.length}
       lecturerCount={localLecturers.length}
+      classes={classes}
     />
   );
 }

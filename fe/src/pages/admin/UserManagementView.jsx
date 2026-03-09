@@ -26,6 +26,7 @@ export function UserManagementView({
   onDelete,
   studentCount,
   lecturerCount,
+  classes,
 }) {
   return (
     <div className="user-mgmt-page">
@@ -46,6 +47,7 @@ export function UserManagementView({
         onSubmit={onSubmit}
         initialData={editingUser}
         defaultRole={activeTab === "STUDENTS" ? "STUDENT" : "LECTURER"}
+        classes={classes || []}
       />
 
       <div className="admin-tabs">
@@ -152,7 +154,7 @@ export function UserManagementView({
                       <div className="group-meta">{u.project_name}</div>
                     </div>
                   ) : (
-                    <Badge variant="info" size="sm">2 Groups</Badge>
+                    <Badge variant="info" size="sm">{u.managed_group_count || 0} Group{(u.managed_group_count || 0) !== 1 ? 's' : ''}</Badge>
                   )}
                 </td>
                 <td>

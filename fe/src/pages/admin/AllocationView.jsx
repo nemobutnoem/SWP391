@@ -17,7 +17,6 @@ export function AllocationView({
   onClassChange,
   enrichedGroups,
   topics,
-  lecturers,
   expandedGroupId,
   onToggleExpand,
   onAllocationChange,
@@ -73,10 +72,6 @@ export function AllocationView({
               {enrichedGroups.filter((g) => g.project_id).length} / {enrichedGroups.length}
             </span>
           </div>
-          <div className="stat-card-mini">
-            <span className="mini-label">Supervisors Available</span>
-            <span className="mini-value">{lecturers.length}</span>
-          </div>
         </div>
       </div>
 
@@ -86,7 +81,7 @@ export function AllocationView({
             <tr>
               <th>Group Identity</th>
               <th>Project Topic</th>
-              <th>Supervisor</th>
+              <th>Lecturer</th>
               <th>Status</th>
               <th className="action-cell">Actions</th>
             </tr>
@@ -125,19 +120,9 @@ export function AllocationView({
                     </select>
                   </td>
                   <td>
-                    <select
-                      className="table-select"
-                      value={g.lecturer_id || ""}
-                      onChange={(e) => onAllocationChange(g.id, 'lecturer_id', e.target.value)}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <option value="">Assign Lecturer...</option>
-                      {lecturers.map((l) => (
-                        <option key={l.id} value={l.id}>
-                          {l.full_name}
-                        </option>
-                      ))}
-                    </select>
+                    <span style={{ color: g.class_lecturer_name ? "inherit" : "#999", fontStyle: g.class_lecturer_name ? "normal" : "italic" }}>
+                      {g.class_lecturer_name || "No class lecturer"}
+                    </span>
                   </td>
                   <td>
                     <Badge

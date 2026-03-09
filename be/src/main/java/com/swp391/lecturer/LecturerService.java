@@ -1,6 +1,8 @@
 package com.swp391.lecturer;
 
+import com.swp391.clazz.ClassRepository;
 import com.swp391.common.ApiException;
+import com.swp391.group.StudentGroupRepository;
 import com.swp391.lecturer.dto.CreateLecturerRequest;
 import com.swp391.lecturer.dto.UpdateLecturerRequest;
 import com.swp391.user.UserRepository;
@@ -17,6 +19,8 @@ import java.util.List;
 public class LecturerService {
     private final LecturerRepository lecturerRepository;
     private final UserRepository userRepository;
+    private final ClassRepository classRepository;
+    private final StudentGroupRepository groupRepository;
 
     public List<LecturerEntity> listAll() {
         return lecturerRepository.findAll();
@@ -87,6 +91,12 @@ public class LecturerService {
 
         if (!lecturerRepository.existsById(id)) {
             throw ApiException.notFound("Lecturer not found with id: " + id);
+        }
+        if (!classRepository.findByLecturerId(id).isEmpty()) {
+            throw ApiException.badRequest("Cannot delete lecturer: they are still assigned to classes. Unassign them first.");
+        }
+        if (!groupRepository.findByLecturerId(id).isEmpty()) {
+            throw ApiException.badRequest("Cannot delete lecturer: they are still supervising groups. Unassign them first.");
         }
         lecturerRepository.deleteById(id);
     }

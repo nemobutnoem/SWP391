@@ -7,7 +7,7 @@ import "../admin/adminManagement.css";
  * Presentation layer – nhận tất cả data và handler qua props.
  * Không có state, không gọi service.
  */
-export function MyGroupsView({ enrichedGroups, expandedGroupId, onToggleExpand }) {
+export function MyGroupsView({ enrichedGroups, expandedGroupId, onToggleExpand, onRoleChange }) {
   return (
     <div className="user-mgmt-page">
       <PageHeader
@@ -76,7 +76,6 @@ export function MyGroupsView({ enrichedGroups, expandedGroupId, onToggleExpand }
                             <th>Member</th>
                             <th>Student Code</th>
                             <th>Role</th>
-                            <th>Contribution Score</th>
                             <th>GitHub</th>
                           </tr>
                         </thead>
@@ -93,32 +92,15 @@ export function MyGroupsView({ enrichedGroups, expandedGroupId, onToggleExpand }
                                 <code className="code-badge">{m.student_code}</code>
                               </td>
                               <td>
-                                <Badge
-                                  variant={m.role_in_group === "Leader" ? "primary" : "default"}
-                                  size="sm"
+                                <select
+                                  className="form-select"
+                                  value={m.role_in_group}
+                                  onChange={(e) => onRoleChange(m.id, e.target.value)}
+                                  style={{ padding: "0.25rem 0.5rem", fontSize: "0.8125rem", width: "auto" }}
                                 >
-                                  {m.role_in_group}
-                                </Badge>
-                              </td>
-                              <td>
-                                <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                                  <div style={{ width: "80px", height: "6px", background: "var(--slate-200)", borderRadius: "3px", overflow: "hidden" }}>
-                                    <div
-                                      style={{
-                                        width: `${(m.contribution_score / 10) * 100}%`,
-                                        height: "100%",
-                                        background:
-                                          m.contribution_score >= 9
-                                            ? "var(--success-500)"
-                                            : m.contribution_score >= 7
-                                              ? "var(--brand-500)"
-                                              : "var(--warning-500)",
-                                        borderRadius: "3px",
-                                      }}
-                                    />
-                                  </div>
-                                  <strong>{m.contribution_score}</strong>
-                                </div>
+                                  <option value="Leader">LEADER</option>
+                                  <option value="Member">MEMBER</option>
+                                </select>
                               </td>
                               <td>
                                 <span className="text-secondary">@{m.github_username}</span>

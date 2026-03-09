@@ -32,4 +32,12 @@ export const groupMock = {
 
     return members;
   },
+
+  async updateMemberRole(memberId, roleInGroup) {
+    await sleep(200);
+    const member = mockDb.groupMembers.find((m) => m.id === Number(memberId));
+    if (!member) throw new Error("Member not found");
+    member.role_in_group = roleInGroup;
+    return { ...member };
+  },
 };

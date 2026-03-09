@@ -52,11 +52,23 @@ export function MyGroupsPage() {
   const toggleExpand = (id) =>
     setExpandedGroupId(expandedGroupId === id ? null : id);
 
+  const handleRoleChange = async (memberId, newRole) => {
+    try {
+      await groupService.updateMemberRole(memberId, newRole);
+      setAllMembers((prev) =>
+        prev.map((m) => (m.id === memberId ? { ...m, role_in_group: newRole } : m)),
+      );
+    } catch (err) {
+      alert("Failed to update role: " + (err.message || err));
+    }
+  };
+
   return (
     <MyGroupsView
       enrichedGroups={enrichedGroups}
       expandedGroupId={expandedGroupId}
       onToggleExpand={toggleExpand}
+      onRoleChange={handleRoleChange}
     />
   );
 }

@@ -40,4 +40,11 @@ public class UserEntity {
 	// is a pragmatic addition to support JWT+password login.
 	@Column(name = "password_hash")
 	private String passwordHash;
+
+	@PrePersist
+	@PreUpdate
+	private void normalizeBlankFields() {
+		if (githubUsername != null && githubUsername.isBlank()) githubUsername = null;
+		if (jiraAccountId != null && jiraAccountId.isBlank()) jiraAccountId = null;
+	}
 }

@@ -29,4 +29,9 @@ export const groupApi = {
     const res = await http.put(`/groups/${groupId}/topic/admin`, { project_id: projectId });
     return res.data;
   },
+
+  async updateMemberRole(memberId, roleInGroup) {
+    const res = await http.put(`/group-members/${memberId}/role`, { role_in_group: roleInGroup });
+    return res.data;
+  },
 };

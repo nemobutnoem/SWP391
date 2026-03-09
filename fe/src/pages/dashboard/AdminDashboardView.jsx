@@ -1,4 +1,5 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import { PageHeader } from "../../components/common/PageHeader.jsx";
 import { StatCard } from "../../components/common/StatCard.jsx";
 import { Button } from "../../components/common/Button.jsx";
@@ -18,6 +19,7 @@ export function AdminDashboardView({
 } = {}) {
   const stats = adminStats;
   const logs = Array.isArray(systemLogs) ? systemLogs : [];
+  const navigate = useNavigate();
 
   return (
     <div className="dashboard-view admin-dashboard">
@@ -26,10 +28,10 @@ export function AdminDashboardView({
         description="Monitor system health, enrollment metrics, and project allocation progress across all semesters."
         actions={
           <div className="action-buttons">
-            <Button variant="secondary" size="sm">
+            <Button variant="secondary" size="sm" onClick={() => navigate("/admin/integrations")}>
               System Logs
             </Button>
-            <Button variant="primary" size="sm">
+            <Button variant="primary" size="sm" onClick={() => navigate("/semesters")}>
               Manage Semester
             </Button>
           </div>

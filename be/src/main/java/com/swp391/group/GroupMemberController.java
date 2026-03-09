@@ -1,6 +1,8 @@
 package com.swp391.group;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.swp391.common.ApiException;
+import com.swp391.lecturer.LecturerRepository;
 import com.swp391.security.UserPrincipal;
 import com.swp391.student.StudentRepository;
 import com.swp391.user.UserRepository;
@@ -18,6 +20,7 @@ public class GroupMemberController {
 	private final GroupMemberRepository memberRepository;
 	private final StudentRepository studentRepository;
 	private final UserRepository userRepository;
+	private final LecturerRepository lecturerRepository;
 
 	public record GroupMemberDto(
 			@JsonProperty("group_id") Integer groupId,
@@ -56,5 +59,20 @@ public class GroupMemberController {
 				})
 				.sorted(Comparator.comparing((GroupMemberDto d) -> d.fullName() == null ? "" : d.fullName()))
 				.toList();
+	}
+
+	public record UpdateRoleRequest(@JsonProperty("role_in_group") String roleInGroup) {}
+
+	@PutMapping("/group-members/{memberId}/role")
+	public GroupMemberEntity updateRole(@PathVariable Integer memberId, @RequestBody UpdateRoleRequest req, Authentication auth) {
+		UserPrincipal principal = (UserPrincipal) auth.getPrincipal();
+		String role = principal.getRole();
+		if (!"Lecturer".equalsIgnoreCase(role) && !"Admin".equalsIgnoreCase(role)) {
+			throw ApiException.forbidden("Only Lecturer or Admin can change member roles");
+		}
+		GroupMemberEntity member = memberRepository.findById(memberId)
+				.orElseThrow(() -> ApiException.notFound("Group member not found"));
+		member.setRoleInGroup(req.roleInGroup());
+		return memberRepository.save(member);
 	}
 }

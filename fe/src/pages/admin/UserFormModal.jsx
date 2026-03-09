@@ -8,6 +8,7 @@ export function UserFormModal({
   onSubmit,
   initialData = null,
   defaultRole = "STUDENT",
+  classes = [],
 }) {
   // Parent truyền `key` để remount khi initialData thay đổi,
   // nên lazy init chạy fresh mỗi lần mở modal – không cần useEffect.
@@ -21,6 +22,7 @@ export function UserFormModal({
           major: initialData.major || "SE",
           department: initialData.department || "Software Engineering",
           github_username: initialData.github_username || "",
+          class_id: initialData.class_id || "",
         }
       : {
           full_name: "",
@@ -30,6 +32,7 @@ export function UserFormModal({
           major: "SE",
           department: "Software Engineering",
           github_username: "",
+          class_id: "",
         },
   );
 
@@ -85,31 +88,48 @@ export function UserFormModal({
         </div>
 
         {formData.role === "STUDENT" ? (
-          <div className="form-row">
-            <div className="form-group">
-              <label>Student Code</label>
-              <input
-                name="student_code"
-                type="text"
-                placeholder="SE123456"
-                value={formData.student_code}
-                onChange={handleChange}
-                required
-              />
+          <>
+            <div className="form-row">
+              <div className="form-group">
+                <label>Student Code</label>
+                <input
+                  name="student_code"
+                  type="text"
+                  placeholder="SE123456"
+                  value={formData.student_code}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Major</label>
+                <select
+                  name="major"
+                  value={formData.major}
+                  onChange={handleChange}
+                >
+                  <option value="SE">Software Engineering</option>
+                  <option value="AI">Artificial Intelligence</option>
+                  <option value="GD">Graphic Design</option>
+                </select>
+              </div>
             </div>
             <div className="form-group">
-              <label>Major</label>
+              <label>Class</label>
               <select
-                name="major"
-                value={formData.major}
+                name="class_id"
+                value={formData.class_id}
                 onChange={handleChange}
               >
-                <option value="SE">Software Engineering</option>
-                <option value="AI">Artificial Intelligence</option>
-                <option value="GD">Graphic Design</option>
+                <option value="">— No Class —</option>
+                {classes.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.class_code} {c.class_name ? `- ${c.class_name}` : ""}
+                  </option>
+                ))}
               </select>
             </div>
-          </div>
+          </>
         ) : (
           <div className="form-group">
             <label>Department</label>

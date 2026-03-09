@@ -15,6 +15,7 @@ export function GradingPage() {
   const [draftScore, setDraftScore] = useState("");
   const [draftFeedback, setDraftFeedback] = useState("");
   const [filterStatus, setFilterStatus] = useState("ALL");
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   useEffect(() => {
     groupService.list().then(setAllGroups);
@@ -52,6 +53,16 @@ export function GradingPage() {
     setEditingId(null);
   };
 
+  const createMilestone = async ({ group_id, milestone, date }) => {
+    try {
+      const created = await gradeService.create({ group_id, milestone, date });
+      setGrades((prev) => [...prev, created]);
+      setShowCreateModal(false);
+    } catch (err) {
+      alert("Failed to create milestone: " + (err.message || err));
+    }
+  };
+
   const stats = {
     total: myGrades.length,
     pending: myGrades.filter((g) => g.status === "PENDING").length,
@@ -73,6 +84,10 @@ export function GradingPage() {
       onSaveGrade={saveGrade}
       onCancelEdit={() => setEditingId(null)}
       stats={stats}
+      showCreateModal={showCreateModal}
+      onOpenCreateModal={() => setShowCreateModal(true)}
+      onCloseCreateModal={() => setShowCreateModal(false)}
+      onCreateMilestone={createMilestone}
     />
   );
 }

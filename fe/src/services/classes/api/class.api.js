@@ -10,4 +10,16 @@ export const classApi = {
         const res = await http.get(`/classes/${id}`);
         return res.data;
     },
+    create: async (data) => {
+        const res = await http.post("/classes", data);
+        return res.data;
+    },
+    update: async (id, data) => {
+        const res = await http.put(`/classes/${id}`, data);
+        return res.data;
+    },
+    remove: async (id) => {
+        const res = await http.delete(`/classes/${id}`);
+        return res.data;
+    },
 };

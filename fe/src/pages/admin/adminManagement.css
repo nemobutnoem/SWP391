@@ -276,3 +276,100 @@
   color: var(--slate-500);
   font-size: 0.8125rem;
 }
+
+/* ── Semester & Class Page ───────────────────────────────────────── */
+.semester-class-page {
+  animation: fadeIn 0.4s ease-out;
+}
+
+.semester-cards {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.semester-card {
+  background: white;
+  border: 2px solid var(--slate-200);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem 1.5rem;
+  min-width: 220px;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.semester-card:hover {
+  border-color: var(--brand-300);
+  box-shadow: var(--shadow-sm);
+}
+
+.semester-card--active {
+  border-color: var(--brand-500);
+  box-shadow: 0 0 0 3px var(--brand-100);
+}
+
+.semester-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.semester-card__name {
+  font-weight: 700;
+  color: var(--slate-900);
+  font-size: 1rem;
+}
+
+.semester-card__code {
+  font-family: ui-monospace, monospace;
+  font-size: 0.8125rem;
+  color: var(--slate-500);
+}
+
+.semester-card__dates {
+  font-size: 0.75rem;
+  color: var(--slate-400);
+}
+
+.semester-card__actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+/* Section header between semester cards and class table */
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.section-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--slate-800);
+}
+
+.lecturer-link {
+  color: var(--brand-600);
+  cursor: pointer;
+  font-weight: 500;
+  text-decoration: underline dotted;
+}
+
+.lecturer-link:hover {
+  color: var(--brand-800);
+}
+
+.lecturer-link--unassigned {
+  color: var(--slate-400);
+  font-style: italic;
+}
+
+/* utility spacing */
+.mt-1 { margin-top: 0.5rem; }
+.mt-2 { margin-top: 1rem; }
