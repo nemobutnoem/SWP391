@@ -150,6 +150,19 @@ public class GithubService {
 					} catch (Exception ignored) {
 					}
 
+					// Fetch commit detail to get additions/deletions stats
+					Integer additions = null;
+					Integer deletions = null;
+					try {
+						JsonNode detail = gitHubClient.getCommit(repo.getRepoOwner(), repo.getRepoName(), sha, tokenForCommits);
+						if (detail != null && detail.has("stats")) {
+							additions = detail.path("stats").path("additions").asInt(0);
+							deletions = detail.path("stats").path("deletions").asInt(0);
+						}
+					} catch (Exception ex2) {
+						log.debug("syncCommits: could not fetch detail for sha={}: {}", sha.substring(0, Math.min(8, sha.length())), ex2.getMessage());
+					}
+
 					GithubActivityEntity a = new GithubActivityEntity();
 					a.setGroupId(groupId);
 					a.setGithubUsername(authorLogin);
@@ -160,6 +173,8 @@ public class GithubService {
 					a.setRepoName(repo.getRepoName());
 					a.setPushedCommitCount(1);
 					a.setOccurredAt(occurredAt);
+					a.setAdditions(additions);
+					a.setDeletions(deletions);
 					// Make event unique per branch so commits shared across branches still appear under each branch.
 					a.setGithubEventId(branchName + ":" + sha);
 					try {
@@ -175,6 +190,39 @@ public class GithubService {
 		}
 		log.info("syncCommits: groupId={} finished, inserted={}", groupId, inserted);
 		return inserted;
+	}
+
+	public int backfillStats(Integer groupId) {
+		String token = integrationService.resolveGithubToken(groupId);
+		var repos = repoRepository.findByGroupId(groupId);
+		// Build owner/name lookup by repo_name
+		Map<String, String[]> repoLookup = new HashMap<>();
+		for (var r : repos) {
+			if (r.getRepoOwner() != null && r.getRepoName() != null) {
+				repoLookup.put(r.getRepoName(), new String[]{r.getRepoOwner(), r.getRepoName()});
+			}
+		}
+
+		var missing = activityRepository.findByGroupIdAndAdditionsIsNull(groupId);
+		int updated = 0;
+		for (var act : missing) {
+			if (act.getCommitSha() == null) continue;
+			String[] ownerName = repoLookup.get(act.getRepoName());
+			if (ownerName == null) continue;
+			try {
+				JsonNode detail = gitHubClient.getCommit(ownerName[0], ownerName[1], act.getCommitSha(), token);
+				if (detail != null && detail.has("stats")) {
+					act.setAdditions(detail.path("stats").path("additions").asInt(0));
+					act.setDeletions(detail.path("stats").path("deletions").asInt(0));
+					activityRepository.save(act);
+					updated++;
+				}
+			} catch (Exception ex) {
+				log.debug("backfillStats: failed for sha={}: {}", act.getCommitSha().substring(0, Math.min(8, act.getCommitSha().length())), ex.getMessage());
+			}
+		}
+		log.info("backfillStats: groupId={} updated={}/{}", groupId, updated, missing.size());
+		return updated;
 	}
 
 	private void ensureMember(Integer groupId, UserPrincipal principal) {

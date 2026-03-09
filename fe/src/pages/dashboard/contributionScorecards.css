@@ -93,6 +93,10 @@
   color: var(--success);
 }
 
+.stat-val--del {
+  color: var(--danger, #ef4444);
+}
+
 .scorecard-footer {
   display: flex;
   align-items: center;

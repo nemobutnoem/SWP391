@@ -31,6 +31,16 @@ public class GitHubClient {
 		return req.retrieve().body(JsonNode.class);
 	}
 
+	public JsonNode getCommit(String owner, String repo, String sha, String token) {
+		var req = restClient.get()
+				.uri("/repos/{owner}/{repo}/commits/{sha}", owner, repo, sha)
+				.header(HttpHeaders.ACCEPT, "application/vnd.github+json");
+		if (token != null && !token.isBlank()) {
+			req = req.header(HttpHeaders.AUTHORIZATION, "Bearer " + token);
+		}
+		return req.retrieve().body(JsonNode.class);
+	}
+
 	public JsonNode listCommits(String owner, String repo, String sha, String sinceIso, String token) {
 		var req = restClient.get()
 				.uri(uriBuilder -> {

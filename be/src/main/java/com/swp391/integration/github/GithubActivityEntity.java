@@ -47,4 +47,10 @@ public class GithubActivityEntity {
 
 	@Column(name = "repo_name")
 	private String repoName;
+
+	@Column(name = "additions")
+	private Integer additions;
+
+	@Column(name = "deletions")
+	private Integer deletions;
 }

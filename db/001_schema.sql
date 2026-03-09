@@ -453,6 +453,8 @@ BEGIN
         sync_status         NVARCHAR(50)   NULL,
         sync_error          NVARCHAR(MAX)  NULL,
         repo_name           NVARCHAR(255)  NULL,
+        additions           INT            NULL,
+        deletions           INT            NULL,
 
         CONSTRAINT uq_github_activities_group_event UNIQUE (group_id, github_event_id),
         CONSTRAINT fk_github_activities_group FOREIGN KEY (group_id)      REFERENCES dbo.groups(id) ON DELETE CASCADE,

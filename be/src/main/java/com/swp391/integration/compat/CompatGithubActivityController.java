@@ -36,7 +36,9 @@ public class CompatGithubActivityController {
 			@JsonProperty("ref_name") String refName,
 			@JsonProperty("repo_name") String repoName,
 			@JsonProperty("pushed_commit_count") Integer pushedCommitCount,
-			@JsonProperty("occurred_at") String occurredAt) {
+			@JsonProperty("occurred_at") String occurredAt,
+			Integer additions,
+			Integer deletions) {
 	}
 
 	@GetMapping("/github-activities")
@@ -99,7 +101,9 @@ public class CompatGithubActivityController {
 				e.getRefName(),
 				e.getRepoName(),
 				e.getPushedCommitCount(),
-				occurredAt);
+				occurredAt,
+				e.getAdditions(),
+				e.getDeletions());
 	}
 
 	private void ensureMember(Integer groupId, UserPrincipal principal) {
