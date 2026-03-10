@@ -34,12 +34,12 @@ public class GroupService {
 		String role = principal.getRole();
 
 		// Lecturer: return groups in classes they teach
-		if ("Lecturer".equalsIgnoreCase(role)) {
+		if ("LECTURER".equalsIgnoreCase(role)) {
 			return lecturerGroups(principal.getUserId());
 		}
 
 		// Admin: return all groups
-		if ("Admin".equalsIgnoreCase(role)) {
+		if ("ADMIN".equalsIgnoreCase(role)) {
 			return groupRepository.findAll().stream()
 					.map(this::toSummary)
 					.toList();
@@ -153,11 +153,11 @@ public class GroupService {
 		return toSummary(entity);
 	}
 
-	// ─── ADMIN ASSIGN TOPIC ──────────────────────────────────────────────
+	// ─── ASSIGN TOPIC ────────────────────────────────────────────────────
 
 	@Transactional
 	public GroupSummary assignTopic(Integer groupId, Integer projectId, UserPrincipal principal) {
-		ensureAdmin(principal);
+		ensureLecturerOrAdmin(principal);
 
 		StudentGroupEntity entity = groupRepository.findById(groupId)
 				.orElseThrow(() -> ApiException.notFound("Group not found with id: " + groupId));
@@ -210,9 +210,15 @@ public class GroupService {
 				g.getDescription(), g.getStatus());
 	}
 
+	private void ensureLecturerOrAdmin(UserPrincipal principal) {
+		if (!"LECTURER".equalsIgnoreCase(principal.getRole()) && !"ADMIN".equalsIgnoreCase(principal.getRole())) {
+			throw ApiException.forbidden("Only LECTURER or ADMIN can manage group topic allocation");
+		}
+	}
+
 	private void ensureAdmin(UserPrincipal principal) {
-		if (!"Admin".equalsIgnoreCase(principal.getRole())) {
-			throw ApiException.forbidden("Only Admin can manage groups");
+		if (!"ADMIN".equalsIgnoreCase(principal.getRole())) {
+			throw ApiException.forbidden("Only ADMIN can manage groups");
 		}
 	}
 }

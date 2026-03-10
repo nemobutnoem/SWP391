@@ -18,7 +18,7 @@ public class AdminIntegrationController {
 
     @GetMapping
     public AdminIntegrationsResponse get(Authentication auth) {
-        ensureAdmin(auth);
+        ensureAdmin((UserPrincipal) auth.getPrincipal());
 
         String jiraBaseUrl = getConfigValue("jira_base_url");
         String jiraEmail = getConfigValue("jira_email");
@@ -36,7 +36,7 @@ public class AdminIntegrationController {
     @Transactional
     public AdminIntegrationsResponse update(@Valid @RequestBody UpdateAdminIntegrationsRequest request,
             Authentication auth) {
-        ensureAdmin(auth);
+        ensureAdmin((UserPrincipal) auth.getPrincipal());
 
         if (request.jiraBaseUrl() != null) {
             setConfigValue("jira_base_url", emptyToNull(request.jiraBaseUrl()));
@@ -72,10 +72,9 @@ public class AdminIntegrationController {
         repository.save(entity);
     }
 
-    private void ensureAdmin(Authentication auth) {
-        UserPrincipal principal = (UserPrincipal) auth.getPrincipal();
-        if (!"Admin".equalsIgnoreCase(principal.getRole())) {
-            throw ApiException.forbidden("Only Admin can manage system-level integrations");
+    private void ensureAdmin(UserPrincipal principal) {
+        if (!"ADMIN".equalsIgnoreCase(principal.getRole())) {
+            throw ApiException.forbidden("Only Admin can manage integration settings");
         }
     }
 

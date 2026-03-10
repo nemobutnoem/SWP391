@@ -33,7 +33,7 @@ public class GradeController {
         }
 
         // Lecturer: only own grades
-        if ("Lecturer".equalsIgnoreCase(role)) {
+        if ("LECTURER".equalsIgnoreCase(role)) {
             var lecturer = lecturerRepository.findByUserId(principal.getUserId()).orElse(null);
             if (lecturer == null)
                 return List.of();
@@ -41,7 +41,11 @@ public class GradeController {
         }
 
         // Admin: all
-        return gradeRepository.findAll();
+        if ("ADMIN".equalsIgnoreCase(role)) {
+            return gradeRepository.findAll();
+        }
+
+        return List.of();
     }
 
     public record UpdateGradeRequest(
@@ -62,7 +66,7 @@ public class GradeController {
         entity.setMilestone(req.milestone);
         entity.setStatus("PENDING");
 
-        if ("Lecturer".equalsIgnoreCase(principal.getRole())) {
+        if ("LECTURER".equalsIgnoreCase(principal.getRole())) {
             var lecturer = lecturerRepository.findByUserId(principal.getUserId())
                     .orElseThrow(() -> ApiException.notFound("Lecturer not found"));
             entity.setLecturerId(lecturer.getId());
@@ -93,7 +97,7 @@ public class GradeController {
                 .orElseThrow(() -> ApiException.notFound("Grade not found with id: " + gradeId));
 
         // Lecturer can only update own grades
-        if ("Lecturer".equalsIgnoreCase(principal.getRole())) {
+        if ("LECTURER".equalsIgnoreCase(principal.getRole())) {
             var lecturer = lecturerRepository.findByUserId(principal.getUserId()).orElse(null);
             if (lecturer == null || !lecturer.getId().equals(entity.getLecturerId())) {
                 throw ApiException.forbidden("You can only update your own grades");
@@ -121,8 +125,8 @@ public class GradeController {
 
     private void ensureLecturerOrAdmin(UserPrincipal principal) {
         String role = principal.getRole();
-        if (!"Lecturer".equalsIgnoreCase(role) && !"Admin".equalsIgnoreCase(role)) {
-            throw ApiException.forbidden("Only Lecturer or Admin can manage grades");
+        if (!"LECTURER".equalsIgnoreCase(role) && !"ADMIN".equalsIgnoreCase(role)) {
+            throw ApiException.forbidden("Only LECTURER or ADMIN can manage grades");
         }
     }
 }

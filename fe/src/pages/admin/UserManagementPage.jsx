@@ -54,27 +54,30 @@ export function UserManagementPage() {
 
   const handleSubmit = async (formData) => {
     try {
+      const payload = { ...formData };
+      if (payload.class_id === "") payload.class_id = null;
+
       if (formData.role === "STUDENT") {
         if (editingUser) {
-          await studentService.update(editingUser.id, formData);
+          await studentService.update(editingUser.id, payload);
         } else {
-          await studentService.create(formData);
+          await studentService.create(payload);
         }
         const updatedStudents = await studentService.list();
         setLocalStudents(updatedStudents);
       } else {
         if (editingUser) {
-          await lecturerService.update(editingUser.id, formData);
+          await lecturerService.update(editingUser.id, payload);
         } else {
-          await lecturerService.create(formData);
+          await lecturerService.create(payload);
         }
         const updatedLecturers = await lecturerService.list();
         setLocalLecturers(updatedLecturers);
       }
       setIsModalOpen(false);
-      alert(`Successfully ${editingUser ? "updated" : "created"} user: ${formData.full_name}`);
     } catch (e) {
-      alert("Error saving user: " + (e.response?.data?.message || e.message));
+      console.error("Error saving user:", e);
+      throw new Error(e.response?.data?.message || e.message || "Unknown error occurred");
     }
   };
 

@@ -37,4 +37,9 @@ public class ProjectEntity {
 	public String getName() {
 		return projectName;
 	}
+
+	@JsonProperty("code")
+	public String getCode() {
+		return projectCode;
+	}
 }

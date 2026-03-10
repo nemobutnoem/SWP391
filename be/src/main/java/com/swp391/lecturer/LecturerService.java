@@ -50,7 +50,15 @@ public class LecturerService {
         entity.setEmail(request.email());
         entity.setDepartment(request.department());
         entity.setStatus(request.status() != null ? request.status() : "Active");
-        return lecturerRepository.save(entity);
+        try {
+            return lecturerRepository.save(entity);
+        } catch (org.springframework.dao.DataIntegrityViolationException ex) {
+            String msg = ex.getMostSpecificCause().getMessage();
+            if (msg.contains("uq_") || msg.contains("UNIQUE")) {
+                throw ApiException.badRequest("Duplicate data error: Lecturer email already exists.");
+            }
+            throw ApiException.badRequest("Database Error: " + msg);
+        }
     }
 
     @Transactional
@@ -82,7 +90,15 @@ public class LecturerService {
                 userRepository.save(user);
             });
         }
-        return lecturerRepository.save(entity);
+        try {
+            return lecturerRepository.save(entity);
+        } catch (org.springframework.dao.DataIntegrityViolationException ex) {
+            String msg = ex.getMostSpecificCause().getMessage();
+            if (msg.contains("uq_") || msg.contains("UNIQUE")) {
+                throw ApiException.badRequest("Duplicate data error: Lecturer email already exists.");
+            }
+            throw ApiException.badRequest("Database Error: " + msg);
+        }
     }
 
     @Transactional
@@ -102,7 +118,7 @@ public class LecturerService {
     }
 
     private void ensureAdmin(UserPrincipal principal) {
-        if (!"Admin".equalsIgnoreCase(principal.getRole())) {
+        if (!"ADMIN".equalsIgnoreCase(principal.getRole())) {
             throw ApiException.forbidden("Only Admin can manage lecturers");
         }
     }

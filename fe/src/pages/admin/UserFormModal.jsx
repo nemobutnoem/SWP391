@@ -36,15 +36,69 @@ export function UserFormModal({
         },
   );
 
+  const [errors, setErrors] = useState({});
+  const [submitError, setSubmitError] = useState("");
+
+  const validate = (name, value) => {
+    let error = "";
+    if (name === "full_name") {
+      if (!value.trim()) error = "Full name is required";
+      else if (value.trim().length < 2) error = "Name is too short";
+    }
+    if (name === "email") {
+      if (!value.trim()) {
+        error = "Email is required";
+      } else {
+        if (formData.role === "STUDENT") {
+          if (!/^[a-zA-Z0-9._%+-]+@fpt\.edu\.vn$/.test(value)) {
+            error = "Student email must end with @fpt.edu.vn";
+          }
+        } else {
+          if (!/^[a-zA-Z0-9._%+-]+@fu\.edu\.vn$/.test(value)) {
+            error = "Lecturer email must end with @fu.edu.vn";
+          }
+        }
+      }
+    }
+    if (name === "student_code" && formData.role === "STUDENT") {
+      if (!value.trim()) error = "Student code is required";
+      // e.g., SE123456
+      else if (!/^[A-Z]{2}\d{6}$/i.test(value)) error = "Format: SE123456";
+    }
+    return error;
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    const error = validate(name, value);
+    setErrors((prev) => ({ ...prev, [name]: error }));
+    if (submitError) setSubmitError(""); // Clear general error when user types
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onSubmit(formData);
-    onClose();
+    setSubmitError("");
+    
+    // Final validation check
+    const newErrors = {};
+    Object.keys(formData).forEach(key => {
+      const error = validate(key, formData[key]);
+      if (error) newErrors[key] = error;
+    });
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      setSubmitError("Please correct the errors in the form before submitting.");
+      return;
+    }
+
+    try {
+      await onSubmit(formData);
+      onClose();
+    } catch (err) {
+      setSubmitError(err.message || "Failed to save user. Please check your data.");
+    }
   };
 
   return (
@@ -54,6 +108,12 @@ export function UserFormModal({
       title={initialData ? "Edit User Profile" : "Invite New User"}
     >
       <form onSubmit={handleSubmit} className="task-form">
+        {submitError && (
+          <div className="form-summary-error">
+            <span className="error-icon">⚠️</span>
+            {submitError}
+          </div>
+        )}
         <div className="form-group">
           <label>Full Name</label>
           <input
@@ -62,8 +122,10 @@ export function UserFormModal({
             placeholder="E.g., Nguyen Van A"
             value={formData.full_name}
             onChange={handleChange}
+            className={errors.full_name ? "input-error" : ""}
             required
           />
+          {errors.full_name && <span className="error-text">{errors.full_name}</span>}
         </div>
 
         <div className="form-row">
@@ -75,8 +137,10 @@ export function UserFormModal({
               placeholder="user@fpt.edu.vn"
               value={formData.email}
               onChange={handleChange}
+              className={errors.email ? "input-error" : ""}
               required
             />
+            {errors.email && <span className="error-text">{errors.email}</span>}
           </div>
           <div className="form-group">
             <label>System Role</label>
@@ -98,8 +162,10 @@ export function UserFormModal({
                   placeholder="SE123456"
                   value={formData.student_code}
                   onChange={handleChange}
+                  className={errors.student_code ? "input-error" : ""}
                   required
                 />
+                {errors.student_code && <span className="error-text">{errors.student_code}</span>}
               </div>
               <div className="form-group">
                 <label>Major</label>

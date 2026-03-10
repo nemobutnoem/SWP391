@@ -110,7 +110,7 @@ public class GroupIntegrationService {
 	private void ensureMember(Integer groupId, UserPrincipal principal) {
 		String role = principal.getRole() == null ? "" : principal.getRole();
 		// Admin and Lecturer can access any group's integrations
-		if ("Admin".equalsIgnoreCase(role) || "Lecturer".equalsIgnoreCase(role)) {
+		if ("ADMIN".equalsIgnoreCase(role) || "LECTURER".equalsIgnoreCase(role)) {
 			return;
 		}
 		var student = studentRepository.findByUserId(principal.getUserId())
@@ -121,8 +121,8 @@ public class GroupIntegrationService {
 
 	private void ensureTeamLead(UserPrincipal principal) {
 		String role = principal.getRole() == null ? "" : principal.getRole();
-		if (!role.equalsIgnoreCase("TEAM_LEAD") && !role.equalsIgnoreCase("Admin")) {
-			throw new SecurityException("Only TEAM_LEAD or Admin can update integration settings");
+		if (!role.equalsIgnoreCase("TEAM_LEAD") && !role.equalsIgnoreCase("ADMIN")) {
+			throw new SecurityException("Only TEAM_LEAD or ADMIN can update integration settings");
 		}
 	}
 

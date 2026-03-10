@@ -6,4 +6,5 @@ import java.util.List;
 
 public interface ProjectRepository extends JpaRepository<ProjectEntity, Integer> {
 	List<ProjectEntity> findBySemesterId(Integer semesterId);
+	boolean existsByProjectCode(String projectCode);
 }

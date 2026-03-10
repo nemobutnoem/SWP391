@@ -34,9 +34,9 @@ public class StudentController {
 	public record UpsertStudentRequest(
 			@JsonProperty("user_id") Integer userId,
 			@JsonProperty("class_id") Integer classId,
-			@JsonProperty("full_name") @NotBlank String fullName,
-			@JsonProperty("student_code") String studentCode,
-			String email,
+			@JsonProperty("full_name") @NotBlank(message = "Full name is required") @jakarta.validation.constraints.Size(min = 2, max = 100, message = "Full name must be between 2 and 100 characters") String fullName,
+			@JsonProperty("student_code") @NotBlank(message = "Student code is required") String studentCode,
+			@NotBlank(message = "Email is required") @jakarta.validation.constraints.Pattern(regexp = "^[A-Za-z0-9._%+-]+@fpt\\.edu\\.vn$", message = "Only @fpt.edu.vn email is allowed") String email,
 			String major,
 			@JsonProperty("github_username") String githubUsername,
 			String status) {
@@ -54,58 +54,100 @@ public class StudentController {
 	}
 
 	@PostMapping
-	public StudentDto create(@Valid @RequestBody UpsertStudentRequest req) {
-		com.swp391.user.UserEntity user = new com.swp391.user.UserEntity();
-		user.setAccount(req.studentCode() != null ? req.studentCode() : req.email());
-		user.setRole("TEAM_MEMBER");
-		user.setGithubUsername(req.githubUsername());
-		user.setStatus(req.status() != null ? req.status() : "Active");
-		user = userRepository.save(user);
+	@org.springframework.transaction.annotation.Transactional
+	public StudentDto create(@Valid @RequestBody UpsertStudentRequest req, org.springframework.security.core.Authentication auth) {
+		ensureAdminOrLecturer(auth);
+		try {
+			String studentCode = emptyToNull(req.studentCode());
+			String email = emptyToNull(req.email());
 
-		StudentEntity s = new StudentEntity();
-		s.setUserId(user.getId());
-		s.setClassId(req.classId());
-		s.setFullName(req.fullName());
-		s.setStudentCode(req.studentCode());
-		s.setEmail(req.email());
-		s.setMajor(req.major());
-		s.setStatus(req.status() != null ? req.status() : "Active");
-		return toDto(studentRepository.save(s));
+			com.swp391.user.UserEntity user = new com.swp391.user.UserEntity();
+			user.setAccount(studentCode != null ? studentCode : email);
+			user.setRole("TEAM_MEMBER");
+			user.setGithubUsername(req.githubUsername());
+			user.setStatus(req.status() != null ? req.status() : "Active");
+			user = userRepository.save(user);
+
+			StudentEntity s = new StudentEntity();
+			s.setUserId(user.getId());
+			s.setClassId(req.classId());
+			s.setFullName(req.fullName());
+			s.setStudentCode(studentCode);
+			s.setEmail(email);
+			s.setMajor(req.major());
+			s.setStatus(req.status() != null ? req.status() : "Active");
+			return toDto(studentRepository.save(s));
+		} catch (org.springframework.dao.DataIntegrityViolationException ex) {
+			String msg = ex.getMostSpecificCause().getMessage();
+			if (msg.contains("uq_") || msg.contains("UNIQUE")) {
+				throw com.swp391.common.ApiException.badRequest("Duplicate data: Email or Student Code already exists.");
+			}
+			throw com.swp391.common.ApiException.badRequest("Database Error: " + msg);
+		}
 	}
 
 	@PutMapping("/{studentId}")
-	public StudentDto update(@PathVariable Integer studentId, @Valid @RequestBody UpsertStudentRequest req) {
+	@org.springframework.transaction.annotation.Transactional
+	public StudentDto update(@PathVariable Integer studentId, @Valid @RequestBody UpsertStudentRequest req, org.springframework.security.core.Authentication auth) {
+		ensureAdminOrLecturer(auth);
 		StudentEntity s = studentRepository.findById(studentId)
 				.orElseThrow(() -> new IllegalArgumentException("Student not found"));
+
+		String studentCode = emptyToNull(req.studentCode());
+		String email = emptyToNull(req.email());
+
 		s.setClassId(req.classId());
 		s.setFullName(req.fullName());
-		s.setStudentCode(req.studentCode());
-		s.setEmail(req.email());
+		s.setStudentCode(studentCode);
+		s.setEmail(email);
 		s.setMajor(req.major());
 		s.setStatus(req.status());
 
 		if (s.getUserId() != null) {
 			userRepository.findById(s.getUserId()).ifPresent(user -> {
 				user.setGithubUsername(req.githubUsername());
-				if (req.studentCode() != null)
-					user.setAccount(req.studentCode());
+				if (studentCode != null) {
+					user.setAccount(studentCode);
+				} else if (email != null) {
+					user.setAccount(email);
+				}
 				userRepository.save(user);
 			});
 		} else {
 			com.swp391.user.UserEntity user = new com.swp391.user.UserEntity();
-			user.setAccount(req.studentCode() != null ? req.studentCode() : req.email());
+			user.setAccount(studentCode != null ? studentCode : email);
 			user.setRole("TEAM_MEMBER");
 			user.setGithubUsername(req.githubUsername());
 			user.setStatus(req.status() != null ? req.status() : "Active");
 			user = userRepository.save(user);
 			s.setUserId(user.getId());
 		}
-		return toDto(studentRepository.save(s));
+		try {
+			return toDto(studentRepository.save(s));
+		} catch (org.springframework.dao.DataIntegrityViolationException ex) {
+			String msg = ex.getMostSpecificCause().getMessage();
+			if (msg.contains("uq_") || msg.contains("UNIQUE")) {
+				throw com.swp391.common.ApiException.badRequest("Duplicate data error: Email or Code already exists in the system.");
+			}
+			throw com.swp391.common.ApiException.badRequest("Database Error: " + msg);
+		}
+	}
+
+	private void ensureAdminOrLecturer(org.springframework.security.core.Authentication auth) {
+		com.swp391.security.UserPrincipal principal = (com.swp391.security.UserPrincipal) auth.getPrincipal();
+		String role = principal.getRole();
+		if (!"ADMIN".equalsIgnoreCase(role) && !"LECTURER".equalsIgnoreCase(role)) {
+			throw com.swp391.common.ApiException.forbidden("Only Admin or Lecturer can manage students");
+		}
 	}
 
 	@DeleteMapping("/{studentId}")
 	public void remove(@PathVariable Integer studentId) {
 		studentRepository.deleteById(studentId);
+	}
+
+	private String emptyToNull(String s) {
+		return s == null || s.isBlank() ? null : s.trim();
 	}
 
 	private StudentDto toDto(StudentEntity s) {

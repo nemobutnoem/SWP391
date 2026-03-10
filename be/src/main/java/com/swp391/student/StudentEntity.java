@@ -33,4 +33,7 @@ public class StudentEntity {
 
 	@Column(name = "status")
 	private String status;
+
+	@Column(name = "created_at", insertable = false, updatable = false)
+	private java.time.LocalDateTime createdAt;
 }

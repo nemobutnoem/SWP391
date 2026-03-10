@@ -89,7 +89,6 @@ com\swp391\integration\GroupIntegrationController.class
 com\swp391\student\StudentController$StudentDto.class
 com\swp391\integration\GroupIntegrationService.class
 com\swp391\semester\SemesterController.class
-com\swp391\group\GroupMemberController$GroupMemberDto.class
 com\swp391\integration\compat\CompatJiraProjectController$JiraProjectDto.class
 com\swp391\integration\github\dto\GithubStatsResponse.class
 com\swp391\security\JwtService.class
