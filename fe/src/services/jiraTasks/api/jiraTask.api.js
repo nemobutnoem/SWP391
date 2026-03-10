@@ -31,4 +31,14 @@ export const jiraTaskApi = {
     const res = await http.patch(`/jira-tasks/${taskId}`, payload);
     return res.data;
   },
+
+  async listComments(taskId) {
+    const res = await http.get(`/jira-tasks/${taskId}/comments`);
+    return res.data;
+  },
+
+  async addComment(taskId, content) {
+    const res = await http.post(`/jira-tasks/${taskId}/comments`, { content });
+    return res.data;
+  },
 };

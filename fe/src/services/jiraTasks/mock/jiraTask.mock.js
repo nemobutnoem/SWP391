@@ -78,4 +78,27 @@ export const jiraTaskMock = {
     item.updated_at = new Date().toISOString();
     return { ...item };
   },
+
+  async listComments(taskId) {
+    await sleep(200);
+    const all = Array.isArray(mockDb.taskComments) ? mockDb.taskComments : [];
+    return all
+      .filter((c) => Number(c.taskId) === Number(taskId))
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  },
+
+  async addComment(taskId, content) {
+    await sleep(200);
+    if (!mockDb.taskComments) mockDb.taskComments = [];
+    const comment = {
+      id: Date.now(),
+      taskId: Number(taskId),
+      userId: 1,
+      userName: "Current User",
+      content,
+      createdAt: new Date().toISOString(),
+    };
+    mockDb.taskComments.push(comment);
+    return comment;
+  },
 };

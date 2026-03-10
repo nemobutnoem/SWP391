@@ -84,6 +84,34 @@ public class JiraClient {
 				.toBodilessEntity();
 	}
 
+	public JsonNode getComments(String baseUrl, String email, String apiToken, String issueKey) {
+		return buildClient(baseUrl, email, apiToken).get()
+				.uri("/rest/api/3/issue/{issueKey}/comment?orderBy=-created&maxResults=100", issueKey)
+				.retrieve()
+				.body(JsonNode.class);
+	}
+
+	public void addComment(String baseUrl, String email, String apiToken, String issueKey, String commentBody) {
+		// Jira Cloud API v3 uses ADF (Atlassian Document Format) for comment body
+		Map<String, Object> body = new LinkedHashMap<>();
+		body.put("body", Map.of(
+				"type", "doc",
+				"version", 1,
+				"content", List.of(
+						Map.of("type", "paragraph",
+								"content", List.of(
+										Map.of("type", "text", "text", commentBody)
+								))
+				)
+		));
+		buildClient(baseUrl, email, apiToken).post()
+				.uri("/rest/api/3/issue/{issueKey}/comment", issueKey)
+				.contentType(MediaType.APPLICATION_JSON)
+				.body(body)
+				.retrieve()
+				.toBodilessEntity();
+	}
+
 	public JsonNode searchIssues(String baseUrl, String email, String apiToken, String jql, String nextPageToken, int maxResults) {
 		// Jira Cloud deprecated/removed the old search endpoint for some tenants.
 		// Use enhanced search: POST /rest/api/3/search/jql

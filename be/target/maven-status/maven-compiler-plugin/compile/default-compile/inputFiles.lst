@@ -60,6 +60,8 @@ D:\SWP391new\SWP391\be\src\main\java\com\swp391\integration\jira\JiraIssueReposi
 D:\SWP391new\SWP391\be\src\main\java\com\swp391\integration\jira\JiraProjectEntity.java
 D:\SWP391new\SWP391\be\src\main\java\com\swp391\integration\jira\JiraProjectRepository.java
 D:\SWP391new\SWP391\be\src\main\java\com\swp391\integration\jira\JiraService.java
+D:\SWP391new\SWP391\be\src\main\java\com\swp391\integration\jira\TaskCommentEntity.java
+D:\SWP391new\SWP391\be\src\main\java\com\swp391\integration\jira\TaskCommentRepository.java
 D:\SWP391new\SWP391\be\src\main\java\com\swp391\integration\sync\OutboundSyncLogEntity.java
 D:\SWP391new\SWP391\be\src\main\java\com\swp391\integration\sync\OutboundSyncLogRepository.java
 D:\SWP391new\SWP391\be\src\main\java\com\swp391\lecturer\dto\CreateLecturerRequest.java

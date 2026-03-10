@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { TasksBoardView } from "./TasksBoardView.jsx";
+import { TaskDetailModal } from "./TaskDetailModal.jsx";
 import { effectiveStatus } from "../../features/tasks/taskStats.js";
 
 import { jiraTaskService } from "../../services/jiraTasks/jiraTask.service.js";
@@ -61,6 +62,9 @@ export function TasksBoardPage() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [tasks, setTasks] = useState([]);
   const [membersByGroupId, setMembersByGroupId] = useState({});
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [comments, setComments] = useState([]);
+  const [isLoadingComments, setIsLoadingComments] = useState(false);
 
   const load = async () => {
     const data = await jiraTaskService.list();
@@ -205,18 +209,64 @@ export function TasksBoardPage() {
     }
   };
 
+  const handleTaskClick = useCallback(async (task) => {
+    setSelectedTask(task);
+    setComments([]);
+    setIsLoadingComments(true);
+    try {
+      const data = await jiraTaskService.listComments(task.id);
+      setComments(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error("[TasksBoard] load comments failed:", e);
+    } finally {
+      setIsLoadingComments(false);
+    }
+  }, []);
+
+  const handleAddComment = useCallback(async (taskId, content) => {
+    const saved = await jiraTaskService.addComment(taskId, content);
+    setComments((prev) => [saved, ...prev]);
+  }, []);
+
+  const handleCloseDetail = useCallback(() => {
+    setSelectedTask(null);
+    setComments([]);
+  }, []);
+
+  // Keep selectedTask in sync with optimistic updates from board
+  const liveSelectedTask = useMemo(() => {
+    if (!selectedTask) return null;
+    return tasks.find((t) => Number(t.id) === Number(selectedTask.id)) || selectedTask;
+  }, [selectedTask, tasks]);
+
   return (
-    <TasksBoardView
-      query={query}
-      onQueryChange={setQuery}
-      isSyncing={isSyncing}
-      onSyncJira={onSyncJira}
-      columns={columns}
-      onStatusChange={handleStatusChange}
-      membersByGroupId={membersByGroupId}
-      onAssigneeChange={handleAssigneeChange}
-      onDueDateChange={handleDueDateChange}
-      onPriorityChange={handlePriorityChange}
-    />
+    <>
+      <TasksBoardView
+        query={query}
+        onQueryChange={setQuery}
+        isSyncing={isSyncing}
+        onSyncJira={onSyncJira}
+        columns={columns}
+        onStatusChange={handleStatusChange}
+        membersByGroupId={membersByGroupId}
+        onAssigneeChange={handleAssigneeChange}
+        onDueDateChange={handleDueDateChange}
+        onPriorityChange={handlePriorityChange}
+        onTaskClick={handleTaskClick}
+      />
+      <TaskDetailModal
+        isOpen={!!liveSelectedTask}
+        onClose={handleCloseDetail}
+        task={liveSelectedTask}
+        comments={comments}
+        onAddComment={handleAddComment}
+        isLoadingComments={isLoadingComments}
+        assigneeOptions={membersByGroupId?.[liveSelectedTask?.groupId] ?? []}
+        onStatusChange={handleStatusChange}
+        onAssigneeChange={handleAssigneeChange}
+        onDueDateChange={handleDueDateChange}
+        onPriorityChange={handlePriorityChange}
+      />
+    </>
   );
 }

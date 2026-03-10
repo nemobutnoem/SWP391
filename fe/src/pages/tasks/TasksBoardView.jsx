@@ -58,6 +58,7 @@ function TaskCard({
   onAssigneeChange,
   onDueDateChange,
   onPriorityChange,
+  onTaskClick,
 }) {
   const overdue = isOverdue(task, statusKey);
 
@@ -72,11 +73,18 @@ function TaskCard({
     e.dataTransfer.effectAllowed = "move";
   };
 
+  const handleCardClick = (e) => {
+    // Don't open modal if user clicked on an interactive element
+    if (e.target.closest("select, input, button")) return;
+    onTaskClick?.(task);
+  };
+
   return (
     <div
       className={`${styles.card} ${overdue ? styles.cardDanger : ""}`}
       draggable
       onDragStart={handleDragStart}
+      onClick={handleCardClick}
     >
       <div className={styles.cardTitle}>{task.title}</div>
       <div className={styles.cardMeta}>
@@ -143,6 +151,7 @@ function Column({
   onAssigneeChange,
   onDueDateChange,
   onPriorityChange,
+  onTaskClick,
 }) {
   const [isOver, setIsOver] = React.useState(false);
 
@@ -196,6 +205,7 @@ function Column({
             onAssigneeChange={onAssigneeChange}
             onDueDateChange={onDueDateChange}
             onPriorityChange={onPriorityChange}
+            onTaskClick={onTaskClick}
           />
         ))}
       </div>
@@ -215,6 +225,7 @@ export function TasksBoardView({
   onAssigneeChange,
 	onDueDateChange,
 	onPriorityChange,
+	onTaskClick,
 }) {
   return (
     <div className={styles.page}>
@@ -249,6 +260,7 @@ export function TasksBoardView({
             onAssigneeChange={onAssigneeChange}
 			onDueDateChange={onDueDateChange}
 			onPriorityChange={onPriorityChange}
+			onTaskClick={onTaskClick}
           />
         ))}
       </div>

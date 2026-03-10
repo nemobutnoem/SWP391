@@ -5,11 +5,17 @@ import com.swp391.group.GroupMemberRepository;
 import com.swp391.integration.jira.JiraIssueEntity;
 import com.swp391.integration.jira.JiraIssueRepository;
 import com.swp391.integration.jira.JiraService;
+import com.swp391.integration.jira.TaskCommentEntity;
+import com.swp391.integration.jira.TaskCommentRepository;
 import com.swp391.security.UserPrincipal;
 import com.swp391.student.StudentRepository;
+import com.swp391.user.UserEntity;
 import com.swp391.user.UserRepository;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,6 +29,7 @@ import java.util.stream.Collectors;
 @RequestMapping("/api")
 @RequiredArgsConstructor
 public class CompatJiraTaskController {
+	private static final Logger log = LoggerFactory.getLogger(CompatJiraTaskController.class);
 	private final JiraIssueRepository jiraIssueRepository;
 	private final JiraService jiraService;
 	private final StudentRepository studentRepository;
@@ -30,6 +37,7 @@ public class CompatJiraTaskController {
 	private final UserRepository userRepository;
 	private final com.swp391.group.StudentGroupRepository groupRepository;
 	private final com.swp391.lecturer.LecturerRepository lecturerRepository;
+	private final TaskCommentRepository taskCommentRepository;
 
 	public record JiraTaskDto(
 			Integer id,
@@ -244,5 +252,74 @@ public class CompatJiraTaskController {
 				.filter(g -> lecturer.getId().equals(g.getLecturerId()))
 				.map(g -> g.getId())
 				.collect(Collectors.toSet());
+	}
+
+	// ── Task Comments ──────────────────────────────────────────
+
+	public record TaskCommentDto(
+			Integer id,
+			Integer taskId,
+			Integer userId,
+			String userName,
+			String content,
+			String createdAt) {
+	}
+
+	public record CreateCommentRequest(@NotBlank String content) {
+	}
+
+	@GetMapping("/jira-tasks/{taskId}/comments")
+	public List<TaskCommentDto> listComments(@PathVariable Integer taskId, Authentication auth) {
+		jiraIssueRepository.findById(taskId)
+				.orElseThrow(() -> new IllegalArgumentException("Task not found"));
+		return taskCommentRepository.findByTaskIdOrderByCreatedAtDesc(taskId).stream()
+				.map(this::toCommentDto)
+				.toList();
+	}
+
+	@PostMapping("/jira-tasks/{taskId}/comments")
+	public TaskCommentDto addComment(@PathVariable Integer taskId,
+			@Valid @RequestBody CreateCommentRequest req, Authentication auth) {
+		var issue = jiraIssueRepository.findById(taskId)
+				.orElseThrow(() -> new IllegalArgumentException("Task not found"));
+		UserPrincipal principal = (UserPrincipal) auth.getPrincipal();
+		var comment = new TaskCommentEntity();
+		comment.setTaskId(taskId);
+		comment.setUserId(principal.getUserId());
+		comment.setContent(req.content());
+		var saved = taskCommentRepository.save(comment);
+
+		// Push comment to Jira (best-effort, won't fail the request)
+		if (issue.getJiraIssueKey() != null && !issue.getJiraIssueKey().isBlank()) {
+			log.info("[addComment] Pushing comment to Jira: taskId={}, issueKey={}, groupId={}",
+					taskId, issue.getJiraIssueKey(), issue.getGroupId());
+			try {
+				jiraService.pushComment(issue.getGroupId(), issue.getJiraIssueKey(), req.content(), principal);
+			} catch (Exception e) {
+				log.error("[addComment] Jira push failed: {}", e.getMessage(), e);
+			}
+		} else {
+			log.warn("[addComment] No Jira issue key for taskId={}, skipping push", taskId);
+		}
+
+		return toCommentDto(saved);
+	}
+
+	private TaskCommentDto toCommentDto(TaskCommentEntity c) {
+		String userName;
+		if (c.getUserId() != null) {
+			userName = userRepository.findById(c.getUserId())
+					.map(UserEntity::getAccount)
+					.orElse(c.getJiraAuthorName() != null ? c.getJiraAuthorName() : "Unknown");
+		} else {
+			userName = c.getJiraAuthorName() != null ? c.getJiraAuthorName() : "Jira User";
+		}
+		return new TaskCommentDto(
+				c.getId(),
+				c.getTaskId(),
+				c.getUserId(),
+				userName,
+				c.getContent(),
+				c.getCreatedAt() == null ? null : c.getCreatedAt().toString());
 	}
 }

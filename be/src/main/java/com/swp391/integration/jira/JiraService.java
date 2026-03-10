@@ -9,12 +9,15 @@ import com.swp391.integration.sync.OutboundSyncLogEntity;
 import com.swp391.integration.sync.OutboundSyncLogRepository;
 import com.swp391.user.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
 public class JiraService {
+	private static final Logger log = LoggerFactory.getLogger(JiraService.class);
 	private final JiraClient jiraClient;
 	private final JiraIssueRepository jiraIssueRepository;
 	private final JiraProjectRepository jiraProjectRepository;
@@ -23,6 +26,7 @@ public class JiraService {
 	private final GroupMemberRepository memberRepository;
 	private final GroupIntegrationService integrationService;
 	private final UserRepository userRepository;
+	private final TaskCommentRepository taskCommentRepository;
 
 	public java.util.List<JiraIssueEntity> listIssues(Integer groupId, UserPrincipal principal) {
 		ensureMember(groupId, principal);
@@ -134,6 +138,19 @@ public class JiraService {
 		if (!toDelete.isEmpty()) {
 			jiraIssueRepository.deleteAll(toDelete);
 		}
+
+		// Sync comments for each issue
+		var allIssues = jiraIssueRepository.findByGroupId(groupId);
+		for (var issue : allIssues) {
+			if (issue.getJiraIssueKey() != null && !issue.getJiraIssueKey().isBlank()) {
+				try {
+					syncComments(issue, cfg);
+				} catch (Exception ex) {
+					log.warn("[syncIssues] Failed to sync comments for {}: {}", issue.getJiraIssueKey(), ex.getMessage());
+				}
+			}
+		}
+
 		return upserted;
 	}
 
@@ -263,11 +280,135 @@ public class JiraService {
 		}
 	}
 
+	@Transactional
+	public void pushComment(Integer groupId, String issueKey, String commentText, UserPrincipal principal) {
+		log.info("[pushComment] groupId={}, issueKey={}, userId={}", groupId, issueKey, principal.getUserId());
+
+		var issue = jiraIssueRepository.findByGroupIdAndJiraIssueKey(groupId, issueKey)
+				.orElse(null);
+		if (issue == null) {
+			log.warn("[pushComment] No local issue found for groupId={}, issueKey={}", groupId, issueKey);
+			return;
+		}
+
+		var cfg = integrationService.resolveJiraConfig(groupId);
+		if (cfg.baseUrl() == null || cfg.email() == null || cfg.apiToken() == null) {
+			log.warn("[pushComment] Jira not configured for groupId={}", groupId);
+			return;
+		}
+		log.info("[pushComment] Using Jira baseUrl={}, email={}", cfg.baseUrl(), cfg.email());
+
+		OutboundSyncLogEntity syncLog = new OutboundSyncLogEntity();
+		syncLog.setTarget("jira");
+		syncLog.setEntityType("Jira_Comment");
+		syncLog.setEntityLocalId(issue.getId());
+		syncLog.setRemoteId(issueKey);
+		syncLog.setAction("add_comment");
+		syncLog.setRequestedByUserId(principal.getUserId());
+		syncLog.setStatus("PENDING");
+		syncLog = outboundSyncLogRepository.save(syncLog);
+
+		try {
+			jiraClient.addComment(cfg.baseUrl(), cfg.email(), cfg.apiToken(), issueKey, commentText);
+			syncLog.setStatus("SUCCESS");
+			outboundSyncLogRepository.save(syncLog);
+			log.info("[pushComment] SUCCESS for issueKey={}", issueKey);
+		} catch (Exception ex) {
+			syncLog.setStatus("FAILED");
+			syncLog.setErrorMessage(ex.getMessage());
+			outboundSyncLogRepository.save(syncLog);
+			log.error("[pushComment] FAILED for issueKey={}: {}", issueKey, ex.getMessage(), ex);
+		}
+	}
+
 	private void ensureMember(Integer groupId, UserPrincipal principal) {
 		var student = studentRepository.findByUserId(principal.getUserId())
 				.orElseThrow(() -> new IllegalArgumentException("Student not found for current user"));
 		memberRepository.findByGroupIdAndStudentId(groupId, student.getId())
 				.orElseThrow(() -> new SecurityException("You are not a member of this group"));
+	}
+
+	private void syncComments(JiraIssueEntity issue, GroupIntegrationService.JiraConfig cfg) {
+		var commentsJson = jiraClient.getComments(cfg.baseUrl(), cfg.email(), cfg.apiToken(), issue.getJiraIssueKey());
+		var commentsNode = commentsJson.path("comments");
+		if (commentsNode == null || !commentsNode.isArray()) return;
+
+		for (var c : commentsNode) {
+			String jiraCommentId = c.path("id").asText(null);
+			if (jiraCommentId == null || jiraCommentId.isBlank()) continue;
+
+			// Skip if already synced
+			if (taskCommentRepository.findByJiraCommentId(jiraCommentId).isPresent()) continue;
+
+			// Extract plain text from ADF body
+			String content = extractTextFromAdf(c.path("body"));
+			if (content == null || content.isBlank()) continue;
+
+			// Map Jira author to local user
+			String authorAccountId = c.path("author").path("accountId").asText(null);
+			String authorDisplayName = c.path("author").path("displayName").asText(null);
+			Integer userId = null;
+			if (authorAccountId != null && !authorAccountId.isBlank()) {
+				userId = userRepository.findByJiraAccountId(authorAccountId)
+						.map(u -> u.getId())
+						.orElse(null);
+			}
+
+			// Parse created timestamp
+			java.time.LocalDateTime createdAt = null;
+			String created = c.path("created").asText(null);
+			if (created != null) {
+				try {
+					createdAt = java.time.LocalDateTime.ofInstant(
+							java.time.Instant.parse(created), java.time.ZoneOffset.UTC);
+				} catch (Exception ignored) {
+					// Jira sometimes uses non-ISO format
+					try {
+						createdAt = java.time.LocalDateTime.parse(created,
+								java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSZ"));
+					} catch (Exception ignored2) {
+						createdAt = java.time.LocalDateTime.now();
+					}
+				}
+			}
+
+			var entity = new TaskCommentEntity();
+			entity.setTaskId(issue.getId());
+			entity.setUserId(userId);
+			entity.setContent(content);
+			entity.setJiraCommentId(jiraCommentId);
+			entity.setJiraAuthorName(authorDisplayName);
+			entity.setCreatedAt(createdAt);
+			entity.setUpdatedAt(createdAt);
+			taskCommentRepository.save(entity);
+			log.info("[syncComments] Synced comment {} for issue {}", jiraCommentId, issue.getJiraIssueKey());
+		}
+	}
+
+	private String extractTextFromAdf(JsonNode body) {
+		if (body == null || body.isMissingNode()) return "";
+		// ADF: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "..." }] }] }
+		if (body.isTextual()) return body.asText();
+		var sb = new StringBuilder();
+		extractTextRecursive(body, sb);
+		return sb.toString().trim();
+	}
+
+	private void extractTextRecursive(JsonNode node, StringBuilder sb) {
+		if (node == null || node.isMissingNode()) return;
+		if (node.has("text")) {
+			sb.append(node.path("text").asText());
+		}
+		var content = node.path("content");
+		if (content.isArray()) {
+			for (var child : content) {
+				extractTextRecursive(child, sb);
+			}
+			// Add newline after paragraph-level blocks
+			if ("paragraph".equals(node.path("type").asText(null))) {
+				sb.append("\n");
+			}
+		}
 	}
 }
 

@@ -1,0 +1,391 @@
+/* ================ Overlay ================ */
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease-out;
+}
+
+/* ================ Modal Shell ================ */
+.modal {
+  background: white;
+  width: 100%;
+  max-width: 960px;
+  max-height: 90vh;
+  border-radius: var(--radius-xl, 16px);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ================ Header ================ */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--slate-100, #f1f5f9);
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.issueKey {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--brand-600, #4f46e5);
+  background: var(--brand-50, #eef2ff);
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+}
+
+.issueType {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--slate-500, #64748b);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.closeBtn {
+  background: none;
+  border: none;
+  font-size: 1.75rem;
+  color: var(--slate-400, #94a3b8);
+  cursor: pointer;
+  line-height: 1;
+  padding: 0.25rem;
+  transition: color 0.15s;
+}
+
+.closeBtn:hover {
+  color: var(--slate-900, #0f172a);
+}
+
+/* ================ Body (two-col) ================ */
+.body {
+  display: flex;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.mainCol {
+  flex: 1;
+  padding: 1.5rem;
+  overflow-y: auto;
+  border-right: 1px solid var(--slate-100, #f1f5f9);
+}
+
+.sideCol {
+  width: 280px;
+  min-width: 280px;
+  padding: 1.5rem;
+  overflow-y: auto;
+  background: var(--slate-50, #f8fafc);
+}
+
+/* ================ Title ================ */
+.title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--slate-900, #0f172a);
+  margin: 0 0 1.25rem;
+  line-height: 1.4;
+}
+
+/* ================ Sections ================ */
+.section {
+  margin-bottom: 1.5rem;
+}
+
+.sectionLabel {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--slate-500, #64748b);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 0 0 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.description {
+  font-size: 0.9375rem;
+  color: var(--slate-700, #334155);
+  line-height: 1.7;
+  white-space: pre-wrap;
+  margin: 0;
+}
+
+/* ================ Comment Form ================ */
+.commentForm {
+  margin-bottom: 1rem;
+}
+
+.commentInput {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--slate-200, #e2e8f0);
+  border-radius: var(--radius-md, 8px);
+  font-size: 0.875rem;
+  color: var(--slate-800, #1e293b);
+  resize: vertical;
+  outline: none;
+  font-family: inherit;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
+}
+
+.commentInput:focus {
+  border-color: var(--brand-400, #818cf8);
+  box-shadow: 0 0 0 3px var(--brand-50, #eef2ff);
+}
+
+.commentFormActions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.5rem;
+}
+
+.commentSubmit {
+  padding: 0.4rem 1rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  border: none;
+  border-radius: var(--radius-md, 8px);
+  cursor: pointer;
+  background: var(--brand-600, #4f46e5);
+  color: white;
+  transition: background 0.2s;
+}
+
+.commentSubmit:hover:not(:disabled) {
+  background: var(--brand-700, #4338ca);
+}
+
+.commentSubmit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ================ Comment List ================ */
+.commentList {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.commentItem {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.commentAvatar {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  border-radius: 50%;
+  background: var(--brand-100, #e0e7ff);
+  color: var(--brand-700, #4338ca);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6875rem;
+  font-weight: 800;
+}
+
+.commentBody {
+  flex: 1;
+  background: var(--slate-50, #f8fafc);
+  border-radius: var(--radius-md, 8px);
+  padding: 0.75rem;
+}
+
+.commentMeta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.commentAuthor {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--slate-800, #1e293b);
+}
+
+.commentTime {
+  font-size: 0.6875rem;
+  color: var(--slate-400, #94a3b8);
+}
+
+.commentText {
+  font-size: 0.875rem;
+  color: var(--slate-700, #334155);
+  line-height: 1.6;
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.commentCount {
+  font-size: 0.6875rem;
+  font-weight: 800;
+  background: var(--brand-100, #e0e7ff);
+  color: var(--brand-700, #4338ca);
+  padding: 0.1rem 0.45rem;
+  border-radius: 99px;
+}
+
+.noComments {
+  font-size: 0.875rem;
+  color: var(--slate-400, #94a3b8);
+  margin: 0;
+}
+
+.loadingText {
+  font-size: 0.875rem;
+  color: var(--slate-400, #94a3b8);
+  margin: 0 0 0.75rem;
+}
+
+/* ================ Sidebar detail rows ================ */
+.detailRow {
+  margin-bottom: 1.25rem;
+}
+
+.detailLabel {
+  display: block;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--slate-400, #94a3b8);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.35rem;
+}
+
+.detailSelect {
+  width: 100%;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--slate-700, #334155);
+  background: white;
+  border: 1px solid var(--slate-200, #e2e8f0);
+  border-radius: var(--radius-sm, 6px);
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.detailSelect:hover {
+  border-color: var(--brand-300, #a5b4fc);
+}
+
+.detailInput {
+  width: 100%;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--slate-700, #334155);
+  background: white;
+  border: 1px solid var(--slate-200, #e2e8f0);
+  border-radius: var(--radius-sm, 6px);
+  outline: none;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+
+.detailInput:hover,
+.detailInput:focus {
+  border-color: var(--brand-300, #a5b4fc);
+}
+
+.detailValue {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--slate-700, #334155);
+}
+
+.priorityWrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.priorityDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ================ Status badges ================ */
+.badgeTodo {
+  background: var(--slate-100, #f1f5f9);
+  color: var(--slate-600, #475569);
+  border-color: var(--slate-200, #e2e8f0);
+}
+
+.badgeInProgress {
+  background: #e3f2fd;
+  color: #1565c0;
+  border-color: #90caf9;
+}
+
+.badgeDone {
+  background: #e8f5e9;
+  color: #2e7d32;
+  border-color: #a5d6a7;
+}
+
+/* ================ Animations ================ */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ================ Responsive ================ */
+@media (max-width: 720px) {
+  .body {
+    flex-direction: column;
+  }
+
+  .mainCol {
+    border-right: none;
+    border-bottom: 1px solid var(--slate-100, #f1f5f9);
+  }
+
+  .sideCol {
+    width: 100%;
+    min-width: unset;
+  }
+
+  .modal {
+    max-width: 95vw;
+  }
+}
