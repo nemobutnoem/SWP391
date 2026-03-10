@@ -232,11 +232,17 @@ public class CompatJiraTaskController {
 					.map(u -> u.getAccount())
 					.orElse(null);
 		}
+		if (assigneeName == null && e.getAssigneeDisplayName() != null) {
+			assigneeName = e.getAssigneeDisplayName();
+		}
 		String reporterName = null;
 		if (e.getReporterUserId() != null) {
 			reporterName = userRepository.findById(e.getReporterUserId())
 					.map(u -> u.getAccount())
 					.orElse(null);
+		}
+		if (reporterName == null && e.getReporterDisplayName() != null) {
+			reporterName = e.getReporterDisplayName();
 		}
 		return new JiraTaskDto(
 				e.getId(),

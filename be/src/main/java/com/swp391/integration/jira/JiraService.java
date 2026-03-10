@@ -77,7 +77,8 @@ public class JiraService {
 				String description = extractTextFromAdf(fields.path("description"));
 				String issueType = fields.path("issuetype").path("name").asText(null);
 				String status = fields.path("status").path("name").asText(null);
-					String assigneeAccountId = fields.path("assignee").path("accountId").asText(null);
+				String assigneeAccountId = fields.path("assignee").path("accountId").asText(null);
+				String assigneeDisplayName = fields.path("assignee").path("displayName").asText(null);
 					String priority = fields.path("priority").path("name").asText(null);
 				String dueDate = fields.path("duedate").asText(null);
 				String updated = fields.path("updated").asText(null);
@@ -85,6 +86,7 @@ public class JiraService {
 
 				// Reporter
 				String reporterAccountId = fields.path("reporter").path("accountId").asText(null);
+				String reporterDisplayName = fields.path("reporter").path("displayName").asText(null);
 
 				// Parent issue
 				String parentIssueKey = fields.path("parent").path("key").asText(null);
@@ -167,6 +169,7 @@ public class JiraService {
 								.orElse(null);
 					}
 					entity.setAssigneeUserId(assigneeUserId);
+					entity.setAssigneeDisplayName(assigneeDisplayName);
 				// Reporter
 				Integer reporterUserId = null;
 				if (reporterAccountId != null && !reporterAccountId.isBlank()) {
@@ -175,6 +178,7 @@ public class JiraService {
 							.orElse(null);
 				}
 				entity.setReporterUserId(reporterUserId);
+				entity.setReporterDisplayName(reporterDisplayName);
 				entity.setParentIssueKey(parentIssueKey);
 				entity.setLabels(labelsStr);
 				entity.setSprintName(sprintName);

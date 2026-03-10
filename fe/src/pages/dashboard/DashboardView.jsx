@@ -4,11 +4,13 @@ import { StatCard } from "../../components/common/StatCard.jsx";
 import { StatusBadge } from "../../components/common/StatusComponents.jsx";
 import { GitHubInsights } from "../../components/github/GitHubInsights.jsx";
 import { ContributionScorecards } from "./ContributionScorecards.jsx";
+import { MemberWorkProgress } from "./MemberWorkProgress.jsx";
 import "./dashboardPage.css";
 
 export function DashboardView({
   stats,
   activities = [],
+  tasks = [],
 }) {
   const { counts, progressPct } = stats;
 
@@ -49,6 +51,11 @@ export function DashboardView({
           icon="⚠️"
         />
       </div>
+
+      {/* ── Member Work Progress (full width) ── */}
+      <section className="dashboard-view__section" style={{ marginBottom: "2rem" }}>
+        <MemberWorkProgress tasks={tasks} activities={activities} />
+      </section>
 
       <div className="dashboard-view__main-content">
         <div className="dashboard-view__left-col">

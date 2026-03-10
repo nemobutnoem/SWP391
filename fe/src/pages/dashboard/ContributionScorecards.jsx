@@ -3,7 +3,6 @@ import "./contributionScorecards.css";
 
 export function ContributionScorecards({ activities = [] }) {
   const { entries, maxCommits } = useMemo(() => {
-    // Deduplicate by commit_sha to avoid counting same commit on multiple branches
     const seen = new Set();
     const unique = activities.filter((a) => {
       if (!a.commit_sha || seen.has(a.commit_sha)) return false;
@@ -64,4 +63,4 @@ export function ContributionScorecards({ activities = [] }) {
       })}
     </div>
   );
-}
+}

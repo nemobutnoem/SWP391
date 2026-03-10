@@ -49,8 +49,14 @@ public class JiraIssueEntity {
 	@Column(name = "assignee_user_id")
 	private Integer assigneeUserId;
 
+	@Column(name = "assignee_display_name")
+	private String assigneeDisplayName;
+
 	@Column(name = "reporter_user_id")
 	private Integer reporterUserId;
+
+	@Column(name = "reporter_display_name")
+	private String reporterDisplayName;
 
 	@Column(name = "jira_created_at")
 	private LocalDateTime jiraCreatedAt;

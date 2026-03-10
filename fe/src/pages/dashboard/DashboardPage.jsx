@@ -84,6 +84,7 @@ export function DashboardPage() {
     <DashboardView
       stats={stats}
       activities={activities}
+      tasks={tasks}
       onSync={handleSync}
       isSyncing={isSyncing}
     />
