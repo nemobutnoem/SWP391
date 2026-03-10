@@ -95,6 +95,13 @@ export function TaskDetailModal({
   const issueKey = raw.jira_issue_key || raw.jiraIssueKey || "";
   const description = raw.description || "";
   const issueType = raw.issue_type || raw.issueType || "";
+  const reporterName = raw.reporterName || raw.reporter_name || "";
+  const parentIssueKey = raw.parent_issue_key || raw.parentIssueKey || "";
+  const labels = raw.labels || "";
+  const sprintName = raw.sprint_name || raw.sprintName || "";
+  const storyPoints = raw.story_points ?? raw.storyPoints ?? null;
+  const jiraCreatedAt = raw.jira_created_at || raw.jiraCreatedAt || "";
+  const jiraUpdatedAt = raw.jira_updated_at || raw.jiraUpdatedAt || "";
 
   const handleSubmitComment = async (e) => {
     e.preventDefault();
@@ -231,6 +238,17 @@ export function TaskDetailModal({
               </select>
             </div>
 
+            {/* Reporter */}
+            {reporterName && (
+              <div className={styles.detailRow}>
+                <span className={styles.detailLabel}>Reporter</span>
+                <span className={styles.detailValue}>
+                  <span className={styles.inlineAvatar}>{getInitials(reporterName)}</span>
+                  {reporterName}
+                </span>
+              </div>
+            )}
+
             {/* Priority */}
             <div className={styles.detailRow}>
               <span className={styles.detailLabel}>Priority</span>
@@ -239,17 +257,18 @@ export function TaskDetailModal({
                   className={styles.priorityDot}
                   style={{ background: priorityColor(task.priority) }}
                 />
-                <input
-                  className={styles.detailInput}
+                <select
+                  className={styles.detailSelect}
                   value={task.priority || ""}
-                  placeholder="None"
-                  onChange={() => {}}
-                  onBlur={(e) => onPriorityChange?.(task.id, e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter")
-                      onPriorityChange?.(task.id, e.target.value);
-                  }}
-                />
+                  onChange={(e) => onPriorityChange?.(task.id, e.target.value)}
+                >
+                  <option value="">None</option>
+                  <option value="Highest">Highest</option>
+                  <option value="High">High</option>
+                  <option value="Medium">Medium</option>
+                  <option value="Low">Low</option>
+                  <option value="Lowest">Lowest</option>
+                </select>
               </div>
             </div>
 
@@ -264,22 +283,64 @@ export function TaskDetailModal({
               />
             </div>
 
+            {/* Sprint */}
+            {sprintName && (
+              <div className={styles.detailRow}>
+                <span className={styles.detailLabel}>Sprint</span>
+                <span className={styles.detailValue}>
+                  <span className={styles.sprintBadge}>{sprintName}</span>
+                </span>
+              </div>
+            )}
+
+            {/* Story Points */}
+            {storyPoints != null && (
+              <div className={styles.detailRow}>
+                <span className={styles.detailLabel}>Story Points</span>
+                <span className={styles.detailValue}>
+                  <span className={styles.storyPointBadge}>{storyPoints}</span>
+                </span>
+              </div>
+            )}
+
+            {/* Labels */}
+            {labels && (
+              <div className={styles.detailRow}>
+                <span className={styles.detailLabel}>Labels</span>
+                <div className={styles.labelsList}>
+                  {labels.split(",").map((l, i) => (
+                    <span key={i} className={styles.labelBadge}>{l.trim()}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Parent */}
+            {parentIssueKey && (
+              <div className={styles.detailRow}>
+                <span className={styles.detailLabel}>Parent</span>
+                <span className={styles.detailValue}>
+                  <span className={styles.parentKeyBadge}>{parentIssueKey}</span>
+                </span>
+              </div>
+            )}
+
             {/* Created */}
-            {raw.jira_created_at && (
+            {jiraCreatedAt && (
               <div className={styles.detailRow}>
                 <span className={styles.detailLabel}>Created</span>
                 <span className={styles.detailValue}>
-                  {formatDate(raw.jira_created_at)}
+                  {formatDate(jiraCreatedAt)}
                 </span>
               </div>
             )}
 
             {/* Updated */}
-            {raw.jira_updated_at && (
+            {jiraUpdatedAt && (
               <div className={styles.detailRow}>
                 <span className={styles.detailLabel}>Updated</span>
                 <span className={styles.detailValue}>
-                  {formatDate(raw.jira_updated_at)}
+                  {formatDate(jiraUpdatedAt)}
                 </span>
               </div>
             )}

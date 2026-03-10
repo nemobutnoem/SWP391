@@ -229,7 +229,9 @@ export function SyncView({
                         <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
                           <path d="M9.5 3.25a2.25 2.25 0 1 1 3 2.122V6A2.5 2.5 0 0 1 10 8.5H6a1 1 0 0 0-1 1v1.128a2.251 2.251 0 1 1-1.5 0V5.372a2.25 2.25 0 1 1 1.5 0v1.836A2.493 2.493 0 0 1 6 7h4a1 1 0 0 0 1-1v-.628A2.25 2.25 0 0 1 9.5 3.25Z" />
                         </svg>
-                        <code>{activity.ref_name || "main"}</code>
+                        {(activity._branches || [activity.ref_name || "main"]).map((b) => (
+                          <code key={b} style={{ marginRight: 4 }}>{b}</code>
+                        ))}
                       </div>
                       {activity.repo_name && (
                         <div className="ca-commit-repo">

@@ -18,6 +18,38 @@
     max-width: 320px;
 }
 
+/* Admin hierarchical filters */
+.integration-admin-filters {
+    margin-bottom: 1.5rem;
+}
+
+.integration-filter-row {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.integration-filter-group {
+    flex: 1;
+    min-width: 180px;
+}
+
+/* Team lead group info */
+.integration-group-info {
+    margin-bottom: 1.5rem;
+}
+
+.integration-group-name {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--slate-700, #334155);
+    background: var(--slate-50, #f8fafc);
+    border: 1px solid var(--slate-200, #e2e8f0);
+    border-radius: var(--radius-md, 8px);
+    max-width: 320px;
+}
+
 /* Message */
 .integration-msg {
     padding: 0.75rem 1rem;
@@ -126,6 +158,19 @@
 
 .integration-input::placeholder {
     color: var(--slate-400, #94a3b8);
+}
+
+.integration-input[readonly] {
+    background: var(--slate-100, #f1f5f9);
+    color: var(--slate-500, #64748b);
+    cursor: not-allowed;
+    border-color: var(--slate-200, #e2e8f0);
+}
+
+.integration-input[readonly]:focus {
+    border-color: var(--slate-200, #e2e8f0);
+    box-shadow: none;
+    background: var(--slate-100, #f1f5f9);
 }
 
 .integration-hint {

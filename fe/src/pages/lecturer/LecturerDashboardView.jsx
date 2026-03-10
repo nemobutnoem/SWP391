@@ -63,9 +63,16 @@ export function LecturerDashboardView() {
     return myGroups.map((g) => {
       const members = allMembers.filter((m) => m.group_id === g.id);
       const tasks = jiraTasks.filter((t) => t.group_id === g.id);
-      const activities = githubActivities
+      const rawActivities = githubActivities
         .filter((a) => a.group_id === g.id)
         .sort((a, b) => new Date(b.occurred_at) - new Date(a.occurred_at));
+      // Deduplicate commits that appear on multiple branches
+      const seenSha = new Set();
+      const activities = rawActivities.filter((a) => {
+        if (!a.commit_sha || seenSha.has(a.commit_sha)) return false;
+        seenSha.add(a.commit_sha);
+        return true;
+      });
       const groupGrades = myGrades.filter((gr) => gr.group_id === g.id);
 
       const doneTasks = tasks.filter((t) => t.status === "Done" || t.status === "DONE").length;
@@ -84,7 +91,7 @@ export function LecturerDashboardView() {
         doneTasks,
         totalTasks,
         overdueTasks,
-        totalCommits: activities.reduce((s, a) => s + (a.pushed_commit_count || 1), 0),
+        totalCommits: activities.length,
       };
     });
   }, [myGroups, allMembers, jiraTasks, githubActivities, myGrades]);

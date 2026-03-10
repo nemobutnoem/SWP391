@@ -67,7 +67,7 @@ export function SyncPage() {
   };
 
   const filteredActivities = useMemo(() => {
-    return allActivities.filter((a) => {
+    const filtered = allActivities.filter((a) => {
       const repoOk = repoFilter === "all" || a.repo_name === repoFilter;
       const branchOk =
         branchFilter === "all" || (a.ref_name || "main") === branchFilter;
@@ -81,21 +81,44 @@ export function SyncPage() {
         (a.commit_sha || "").toLowerCase().includes(searchQuery.toLowerCase());
       return repoOk && branchOk && actorOk && searchOk;
     });
+
+    // Deduplicate commits that appear on multiple branches.
+    // Merge branch names into _branches array so UI can show all of them.
+    const map = new Map();
+    for (const a of filtered) {
+      const key = a.commit_sha || a.id;
+      if (map.has(key)) {
+        const existing = map.get(key);
+        const branch = a.ref_name || "main";
+        if (!existing._branches.includes(branch)) {
+          existing._branches.push(branch);
+        }
+      } else {
+        map.set(key, { ...a, _branches: [a.ref_name || "main"] });
+      }
+    }
+    return [...map.values()].sort(
+      (a, b) => new Date(b.occurred_at) - new Date(a.occurred_at)
+    );
   }, [allActivities, repoFilter, branchFilter, actorFilter, searchQuery]);
 
-  // Stats
+  // Stats – count unique commits by SHA, not raw records
   const stats = useMemo(() => {
+    const uniqueCommits = new Set(allActivities.map((a) => a.commit_sha).filter(Boolean));
     const uniqueBranches = new Set(allActivities.map((a) => a.ref_name || "main"));
     const uniqueContributors = new Set(allActivities.map((a) => a.github_username));
     const today = new Date().toDateString();
-    const todayCommits = allActivities.filter(
-      (a) => new Date(a.occurred_at).toDateString() === today
-    ).length;
+    const todayShas = new Set(
+      allActivities
+        .filter((a) => new Date(a.occurred_at).toDateString() === today)
+        .map((a) => a.commit_sha)
+        .filter(Boolean)
+    );
     return {
-      totalCommits: allActivities.length,
+      totalCommits: uniqueCommits.size,
       activeBranches: uniqueBranches.size,
       contributors: uniqueContributors.size,
-      todayCommits,
+      todayCommits: todayShas.size,
     };
   }, [allActivities]);
 

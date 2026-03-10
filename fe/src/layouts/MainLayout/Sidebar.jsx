@@ -60,6 +60,9 @@ export function Sidebar() {
             <NavLink to="/admin/integrations" className={navClass}>
               Integration Settings
             </NavLink>
+            <NavLink to="/group/integrations" className={navClass}>
+              Group Integrations
+            </NavLink>
           </div>
         )}
 

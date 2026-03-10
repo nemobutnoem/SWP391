@@ -3,7 +3,14 @@ import "./contributionScorecards.css";
 
 export function ContributionScorecards({ activities = [] }) {
   const { entries, maxCommits } = useMemo(() => {
-    const map = activities.reduce((acc, act) => {
+    // Deduplicate by commit_sha to avoid counting same commit on multiple branches
+    const seen = new Set();
+    const unique = activities.filter((a) => {
+      if (!a.commit_sha || seen.has(a.commit_sha)) return false;
+      seen.add(a.commit_sha);
+      return true;
+    });
+    const map = unique.reduce((acc, act) => {
       const user = act.github_username;
       if (!user) return acc;
       if (!acc[user]) acc[user] = { commits: 0, additions: 0, deletions: 0 };

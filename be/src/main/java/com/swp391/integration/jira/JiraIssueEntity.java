@@ -31,7 +31,7 @@ public class JiraIssueEntity {
 	@Column(name = "summary")
 	private String summary;
 
-	@Column(name = "description")
+	@Column(name = "description", columnDefinition = "NVARCHAR(MAX)")
 	private String description;
 
 	@Column(name = "status")
@@ -40,15 +40,33 @@ public class JiraIssueEntity {
 	@Column(name = "priority")
 	private String priority;
 
+	@Column(name = "parent_issue_key")
+	private String parentIssueKey;
+
+	@Column(name = "epic_issue_key")
+	private String epicIssueKey;
+
 	@Column(name = "assignee_user_id")
 	private Integer assigneeUserId;
 
 	@Column(name = "reporter_user_id")
 	private Integer reporterUserId;
 
+	@Column(name = "jira_created_at")
+	private LocalDateTime jiraCreatedAt;
+
 	@Column(name = "jira_due_date")
 	private LocalDate jiraDueDate;
 
 	@Column(name = "jira_updated_at")
 	private LocalDateTime jiraUpdatedAt;
+
+	@Column(name = "labels")
+	private String labels;
+
+	@Column(name = "sprint_name")
+	private String sprintName;
+
+	@Column(name = "story_points")
+	private Double storyPoints;
 }

@@ -48,9 +48,18 @@ public class CompatJiraTaskController {
 			String description,
 			String status,
 			String priority,
+			@JsonProperty("issue_type") String issueType,
 			LocalDate dueDate,
 			Integer assigneeUserId,
-			String assigneeName) {
+			String assigneeName,
+			Integer reporterUserId,
+			String reporterName,
+			@JsonProperty("parent_issue_key") String parentIssueKey,
+			String labels,
+			@JsonProperty("sprint_name") String sprintName,
+			@JsonProperty("story_points") Double storyPoints,
+			@JsonProperty("jira_created_at") java.time.LocalDateTime jiraCreatedAt,
+			@JsonProperty("jira_updated_at") java.time.LocalDateTime jiraUpdatedAt) {
 	}
 
 	public record UpdateTaskRequest(
@@ -223,6 +232,12 @@ public class CompatJiraTaskController {
 					.map(u -> u.getAccount())
 					.orElse(null);
 		}
+		String reporterName = null;
+		if (e.getReporterUserId() != null) {
+			reporterName = userRepository.findById(e.getReporterUserId())
+					.map(u -> u.getAccount())
+					.orElse(null);
+		}
 		return new JiraTaskDto(
 				e.getId(),
 				e.getGroupId(),
@@ -232,9 +247,18 @@ public class CompatJiraTaskController {
 				e.getDescription(),
 				e.getStatus(),
 				e.getPriority(),
+				e.getIssueType(),
 				e.getJiraDueDate(),
 				e.getAssigneeUserId(),
-				assigneeName);
+				assigneeName,
+				e.getReporterUserId(),
+				reporterName,
+				e.getParentIssueKey(),
+				e.getLabels(),
+				e.getSprintName(),
+				e.getStoryPoints(),
+				e.getJiraCreatedAt(),
+				e.getJiraUpdatedAt());
 	}
 
 	private void ensureMember(Integer groupId, UserPrincipal principal) {

@@ -58,6 +58,10 @@ export function AppRoutes() {
             <Route path="/tasks" element={<TasksBoardPage />} />
             <Route path="/activity" element={<ActivityPage />} />
             <Route path="/sync" element={<SyncPage />} />
+          </Route>
+
+          {/* Group Integration - accessible by Admin, Lecturer, Team Lead, and Team Member */}
+          <Route element={<RoleGuard allow={[ROLES.ADMIN, ROLES.LECTURER, ROLES.TEAM_LEAD, ROLES.TEAM_MEMBER]} />}>
             <Route path="/group/integrations" element={<GroupIntegrationPage />} />
           </Route>
         </Route>

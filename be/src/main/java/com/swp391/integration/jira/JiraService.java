@@ -74,16 +74,67 @@ public class JiraService {
 				}
 				var fields = issueNode.path("fields");
 				String summary = fields.path("summary").asText(null);
+				String description = extractTextFromAdf(fields.path("description"));
 				String issueType = fields.path("issuetype").path("name").asText(null);
 				String status = fields.path("status").path("name").asText(null);
 					String assigneeAccountId = fields.path("assignee").path("accountId").asText(null);
 					String priority = fields.path("priority").path("name").asText(null);
 				String dueDate = fields.path("duedate").asText(null);
 				String updated = fields.path("updated").asText(null);
+				String created = fields.path("created").asText(null);
+
+				// Reporter
+				String reporterAccountId = fields.path("reporter").path("accountId").asText(null);
+
+				// Parent issue
+				String parentIssueKey = fields.path("parent").path("key").asText(null);
+
+				// Labels
+				var labelsNode = fields.path("labels");
+				String labelsStr = null;
+				if (labelsNode != null && labelsNode.isArray() && labelsNode.size() > 0) {
+					var labelList = new java.util.ArrayList<String>();
+					for (var ln : labelsNode) labelList.add(ln.asText());
+					labelsStr = String.join(",", labelList);
+				}
+
+				// Sprint (customfield_10020 is the standard Jira sprint field)
+				String sprintName = null;
+				var sprintNode = fields.path("sprint");
+				if (sprintNode != null && !sprintNode.isMissingNode() && !sprintNode.isNull()) {
+					sprintName = sprintNode.path("name").asText(null);
+				}
+				// Fallback: customfield_10020 (array of sprint objects)
+				if (sprintName == null) {
+					var sprintArrayNode = fields.path("customfield_10020");
+					if (sprintArrayNode != null && sprintArrayNode.isArray() && sprintArrayNode.size() > 0) {
+						// Take the last (most recent/active) sprint
+						sprintName = sprintArrayNode.get(sprintArrayNode.size() - 1).path("name").asText(null);
+					}
+				}
+
+				// Story points: customfield_10016 (standard) or story_points
+				Double storyPoints = null;
+				var spNode = fields.path("story_points");
+				if (spNode == null || spNode.isMissingNode() || spNode.isNull()) {
+					spNode = fields.path("customfield_10016");
+				}
+				if (spNode != null && !spNode.isMissingNode() && !spNode.isNull()) {
+					try { storyPoints = spNode.asDouble(); } catch (Exception ignored) {}
+				}
 				java.time.LocalDateTime jiraUpdatedAt = null;
 				try {
 					if (updated != null && !updated.isBlank()) {
 						jiraUpdatedAt = java.time.LocalDateTime.ofInstant(java.time.Instant.parse(updated), java.time.ZoneOffset.UTC);
+					}
+				} catch (Exception ignored) {
+					// Best-effort only.
+				}
+
+				java.time.LocalDateTime jiraCreatedAt = null;
+				try {
+					if (created != null && !created.isBlank()) {
+						jiraCreatedAt = java.time.LocalDateTime.ofInstant(java.time.Instant.parse(created), java.time.ZoneOffset.UTC);
 					}
 				} catch (Exception ignored) {
 					// Best-effort only.
@@ -106,6 +157,7 @@ public class JiraService {
 				entity.setJiraIssueKey(jiraIssueKey);
 				entity.setIssueType(issueType == null ? "" : issueType);
 				entity.setSummary(summary);
+				entity.setDescription(description);
 				entity.setStatus(status);
 					entity.setPriority(priority);
 					Integer assigneeUserId = null;
@@ -115,6 +167,19 @@ public class JiraService {
 								.orElse(null);
 					}
 					entity.setAssigneeUserId(assigneeUserId);
+				// Reporter
+				Integer reporterUserId = null;
+				if (reporterAccountId != null && !reporterAccountId.isBlank()) {
+					reporterUserId = userRepository.findByJiraAccountId(reporterAccountId)
+							.map(u -> u.getId())
+							.orElse(null);
+				}
+				entity.setReporterUserId(reporterUserId);
+				entity.setParentIssueKey(parentIssueKey);
+				entity.setLabels(labelsStr);
+				entity.setSprintName(sprintName);
+				entity.setStoryPoints(storyPoints);
+				entity.setJiraCreatedAt(jiraCreatedAt);
 				entity.setJiraDueDate(jiraDueDate);
 				entity.setJiraUpdatedAt(jiraUpdatedAt);
 				jiraIssueRepository.save(entity);

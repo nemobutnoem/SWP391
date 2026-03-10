@@ -22,13 +22,19 @@ public class JiraClient {
 	private static final Logger log = LoggerFactory.getLogger(JiraClient.class);
 	private static final List<String> DEFAULT_SEARCH_FIELDS = List.of(
 			"summary",
+			"description",
 			"issuetype",
 			"assignee",
+			"reporter",
 			"priority",
 			"status",
+			"labels",
+			"parent",
 			"duedate",
 			"updated",
-			"created"
+			"created",
+			"story_points",
+			"customfield_10016"
 	);
 
 	private final RestClient.Builder builder;

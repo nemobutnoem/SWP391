@@ -21,6 +21,16 @@ export function GitHubInsights({ activities = [], weeks: initialWeeks = 12 }) {
         { value: 24, label: "6 months" },
         { value: 52, label: "1 year" },
     ];
+    // Deduplicate activities by commit_sha to avoid counting the same commit on multiple branches
+    const uniqueActivities = useMemo(() => {
+        const seen = new Set();
+        return activities.filter((a) => {
+            if (!a.commit_sha || seen.has(a.commit_sha)) return false;
+            seen.add(a.commit_sha);
+            return true;
+        });
+    }, [activities]);
+
     // ===== Heatmap Data =====
     const { heatmapWeeks, maxCount, totalCommits } = useMemo(() => {
         const now = new Date();
@@ -33,7 +43,7 @@ export function GitHubInsights({ activities = [], weeks: initialWeeks = 12 }) {
         // Count commits per date
         const dateCounts = {};
         let total = 0;
-        activities.forEach((a) => {
+        uniqueActivities.forEach((a) => {
             if (!a.occurred_at) return;
             const d = new Date(a.occurred_at);
             const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -62,12 +72,12 @@ export function GitHubInsights({ activities = [], weeks: initialWeeks = 12 }) {
         }
 
         return { heatmapWeeks: result, maxCount: max, totalCommits: total };
-    }, [activities, weeks]);
+    }, [uniqueActivities, weeks]);
 
     // ===== Contributor Data =====
     const contributors = useMemo(() => {
         const map = {};
-        activities.forEach((a) => {
+        uniqueActivities.forEach((a) => {
             const user = a.github_username || "unknown";
             const count = a.pushed_commit_count || 1;
             map[user] = (map[user] || 0) + count;
@@ -75,7 +85,7 @@ export function GitHubInsights({ activities = [], weeks: initialWeeks = 12 }) {
         return Object.entries(map)
             .map(([username, commits]) => ({ username, commits }))
             .sort((a, b) => b.commits - a.commits);
-    }, [activities]);
+    }, [uniqueActivities]);
 
     const maxContrib = contributors.length > 0 ? contributors[0].commits : 1;
 
