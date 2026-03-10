@@ -1,0 +1,8 @@
+src\main\java\com\swp391\clazz\ClassController.java:29:    public List<ClassEntity> list(@RequestParam(name = "semester_id", required = false) Integer semesterId) {
+src\main\java\com\swp391\grade\GradeController.java:22:            @RequestParam(name = "groupId", required = false) Integer groupId,
+src\main\java\com\swp391\grade\GradeController.java:23:            @RequestParam(name = "lecturerId", required = false) Integer lecturerId,
+src\main\java\com\swp391\integration\compat\CompatGithubRepositoryController.java:45:			@RequestParam(name = "groupId", required = false) Integer groupId,
+src\main\java\com\swp391\integration\compat\CompatJiraProjectController.java:46:			@RequestParam(name = "groupId", required = false) Integer groupId,
+src\main\java\com\swp391\integration\compat\CompatSyncLogController.java:37:	public List<SyncLogDto> list(@RequestParam(name = "groupId", required = false) Integer groupIdIgnored, Authentication auth) {
+src\main\java\com\swp391\integration\github\GithubController.java:21:			@RequestParam(name = "from", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant from,
+src\main\java\com\swp391\integration\github\GithubController.java:22:			@RequestParam(name = "to", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant to,

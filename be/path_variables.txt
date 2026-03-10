@@ -1,0 +1,37 @@
+src\main\java\com\swp391\clazz\ClassController.java:37:    public ClassEntity getById(@PathVariable("id") Integer id) {
+src\main\java\com\swp391\clazz\ClassController.java:47:    public ClassEntity update(@PathVariable("id") Integer id, @Valid @RequestBody UpsertClassRequest req) {
+src\main\java\com\swp391\clazz\ClassController.java:52:    public void delete(@PathVariable("id") Integer id) {
+src\main\java\com\swp391\grade\GradeController.java:88:    public GradeEntity update(@PathVariable("gradeId") Integer gradeId, @RequestBody UpdateGradeRequest req,
+src\main\java\com\swp391\group\GroupController.java:37:	public GroupSummary updateGroup(@PathVariable("groupId") Integer groupId,
+src\main\java\com\swp391\group\GroupController.java:45:	public void deleteGroup(@PathVariable("groupId") Integer groupId, Authentication auth) {
+src\main\java\com\swp391\group\GroupController.java:50:	public GroupSummary assignLecturer(@PathVariable("groupId") Integer groupId,
+src\main\java\com\swp391\group\GroupController.java:57:	public void selectTopic(@PathVariable("groupId") Integer groupId, @Valid @RequestBody SelectTopicRequest req,
+src\main\java\com\swp391\group\GroupController.java:63:	public GroupSummary assignTopicByAdmin(@PathVariable("groupId") Integer groupId,
+src\main\java\com\swp391\group\GroupMemberController.java:36:	public List<GroupMemberDto> listGroupMembers(@PathVariable("groupId") Integer groupId, Authentication auth) {
+src\main\java\com\swp391\group\GroupMemberController.java:66:	public GroupMemberEntity updateRole(@PathVariable("memberId") Integer memberId, @RequestBody UpdateRoleRequest req,
+src\main\java\com\swp391\integration\compat\CompatGithubActivityController.java:83:	public List<GithubActivityDto> listByGroup(@PathVariable("groupId") Integer groupId, Authentication auth) {
+src\main\java\com\swp391\integration\compat\CompatJiraTaskController.java:93:	public List<JiraTaskDto> listByGroup(@PathVariable("groupId") Integer groupId, Authentication auth) {
+src\main\java\com\swp391\integration\compat\CompatJiraTaskController.java:99:	public JiraTaskDto updateTask(@PathVariable("taskId") Integer taskId, @Valid @RequestBody UpdateTaskRequest req,
+src\main\java\com\swp391\integration\github\GithubController.java:20:			@PathVariable("groupId") Integer groupId,
+src\main\java\com\swp391\integration\github\GithubController.java:28:	public int sync(@PathVariable("groupId") Integer groupId, Authentication auth) {
+src\main\java\com\swp391\integration\GroupIntegrationController.java:18:	public GroupIntegrationsResponse get(@PathVariable("groupId") Integer groupId, Authentication auth) {
+src\main\java\com\swp391\integration\GroupIntegrationController.java:24:			@PathVariable("groupId") Integer groupId,
+src\main\java\com\swp391\integration\jira\JiraController.java:20:	public List<JiraIssueEntity> listIssues(@PathVariable("groupId") Integer groupId, Authentication auth) {
+src\main\java\com\swp391\integration\jira\JiraController.java:26:			@PathVariable("groupId") Integer groupId,
+src\main\java\com\swp391\integration\jira\JiraController.java:27:			@PathVariable("issueKey") String issueKey,
+src\main\java\com\swp391\integration\jira\JiraController.java:34:	public int syncIssues(@PathVariable("groupId") Integer groupId, @Valid @RequestBody SyncJiraIssuesRequest req,
+src\main\java\com\swp391\lecturer\LecturerController.java:26:    public LecturerEntity getById(@PathVariable("id") Integer id) {
+src\main\java\com\swp391\lecturer\LecturerController.java:37:    public LecturerEntity update(@PathVariable("id") Integer id, @Valid @RequestBody UpdateLecturerRequest request,
+src\main\java\com\swp391\lecturer\LecturerController.java:44:    public void delete(@PathVariable("id") Integer id, Authentication auth) {
+src\main\java\com\swp391\project\ProjectController.java:47:    public ProjectEntity getById(@PathVariable("id") Integer id) {
+src\main\java\com\swp391\project\ProjectController.java:75:    public ResponseEntity<?> update(@PathVariable("id") Integer id, @Valid @RequestBody UpsertProjectRequest req) {
+src\main\java\com\swp391\project\ProjectController.java:96:    public ProjectEntity archive(@PathVariable("id") Integer id) {
+src\main\java\com\swp391\project\ProjectController.java:105:    public ResponseEntity<?> delete(@PathVariable("id") Integer id) {
+src\main\java\com\swp391\repo\GithubRepositoryController.java:19:	public List<GithubRepositoryEntity> list(@PathVariable("groupId") Integer groupId, Authentication auth) {
+src\main\java\com\swp391\repo\GithubRepositoryController.java:24:	public GithubRepositoryEntity add(@PathVariable("groupId") Integer groupId, @Valid @RequestBody AddRepoRequest req,
+src\main\java\com\swp391\semester\SemesterController.java:37:    public SemesterEntity getById(@PathVariable("id") Integer id) {
+src\main\java\com\swp391\semester\SemesterController.java:47:    public SemesterEntity update(@PathVariable("id") Integer id, @Valid @RequestBody UpsertSemesterRequest req) {
+src\main\java\com\swp391\semester\SemesterController.java:52:    public void delete(@PathVariable("id") Integer id) {
+src\main\java\com\swp391\student\StudentManagementController.java:30:	public ResponseEntity<StudentResponseDto> getById(@PathVariable("studentId") Integer studentId) {
+src\main\java\com\swp391\student\StudentManagementController.java:65:	public ResponseEntity<?> update(@PathVariable("studentId") Integer studentId,
+src\main\java\com\swp391\student\StudentManagementController.java:103:	public void remove(@PathVariable("studentId") Integer studentId) {

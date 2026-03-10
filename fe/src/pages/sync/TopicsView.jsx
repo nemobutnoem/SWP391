@@ -18,6 +18,7 @@ export function TopicsView({
   onCloseModal,
   onSubmit,
   onArchive,
+  onDelete,
 }) {
   return (
     <div className="topics-page">
@@ -93,6 +94,14 @@ export function TopicsView({
                         Archive
                       </Button>
                     )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onDelete(topic.id)}
+                      className="text-destructive"
+                    >
+                      Delete
+                    </Button>
                   </div>
                 </td>
               </tr>

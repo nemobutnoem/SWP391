@@ -26,6 +26,7 @@ export function TopicsPage() {
     setIsModalOpen(true);
   };
 
+<<<<<<< Updated upstream
   const handleSubmit = (formData) => {
     if (editingTopic) {
       setTopics((prev) =>
@@ -35,12 +36,36 @@ export function TopicsPage() {
       setTopics((prev) => [{ ...formData, id: Date.now() }, ...prev]);
     }
     setIsModalOpen(false);
+=======
+  // Chỉ thực hiện API call + refresh list. Không đóng modal ở đây.
+  // Modal tự quyết định đóng (thành công) hay ở lại hiển thị lỗi (thất bại).
+  const handleSubmit = async (formData) => {
+    if (editingTopic) {
+      await topicService.update(editingTopic.id, formData);
+    } else {
+      await topicService.create(formData);
+    }
+    // Chỉ refresh list khi API thành công (nếu fail sẽ throw và không chạy đến đây)
+    topicService.list().then(setTopics);
+>>>>>>> Stashed changes
   };
 
   const handleArchive = (id) => {
     setTopics((prev) =>
       prev.map((t) => t.id === id ? { ...t, status: "ARCHIVED" } : t),
     );
+  };
+
+  const handleDelete = async (id) => {
+    try {
+      if (window.confirm("Are you sure you want to permanently delete this topic? This action cannot be undone.")) {
+        await topicService.delete(id);
+        const updatedTopics = await topicService.list();
+        setTopics(updatedTopics);
+      }
+    } catch (e) {
+      alert("Failed to delete topic: " + (e.response?.data?.message || e.message));
+    }
   };
 
   return (
@@ -53,6 +78,7 @@ export function TopicsPage() {
       onCloseModal={() => setIsModalOpen(false)}
       onSubmit={handleSubmit}
       onArchive={handleArchive}
+      onDelete={handleDelete}
     />
   );
 }

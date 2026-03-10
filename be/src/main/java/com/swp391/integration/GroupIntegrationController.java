@@ -15,16 +15,15 @@ public class GroupIntegrationController {
 	private final GroupIntegrationService service;
 
 	@GetMapping
-	public GroupIntegrationsResponse get(@PathVariable Integer groupId, Authentication auth) {
+	public GroupIntegrationsResponse get(@PathVariable("groupId") Integer groupId, Authentication auth) {
 		return service.get(groupId, (UserPrincipal) auth.getPrincipal());
 	}
 
 	@PutMapping
 	public GroupIntegrationsResponse update(
-			@PathVariable Integer groupId,
+			@PathVariable("groupId") Integer groupId,
 			@Valid @RequestBody UpdateGroupIntegrationsRequest request,
-			Authentication auth
-	) {
+			Authentication auth) {
 		return service.update(groupId, request, (UserPrincipal) auth.getPrincipal());
 	}
 }

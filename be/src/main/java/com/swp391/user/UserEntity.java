@@ -46,6 +46,7 @@ public class UserEntity {
 
 	@PrePersist
 	@PreUpdate
+<<<<<<< Updated upstream
 	void ensureJiraAccountIdUniqueInSqlServer() {
 		// SQL Server UNIQUE index allows only a single NULL, so we store a unique
 		// placeholder for "unset" Jira account IDs and normalize it in API/business logic.
@@ -60,5 +61,16 @@ public class UserEntity {
 
 	public static String normalizeJiraAccountId(String jiraAccountId) {
 		return isUnsetJiraAccountId(jiraAccountId) ? null : jiraAccountId;
+=======
+	private void normalizeBlankFields() {
+		if (githubUsername != null && githubUsername.isBlank())
+			githubUsername = null;
+		if (jiraAccountId == null || jiraAccountId.isBlank()) {
+			// SQL Server UNIQUE constraint allows only one NULL.
+			// To avoid this without DB changes, we use a unique dummy value (pseudo-ID).
+			// This is especially needed for Lecturers who don't have Jira accounts.
+			this.jiraAccountId = "NOT_SET_" + this.account;
+		}
+>>>>>>> Stashed changes
 	}
 }

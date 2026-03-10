@@ -16,12 +16,13 @@ public class GithubRepositoryController {
 	private final GithubRepositoryService repoService;
 
 	@GetMapping
-	public List<GithubRepositoryEntity> list(@PathVariable Integer groupId, Authentication auth) {
+	public List<GithubRepositoryEntity> list(@PathVariable("groupId") Integer groupId, Authentication auth) {
 		return repoService.listRepos(groupId, (UserPrincipal) auth.getPrincipal());
 	}
 
 	@PostMapping
-	public GithubRepositoryEntity add(@PathVariable Integer groupId, @Valid @RequestBody AddRepoRequest req, Authentication auth) {
+	public GithubRepositoryEntity add(@PathVariable("groupId") Integer groupId, @Valid @RequestBody AddRepoRequest req,
+			Authentication auth) {
 		return repoService.addRepo(groupId, req.repoUrl(), (UserPrincipal) auth.getPrincipal());
 	}
 }

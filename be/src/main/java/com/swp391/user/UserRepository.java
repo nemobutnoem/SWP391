@@ -6,5 +6,12 @@ import java.util.Optional;
 
 public interface UserRepository extends JpaRepository<UserEntity, Integer> {
 	Optional<UserEntity> findByAccount(String account);
+<<<<<<< Updated upstream
 }
+=======
+>>>>>>> Stashed changes
 
+	Optional<UserEntity> findByJiraAccountId(String jiraAccountId);
+
+	boolean existsByAccount(String account);
+}

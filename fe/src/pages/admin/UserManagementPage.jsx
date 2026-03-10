@@ -44,6 +44,7 @@ export function UserManagementPage() {
     setIsModalOpen(true);
   };
 
+<<<<<<< Updated upstream
   const handleSubmit = (formData) => {
     if (formData.role === "STUDENT") {
       if (editingUser) {
@@ -64,6 +65,25 @@ export function UserManagementPage() {
     }
     setIsModalOpen(false);
     alert(`Successfully ${editingUser ? "updated" : "created"} user: ${formData.full_name}`);
+=======
+  const handleSubmit = async (formData) => {
+    if (formData.role === "STUDENT") {
+      if (editingUser) {
+        await studentService.update(editingUser.id, formData);
+      } else {
+        await studentService.create(formData);
+      }
+      studentService.list().then(setLocalStudents);
+    } else {
+      if (editingUser) {
+        await lecturerService.update(editingUser.id, formData);
+      } else {
+        await lecturerService.create(formData);
+      }
+      lecturerService.list().then(setLocalLecturers);
+    }
+    // No setIsModalOpen(false) here - modal will close itself on success
+>>>>>>> Stashed changes
   };
 
   const enrichedStudents = useMemo(() => {

@@ -80,3 +80,26 @@
 .action-cell {
   text-align: right;
 }
+
+.action-buttons {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+/* Validation feedback */
+.field-error {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.78rem;
+  color: #dc2626;
+  line-height: 1.4;
+}
+
+.field-hint {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.78rem;
+  color: var(--slate-400, #94a3b8);
+  line-height: 1.4;
+}

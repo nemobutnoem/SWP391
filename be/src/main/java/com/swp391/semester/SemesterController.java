@@ -18,9 +18,14 @@ public class SemesterController {
     }
 
     @GetMapping("/{id}")
+<<<<<<< Updated upstream
     public SemesterEntity get(@PathVariable Integer id) {
         return semesterRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Semester not found"));
+=======
+    public SemesterEntity getById(@PathVariable("id") Integer id) {
+        return semesterService.getById(id);
+>>>>>>> Stashed changes
     }
 
     @PostMapping
@@ -30,6 +35,7 @@ public class SemesterController {
     }
 
     @PutMapping("/{id}")
+<<<<<<< Updated upstream
     @PreAuthorize("hasRole('ADMIN')")
     public SemesterEntity update(@PathVariable Integer id, @RequestBody SemesterEntity semester) {
         SemesterEntity existing = semesterRepository.findById(id)
@@ -46,5 +52,14 @@ public class SemesterController {
     @PreAuthorize("hasRole('ADMIN')")
     public void delete(@PathVariable Integer id) {
         semesterRepository.deleteById(id);
+=======
+    public SemesterEntity update(@PathVariable("id") Integer id, @Valid @RequestBody UpsertSemesterRequest req) {
+        return semesterService.update(id, req);
+    }
+
+    @DeleteMapping("/{id}")
+    public void delete(@PathVariable("id") Integer id) {
+        semesterService.delete(id);
+>>>>>>> Stashed changes
     }
 }

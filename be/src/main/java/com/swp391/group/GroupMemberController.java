@@ -31,7 +31,12 @@ public class GroupMemberController {
 	}
 
 	@GetMapping("/groups/{groupId}/members")
+<<<<<<< Updated upstream
 	public List<GroupMemberDto> listGroupMembers(@PathVariable Integer groupId, Authentication auth) {
+=======
+	public List<GroupMemberDto> listGroupMembers(@PathVariable("groupId") Integer groupId, Authentication auth) {
+		// Ensure caller is a member of the group.
+>>>>>>> Stashed changes
 		UserPrincipal principal = (UserPrincipal) auth.getPrincipal();
 		boolean isAdmin = principal.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
 
@@ -54,11 +59,36 @@ public class GroupMemberController {
 							userId,
 							student == null ? null : student.getFullName(),
 							user == null ? null : user.getAccount(),
+<<<<<<< Updated upstream
 							user == null ? null : UserEntity.normalizeJiraAccountId(user.getJiraAccountId()),
 							m.getRoleInGroup()
 					);
+=======
+							user == null ? null : user.getJiraAccountId(),
+							m.getRoleInGroup());
+>>>>>>> Stashed changes
 				})
 				.sorted(Comparator.comparing((GroupMemberDto d) -> d.fullName() == null ? "" : d.fullName()))
 				.toList();
 	}
+<<<<<<< Updated upstream
+=======
+
+	public record UpdateRoleRequest(@JsonProperty("role_in_group") String roleInGroup) {
+	}
+
+	@PutMapping("/group-members/{memberId}/role")
+	public GroupMemberEntity updateRole(@PathVariable("memberId") Integer memberId, @RequestBody UpdateRoleRequest req,
+			Authentication auth) {
+		UserPrincipal principal = (UserPrincipal) auth.getPrincipal();
+		String role = principal.getRole();
+		if (!"Lecturer".equalsIgnoreCase(role) && !"Admin".equalsIgnoreCase(role)) {
+			throw ApiException.forbidden("Only Lecturer or Admin can change member roles");
+		}
+		GroupMemberEntity member = memberRepository.findById(memberId)
+				.orElseThrow(() -> ApiException.notFound("Group member not found"));
+		member.setRoleInGroup(req.roleInGroup());
+		return memberRepository.save(member);
+	}
+>>>>>>> Stashed changes
 }

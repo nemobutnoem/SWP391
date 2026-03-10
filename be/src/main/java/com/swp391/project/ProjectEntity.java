@@ -27,4 +27,19 @@ public class ProjectEntity {
 
 	@Column(name = "status")
 	private String status;
+<<<<<<< Updated upstream
+=======
+
+	/** AllocationView.jsx uses t.name */
+	@JsonProperty("name")
+	public String getName() {
+		return projectName;
+	}
+
+	/** TopicsView.jsx uses topic.code */
+	@JsonProperty("code")
+	public String getCode() {
+		return projectCode;
+	}
+>>>>>>> Stashed changes
 }

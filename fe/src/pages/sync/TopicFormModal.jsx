@@ -8,28 +8,53 @@ export function TopicFormModal({
   onSubmit,
   initialData = null,
 }) {
-  // Reset state when modal opens or initialData changes
   const [formData, setFormData] = useState({
     name: initialData?.name || "",
     code: initialData?.code || "",
     description: initialData?.description || "",
     status: initialData?.status || "ACTIVE",
   });
-
-  // Since we want the form to reset when initialData changes (e.g. switching from Edit to Create)
-  // or when the modal closes, we can't just rely on the initial state of the modal isn't unmounted.
-  // Actually, the parent can just use a `key` to remount the component.
-  // I will update the parent to use `key={editingTopic?.id || 'new'}`
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [submitting, setSubmitting] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    // Force uppercase for code field
+    const finalValue = name === "code" ? value.toUpperCase() : value;
+    setFormData((prev) => ({ ...prev, [name]: finalValue }));
+    // Clear error on edit
+    if (fieldErrors[name]) {
+      setFieldErrors((prev) => ({ ...prev, [name]: "" }));
+    }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onSubmit(formData);
-    onClose();
+    setFieldErrors({});
+    setSubmitting(true);
+    try {
+      await onSubmit(formData);
+      // Chỉ đóng modal khi API thành công
+      onClose();
+    } catch (err) {
+      const data = err.response?.data;
+      if (data?.details?.fields) {
+        // Handle standard project ApiError format
+        setFieldErrors(data.details.fields);
+      } else if (data && typeof data === "object" && !Array.isArray(data)) {
+        // Lỗi field-level (400 validation hoặc 409 duplicate) trực tiếp
+        setFieldErrors(data);
+      } else {
+        // Lỗi khác: mạng, 500, v.v.
+        const msg =
+          typeof data === "string"
+            ? data
+            : err.message || "An unexpected error occurred. Please try again.";
+        alert("Error: " + msg);
+      }
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -49,6 +74,9 @@ export function TopicFormModal({
             onChange={handleChange}
             required
           />
+          {fieldErrors.name && (
+            <span className="field-error">{fieldErrors.name}</span>
+          )}
         </div>
 
         <div className="form-row">
@@ -57,11 +85,18 @@ export function TopicFormModal({
             <input
               name="code"
               type="text"
-              placeholder="E.g., AI-H-01"
+              placeholder="E.g., SE1234 | AI-H-01 | SWP-2025-001"
               value={formData.code}
               onChange={handleChange}
               required
             />
+            {fieldErrors.code ? (
+              <span className="field-error">{fieldErrors.code}</span>
+            ) : (
+              <span className="field-hint">
+                Uppercase letters &amp; digits, separated by hyphens (auto-uppercased)
+              </span>
+            )}
           </div>
           <div className="form-group">
             <label>Status</label>
@@ -94,14 +129,21 @@ export function TopicFormModal({
               resize: "none",
             }}
           />
+          {fieldErrors.description && (
+            <span className="field-error">{fieldErrors.description}</span>
+          )}
         </div>
 
         <div className="form-actions">
-          <Button variant="secondary" type="button" onClick={onClose}>
+          <Button variant="secondary" type="button" onClick={onClose} disabled={submitting}>
             Cancel
           </Button>
-          <Button variant="primary" type="submit">
-            {initialData ? "Save Changes" : "Create Topic"}
+          <Button variant="primary" type="submit" disabled={submitting}>
+            {submitting
+              ? "Saving..."
+              : initialData
+                ? "Save Changes"
+                : "Create Topic"}
           </Button>
         </div>
       </form>

@@ -25,4 +25,12 @@ export const topicMock = {
     await sleep(200);
     return { id: Number(topicId), status: "ARCHIVED" };
   },
+
+  async delete(topicId) {
+    await sleep(250);
+    const index = _localTopics.findIndex((t) => t.id === Number(topicId));
+    if (index !== -1) {
+      _localTopics.splice(index, 1);
+    }
+  },
 };
