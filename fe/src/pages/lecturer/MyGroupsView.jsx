@@ -1,13 +1,41 @@
-import React from "react";
+import React, { useState } from "react";
 import { PageHeader } from "../../components/common/PageHeader.jsx";
 import { Badge } from "../../components/common/Badge.jsx";
+import { Modal } from "../../components/common/Modal.jsx";
 import "../admin/adminManagement.css";
 
 /**
  * Presentation layer – nhận tất cả data và handler qua props.
  * Không có state, không gọi service.
  */
-export function MyGroupsView({ enrichedGroups, expandedGroupId, onToggleExpand, onRoleChange }) {
+export function MyGroupsView({
+  enrichedGroups,
+  expandedGroupId,
+  onToggleExpand,
+  onRoleChange,
+  onAddMember,
+  onRemoveMember,
+  addMemberGroupId,
+  onOpenAddMember,
+  onCloseAddMember,
+  availableStudents,
+}) {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedRole, setSelectedRole] = useState("Member");
+
+  const filteredStudents = availableStudents.filter((s) => {
+    const q = searchTerm.toLowerCase();
+    return (
+      !q ||
+      (s.full_name || "").toLowerCase().includes(q) ||
+      (s.student_code || "").toLowerCase().includes(q) ||
+      (s.email || "").toLowerCase().includes(q)
+    );
+  });
+
+  const handleAdd = (studentId) => {
+    onAddMember(addMemberGroupId, studentId, selectedRole);
+  };
   return (
     <div className="user-mgmt-page">
       <PageHeader
@@ -69,7 +97,19 @@ export function MyGroupsView({ enrichedGroups, expandedGroupId, onToggleExpand, 
                 {expandedGroupId === g.id && (
                   <tr className="expanded-row">
                     <td colSpan="4" className="expanded-content-cell">
-                      <span className="expanded-row-title">Member Contribution Scores</span>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span className="expanded-row-title">Member Contribution Scores</span>
+                        <button
+                          className="btn btn-primary btn-sm"
+                          style={{ padding: "0.375rem 0.75rem", fontSize: "0.8125rem", borderRadius: "6px", border: "none", background: "var(--brand-600, #2563eb)", color: "white", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.375rem" }}
+                          onClick={(e) => { e.stopPropagation(); onOpenAddMember(g.id); }}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                            <path d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"/>
+                          </svg>
+                          Add Student
+                        </button>
+                      </div>
                       <table className="admin-table" style={{ marginTop: "0.75rem" }}>
                         <thead>
                           <tr>
@@ -77,11 +117,12 @@ export function MyGroupsView({ enrichedGroups, expandedGroupId, onToggleExpand, 
                             <th>Student Code</th>
                             <th>Role</th>
                             <th>GitHub</th>
+                            <th style={{ width: "60px" }}></th>
                           </tr>
                         </thead>
                         <tbody>
                           {g.members.map((m) => (
-                            <tr key={m.id}>
+                            <tr key={m.member_id}>
                               <td>
                                 <div className="user-profile-cell">
                                   <div className="avatar-small">{m.full_name?.[0]}</div>
@@ -95,7 +136,7 @@ export function MyGroupsView({ enrichedGroups, expandedGroupId, onToggleExpand, 
                                 <select
                                   className="form-select"
                                   value={m.role_in_group}
-                                  onChange={(e) => onRoleChange(m.id, e.target.value)}
+                                  onChange={(e) => onRoleChange(m.member_id, e.target.value)}
                                   style={{ padding: "0.25rem 0.5rem", fontSize: "0.8125rem", width: "auto" }}
                                 >
                                   <option value="Leader">LEADER</option>
@@ -104,6 +145,17 @@ export function MyGroupsView({ enrichedGroups, expandedGroupId, onToggleExpand, 
                               </td>
                               <td>
                                 <span className="text-secondary">@{m.github_username}</span>
+                              </td>
+                              <td>
+                                <button
+                                  title="Remove member"
+                                  onClick={(e) => { e.stopPropagation(); onRemoveMember(g.id, m.member_id); }}
+                                  style={{ background: "none", border: "none", cursor: "pointer", color: "var(--red-500, #ef4444)", padding: "0.25rem", borderRadius: "4px", display: "flex", alignItems: "center" }}
+                                >
+                                  <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                    <path d="M11 1.75V3h2.25a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1 0-1.5H5V1.75C5 .784 5.784 0 6.75 0h2.5C10.216 0 11 .784 11 1.75ZM4.496 6.675l.66 6.6a.25.25 0 0 0 .249.225h5.19a.25.25 0 0 0 .249-.225l.66-6.6a.75.75 0 0 1 1.492.149l-.66 6.6A1.748 1.748 0 0 1 10.595 15h-5.19a1.75 1.75 0 0 1-1.741-1.575l-.66-6.6a.75.75 0 1 1 1.492-.15ZM6.5 1.75V3h3V1.75a.25.25 0 0 0-.25-.25h-2.5a.25.25 0 0 0-.25.25Z"/>
+                                  </svg>
+                                </button>
                               </td>
                             </tr>
                           ))}
@@ -149,6 +201,73 @@ export function MyGroupsView({ enrichedGroups, expandedGroupId, onToggleExpand, 
           </tbody>
         </table>
       </div>
+
+      <Modal
+        isOpen={addMemberGroupId !== null}
+        onClose={() => { onCloseAddMember(); setSearchTerm(""); }}
+        title="Add Student to Group"
+      >
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+          <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
+            <input
+              type="text"
+              placeholder="Search by name, student code, or email..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={{ flex: 1, padding: "0.5rem 0.75rem", border: "1px solid var(--slate-300, #cbd5e1)", borderRadius: "6px", fontSize: "0.875rem" }}
+            />
+            <select
+              value={selectedRole}
+              onChange={(e) => setSelectedRole(e.target.value)}
+              style={{ padding: "0.5rem 0.75rem", border: "1px solid var(--slate-300, #cbd5e1)", borderRadius: "6px", fontSize: "0.875rem" }}
+            >
+              <option value="Member">MEMBER</option>
+              <option value="Leader">LEADER</option>
+            </select>
+          </div>
+
+          <div style={{ maxHeight: "320px", overflowY: "auto", border: "1px solid var(--slate-200, #e2e8f0)", borderRadius: "8px" }}>
+            {filteredStudents.length === 0 ? (
+              <div style={{ padding: "1.5rem", textAlign: "center", color: "var(--slate-500, #64748b)", fontSize: "0.875rem" }}>
+                {searchTerm ? "No students found matching your search." : "No available students to add."}
+              </div>
+            ) : (
+              <table className="admin-table" style={{ margin: 0 }}>
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Student Code</th>
+                    <th>Email</th>
+                    <th style={{ width: "80px" }}></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredStudents.map((s) => (
+                    <tr key={s.id}>
+                      <td>
+                        <div className="user-profile-cell">
+                          <div className="avatar-small">{s.full_name?.[0]}</div>
+                          <span className="profile-name">{s.full_name}</span>
+                        </div>
+                      </td>
+                      <td><code className="code-badge">{s.student_code}</code></td>
+                      <td><span className="text-secondary">{s.email}</span></td>
+                      <td>
+                        <button
+                          onClick={() => handleAdd(s.id)}
+                          style={{ padding: "0.25rem 0.625rem", fontSize: "0.75rem", borderRadius: "5px", border: "none", background: "var(--brand-600, #2563eb)", color: "white", cursor: "pointer", fontWeight: 500 }}
+                        >
+                          Add
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

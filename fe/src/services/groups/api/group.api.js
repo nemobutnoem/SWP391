@@ -34,4 +34,14 @@ export const groupApi = {
     const res = await http.put(`/group-members/${memberId}/role`, { role_in_group: roleInGroup });
     return res.data;
   },
+
+  async addMember(groupId, studentId, roleInGroup = "Member") {
+    const res = await http.post(`/groups/${groupId}/members`, { student_id: studentId, role_in_group: roleInGroup });
+    return res.data;
+  },
+
+  async removeMember(groupId, memberId) {
+    const res = await http.delete(`/groups/${groupId}/members/${memberId}`);
+    return res.data;
+  },
 };

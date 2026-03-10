@@ -40,4 +40,23 @@ export const groupMock = {
     member.role_in_group = roleInGroup;
     return { ...member };
   },
+
+  async addMember(groupId, studentId, roleInGroup = "Member") {
+    await sleep(200);
+    const newMember = {
+      id: Date.now(),
+      group_id: Number(groupId),
+      student_id: Number(studentId),
+      role_in_group: roleInGroup,
+      status: "Active",
+    };
+    mockDb.groupMembers.push(newMember);
+    return newMember;
+  },
+
+  async removeMember(groupId, memberId) {
+    await sleep(200);
+    const idx = mockDb.groupMembers.findIndex((m) => m.id === Number(memberId));
+    if (idx >= 0) mockDb.groupMembers.splice(idx, 1);
+  },
 };

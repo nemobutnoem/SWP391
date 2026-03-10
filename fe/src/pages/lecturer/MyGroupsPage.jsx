@@ -17,11 +17,18 @@ export function MyGroupsPage() {
   const [students, setStudents] = useState([]);
   const [grades, setGrades] = useState([]);
 
-  useEffect(() => {
+  // Add-member modal state
+  const [addMemberGroupId, setAddMemberGroupId] = useState(null);
+
+  const loadData = () => {
     groupService.list().then(setAllGroups);
     groupService.listMembers().then(setAllMembers);
     studentService.list().then(setStudents);
     gradeService.list().then(setGrades);
+  };
+
+  useEffect(() => {
+    loadData();
   }, []);
 
   // BE already filters groups by role, so allGroups = lecturer's own groups
@@ -33,7 +40,7 @@ export function MyGroupsPage() {
         .filter((m) => m.group_id === g.id)
         .map((m) => {
           const student = students.find((s) => s.id === m.student_id);
-          return { ...m, ...student };
+          return { ...student, ...m, member_id: m.id };
         });
 
       const groupGrades = grades.filter(
@@ -63,12 +70,46 @@ export function MyGroupsPage() {
     }
   };
 
+  const handleAddMember = async (groupId, studentId, role) => {
+    try {
+      await groupService.addMember(groupId, studentId, role);
+      loadData();
+    } catch (err) {
+      alert("Failed to add member: " + (err.response?.data?.message || err.message || err));
+    }
+  };
+
+  const handleRemoveMember = async (groupId, memberId) => {
+    if (!window.confirm("Are you sure you want to remove this member?")) return;
+    try {
+      await groupService.removeMember(groupId, memberId);
+      loadData();
+    } catch (err) {
+      alert("Failed to remove member: " + (err.message || err));
+    }
+  };
+
+  // Students available to add (not already in the target group)
+  const availableStudents = useMemo(() => {
+    if (!addMemberGroupId) return [];
+    const memberStudentIds = new Set(
+      allMembers.filter((m) => m.group_id === addMemberGroupId).map((m) => m.student_id),
+    );
+    return students.filter((s) => !memberStudentIds.has(s.id));
+  }, [addMemberGroupId, allMembers, students]);
+
   return (
     <MyGroupsView
       enrichedGroups={enrichedGroups}
       expandedGroupId={expandedGroupId}
       onToggleExpand={toggleExpand}
       onRoleChange={handleRoleChange}
+      onAddMember={handleAddMember}
+      onRemoveMember={handleRemoveMember}
+      addMemberGroupId={addMemberGroupId}
+      onOpenAddMember={setAddMemberGroupId}
+      onCloseAddMember={() => setAddMemberGroupId(null)}
+      availableStudents={availableStudents}
     />
   );
 }

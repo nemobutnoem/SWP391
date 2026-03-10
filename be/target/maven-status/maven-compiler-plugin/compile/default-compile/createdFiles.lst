@@ -34,6 +34,7 @@ com\swp391\integration\jira\JiraService.class
 com\swp391\integration\jira\JiraIssueEntity.class
 com\swp391\lecturer\LecturerRepository.class
 com\swp391\group\GroupMemberRepository.class
+com\swp391\group\GroupMemberController$AddMemberRequest.class
 com\swp391\common\api\ApiError.class
 com\swp391\integration\compat\CompatGroupMemberController$GroupMemberFlatDto.class
 com\swp391\auth\AuthController.class
