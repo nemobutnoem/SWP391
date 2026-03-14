@@ -72,7 +72,7 @@ public class GroupService {
 
 	@Transactional
 	public GroupSummary createGroup(CreateGroupRequest request, UserPrincipal principal) {
-		ensureAdmin(principal);
+		ensureLecturerOrAdmin(principal);
 
 		StudentGroupEntity entity = new StudentGroupEntity();
 		entity.setSemesterId(request.semesterId());
@@ -81,6 +81,10 @@ public class GroupService {
 		entity.setGroupName(request.groupName());
 		entity.setDescription(request.description());
 		entity.setStatus("Active");
+
+		// If a lecturer is creating the group, we might want to automatically assign them to their own class's group,
+		// but since the group requires a classId, the lecturer should already be assigned to that class or they're
+		// creating it for their class.
 
 		try {
 			groupRepository.save(entity);

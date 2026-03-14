@@ -7,6 +7,17 @@ export const groupMock = {
     return [...mockDb.groups];
   },
 
+  async create(data) {
+    await sleep(200);
+    const newGroup = {
+      id: Date.now(),
+      ...data,
+      status: "Active",
+    };
+    mockDb.groups.push(newGroup);
+    return newGroup;
+  },
+
   async listMembers() {
     await sleep(200);
     return [...mockDb.groupMembers];

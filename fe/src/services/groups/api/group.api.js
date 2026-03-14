@@ -6,6 +6,11 @@ export const groupApi = {
     return res.data;
   },
 
+  async create(data) {
+    const res = await http.post("/groups", data);
+    return res.data;
+  },
+
   async listMembers() {
     const res = await http.get("/group-members");
     return res.data;

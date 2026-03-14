@@ -2,6 +2,8 @@ import React, { useEffect, useState, useMemo } from "react";
 import { groupService } from "../../services/groups/group.service.js";
 import { studentService } from "../../services/students/student.service.js";
 import { gradeService } from "../../services/grades/grade.service.js";
+import { semesterService } from "../../services/semesters/semester.service.js";
+import { classService } from "../../services/classes/class.service.js";
 import { MyGroupsView } from "./MyGroupsView.jsx";
 import "../admin/adminManagement.css";
 
@@ -17,6 +19,11 @@ export function MyGroupsPage() {
   const [students, setStudents] = useState([]);
   const [grades, setGrades] = useState([]);
 
+  // Create Group Modal State
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [semesters, setSemesters] = useState([]);
+  const [allClasses, setAllClasses] = useState([]);
+
   // Add-member modal state
   const [addMemberGroupId, setAddMemberGroupId] = useState(null);
 
@@ -25,6 +32,8 @@ export function MyGroupsPage() {
     groupService.listMembers().then(setAllMembers);
     studentService.list().then(setStudents);
     gradeService.list().then(setGrades);
+    semesterService.list().then(setSemesters);
+    classService.list().then(setAllClasses);
   };
 
   useEffect(() => {
@@ -89,6 +98,16 @@ export function MyGroupsPage() {
     }
   };
 
+  const handleCreateGroup = async (formData) => {
+    try {
+      await groupService.create(formData);
+      loadData();
+      setShowCreateModal(false);
+    } catch (err) {
+      alert("Failed to create group: " + (err.response?.data?.message || err.message || err));
+    }
+  };
+
   // Students available to add (not already in the target group)
   const availableStudents = useMemo(() => {
     if (!addMemberGroupId) return [];
@@ -110,6 +129,12 @@ export function MyGroupsPage() {
       onOpenAddMember={setAddMemberGroupId}
       onCloseAddMember={() => setAddMemberGroupId(null)}
       availableStudents={availableStudents}
+      showCreateModal={showCreateModal}
+      onOpenCreateModal={() => setShowCreateModal(true)}
+      onCloseCreateModal={() => setShowCreateModal(false)}
+      onCreateGroup={handleCreateGroup}
+      semesters={semesters}
+      allClasses={allClasses}
     />
   );
 }
