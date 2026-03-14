@@ -1,4 +1,9 @@
 target/
-*.log
 *.class
+*.log
 .idea/
+node_modules/
+dist/
+build/
+*.xlsx
+~$*
