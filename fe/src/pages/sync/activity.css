@@ -1,0 +1,155 @@
+.activity-page {
+  animation: fadeIn 0.4s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.filters-bar {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  padding: 1.25rem;
+  background: white;
+  border: 1px solid var(--slate-200);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.filter-label {
+  font-size: 0.6875rem;
+  font-weight: 800;
+  color: var(--slate-500);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.filter-select {
+  padding: 0.5rem 2rem 0.5rem 0.75rem;
+  border: 1px solid var(--slate-200);
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  color: var(--slate-700);
+  background: var(--slate-50);
+  outline: none;
+  cursor: pointer;
+}
+
+.activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  position: relative;
+}
+
+.activity-list::before {
+  content: "";
+  position: absolute;
+  left: 1.25rem;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--slate-200);
+}
+
+.activity-item {
+  display: flex;
+  gap: 1.5rem;
+  position: relative;
+  padding-left: 0.5rem;
+}
+
+.activity-dot {
+  width: 20px;
+  height: 20px;
+  background: white;
+  border: 4px solid var(--brand-500);
+  border-radius: 50%;
+  position: relative;
+  z-index: 10;
+  flex-shrink: 0;
+  margin-top: 1.25rem;
+  box-shadow: 0 0 0 4px white;
+}
+
+.activity-dot--commit {
+  border-color: var(--brand-400);
+}
+.activity-dot--push {
+  border-color: var(--success);
+}
+
+.activity-card {
+  flex: 1;
+  background: white;
+  border: 1px solid var(--slate-200);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s;
+}
+
+.activity-card:hover {
+  border-color: var(--brand-200);
+  box-shadow: var(--shadow-md);
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.activity-user {
+  font-size: 0.9375rem;
+  color: var(--slate-900);
+}
+
+.activity-time {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--slate-400);
+}
+
+.activity-ref {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ref-icon {
+  font-size: 0.875rem;
+}
+
+.activity-ref code {
+  background: var(--slate-100);
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--slate-600);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 4rem;
+  background: white;
+  border: 1px dashed var(--slate-200);
+  border-radius: var(--radius-xl);
+  color: var(--slate-400);
+  font-style: italic;
+}

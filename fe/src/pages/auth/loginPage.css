@@ -1,0 +1,184 @@
+/* Login page (Auth) - keep consistent with existing tokens */
+
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5rem 1.25rem;
+  background: linear-gradient(180deg, var(--brand-50), var(--slate-50));
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 460px;
+  background: white;
+  border: 1px solid var(--slate-200);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  padding: 2rem;
+}
+
+.auth-header {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.auth-logo {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  margin: 0 auto 1rem;
+  display: grid;
+  place-items: center;
+  background: var(--brand-600);
+  color: white;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  font-family: var(--font-heading);
+  user-select: none;
+  box-shadow: var(--shadow-md);
+}
+
+.auth-title {
+  font-size: 1.5rem;
+  letter-spacing: -0.02em;
+}
+
+.auth-subtitle {
+  margin-top: 0.3rem;
+  font-size: 0.875rem;
+  color: var(--slate-500);
+}
+
+.auth-alert {
+  margin: 0.75rem 0 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--slate-200);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.auth-alert--danger {
+  background: var(--danger-light);
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.auth-form {
+  display: grid;
+  gap: 1rem;
+}
+
+/* Reuse the form look from dashboardPage.css (copied locally to avoid global coupling) */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-group label {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--slate-700);
+}
+
+.form-group input,
+.form-group select {
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--slate-200);
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  color: var(--slate-900);
+  outline: none;
+  transition: all 0.2s;
+  background: white;
+}
+
+.form-group input::placeholder {
+  color: var(--slate-400);
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  border-color: var(--brand-500);
+  box-shadow: 0 0 0 4px var(--brand-50);
+}
+
+.auth-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.5rem;
+}
+
+.auth-actions .btn {
+  width: 100%;
+}
+
+.auth-links {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: -0.25rem;
+}
+
+.auth-forgot {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--brand-600);
+}
+
+.auth-forgot:hover {
+  color: var(--brand-700);
+}
+
+.auth-primary-btn {
+  background: linear-gradient(90deg, var(--brand-600), var(--brand-500));
+  border-color: transparent;
+}
+
+.auth-primary-btn:hover:not(:disabled) {
+  background: linear-gradient(90deg, var(--brand-700), var(--brand-600));
+}
+
+.auth-divider {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0.75rem 0 0.25rem;
+  color: var(--slate-400);
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: "";
+  height: 1px;
+  background: var(--slate-200);
+  flex: 1;
+}
+
+.auth-divider span {
+  padding: 0 0.75rem;
+  background: white;
+}
+
+.auth-google-btn {
+  width: 100%;
+}
+
+.auth-footer {
+  margin-top: 1.25rem;
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--slate-400);
+  font-weight: 600;
+}
+
+@media (max-width: 520px) {
+  .auth-card {
+    padding: 1.5rem;
+  }
+}

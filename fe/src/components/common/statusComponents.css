@@ -1,0 +1,34 @@
+.priority {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: var(--radius-sm);
+  background: var(--slate-50);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  border: 1px solid var(--slate-200);
+}
+
+.priority--danger {
+  border-color: #fee2e2;
+  background: #fef2f2;
+}
+.priority--warning {
+  border-color: #fef3c7;
+  background: #fffbeb;
+}
+.priority--success {
+  border-color: #d1fae5;
+  background: #ecfdf5;
+}
+
+.priority__icon {
+  display: flex;
+  align-items: center;
+  font-size: 0.75rem;
+}
+
+.priority__label {
+  color: var(--slate-700);
+}

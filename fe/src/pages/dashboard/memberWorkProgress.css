@@ -1,0 +1,314 @@
+/* ── Member Work Progress ── */
+.mwp {
+  margin-bottom: 0;
+}
+
+.mwp > .section-title {
+  margin-bottom: 1.25rem;
+}
+
+/* ── Split layout: two panels side by side ── */
+.mwp-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+/* ── Panel ── */
+.mwp-panel {
+  background: white;
+  border: 1px solid var(--slate-100);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.mwp-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.875rem 1rem;
+  background: var(--slate-50);
+  border-bottom: 1px solid var(--slate-100);
+}
+
+.mwp-panel-icon {
+  font-size: 1rem;
+}
+
+.mwp-panel-title {
+  font-size: 0.8125rem;
+  font-weight: 800;
+  color: var(--slate-700);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.mwp-panel-badge {
+  margin-left: auto;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--slate-400);
+  background: white;
+  padding: 0.15rem 0.5rem;
+  border-radius: 99px;
+  border: 1px solid var(--slate-100);
+}
+
+.mwp-empty {
+  padding: 2rem;
+  text-align: center;
+  color: var(--slate-300);
+  font-size: 0.8125rem;
+}
+
+/* ── Table layout ── */
+.mwp-table {
+  display: flex;
+  flex-direction: column;
+}
+
+.mwp-table-head {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0.6rem 1rem;
+  border-bottom: 1px solid var(--slate-100);
+}
+
+.mwp-table-head .mwp-col {
+  font-size: 0.625rem;
+  font-weight: 800;
+  color: var(--slate-400);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.mwp-row {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  align-items: center;
+  border-bottom: 1px solid var(--slate-50);
+  transition: background 0.15s;
+}
+
+.mwp-row:last-child {
+  border-bottom: none;
+}
+
+.mwp-row:hover {
+  background: var(--slate-50);
+}
+
+/* ── Grid templates ── */
+.mwp-grid--jira {
+  grid-template-columns: 2fr 2.5fr 2fr 1fr;
+}
+
+.mwp-grid--git {
+  grid-template-columns: 2fr 3fr 1.2fr;
+}
+
+/* ── Member column ── */
+.mwp-col--member {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.mwp-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.mwp-avatar--jira {
+  background: #e9d5ff;
+  color: #7c3aed;
+}
+
+.mwp-avatar--git {
+  background: var(--brand-100);
+  color: var(--brand-700);
+}
+
+.mwp-name {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--slate-800);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Progress bar ── */
+.mwp-bar-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+}
+
+.mwp-bar {
+  flex: 1;
+  height: 8px;
+  background: var(--slate-100);
+  border-radius: 99px;
+  overflow: hidden;
+  display: flex;
+}
+
+.mwp-bar-fill {
+  height: 100%;
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mwp-bar-fill--done {
+  background: var(--success, #22c55e);
+}
+
+.mwp-bar-fill--progress {
+  background: var(--brand-500, #3b82f6);
+}
+
+.mwp-bar-fill--git {
+  background: var(--brand-500, #3b82f6);
+}
+
+.mwp-pct {
+  font-size: 0.8125rem;
+  font-weight: 800;
+  color: var(--slate-800);
+  font-family: var(--font-heading);
+  min-width: 32px;
+  text-align: right;
+}
+
+.mwp-commit-num {
+  font-size: 0.875rem;
+  font-weight: 800;
+  color: var(--slate-800);
+  font-family: var(--font-heading);
+  min-width: 24px;
+  text-align: right;
+}
+
+/* ── Breakdown column ── */
+.mwp-col--breakdown {
+  display: flex;
+  align-items: center;
+}
+
+.mwp-breakdown {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.mwp-bd-item {
+  font-size: 0.625rem;
+  font-weight: 700;
+  padding: 0.1rem 0.35rem;
+  border-radius: 5px;
+  white-space: nowrap;
+}
+
+.mwp-bd--done {
+  background: var(--success-light, #dcfce7);
+  color: var(--success, #22c55e);
+}
+
+.mwp-bd--progress {
+  background: var(--brand-50, #eff6ff);
+  color: var(--brand-600, #2563eb);
+}
+
+.mwp-bd--todo {
+  background: var(--slate-100);
+  color: var(--slate-500);
+}
+
+.mwp-bd--overdue {
+  background: #fef2f2;
+  color: var(--danger, #ef4444);
+}
+
+/* ── Lines changed column ── */
+.mwp-col--lines {
+  display: flex;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.mwp-add {
+  color: var(--success, #22c55e);
+}
+
+.mwp-del {
+  color: var(--danger, #ef4444);
+}
+
+/* ── Status badges ── */
+.mwp-status {
+  font-size: 0.625rem;
+  font-weight: 800;
+  padding: 0.15rem 0.5rem;
+  border-radius: 99px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.mwp-status--done {
+  background: var(--success-light, #dcfce7);
+  color: var(--success, #22c55e);
+}
+
+.mwp-status--working {
+  background: var(--brand-50, #eff6ff);
+  color: var(--brand-600, #2563eb);
+}
+
+.mwp-status--overdue {
+  background: #fef2f2;
+  color: var(--danger, #ef4444);
+}
+
+.mwp-status--idle {
+  background: var(--slate-100);
+  color: var(--slate-500);
+}
+
+.mwp-status--none {
+  background: var(--slate-50);
+  color: var(--slate-300);
+}
+
+/* ── Responsive ── */
+@media (max-width: 1100px) {
+  .mwp-split {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .mwp-grid--jira {
+    grid-template-columns: 2fr 2fr 1fr;
+  }
+  .mwp-col--status {
+    display: none;
+  }
+  .mwp-grid--git {
+    grid-template-columns: 2fr 2fr;
+  }
+  .mwp-col--lines {
+    display: none;
+  }
+}
