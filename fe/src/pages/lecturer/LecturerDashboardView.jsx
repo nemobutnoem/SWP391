@@ -254,15 +254,14 @@ export function LecturerDashboardView() {
         title="Lecturer Dashboard"
         description={`Semester: ${semesterLabel} • You supervise ${myGroups.length} group(s) with ${totalStudents} students. ${pendingCount} pending grade(s).`}
         actions={
-          <div className="action-buttons">
+          <div className="lecturer-header-actions">
             <select
-              className="semester-select"
+              className="semester-select lecturer-filter-select"
               value={selectedSemesterId ?? ""}
               onChange={(e) => {
                 const v = e.target.value;
                 setSelectedSemesterId(v === "" ? activeSemester?.id ?? null : Number(v));
               }}
-              style={{ marginRight: "0.5rem" }}
             >
               {activeSemester && (
                 <option value={activeSemester.id}>{renderSemLabel(activeSemester)}</option>
@@ -278,13 +277,12 @@ export function LecturerDashboardView() {
             </select>
 
             <select
-              className="semester-select"
+              className="semester-select lecturer-filter-select"
               value={selectedClassId ?? ""}
               onChange={(e) => {
                 const v = e.target.value;
                 setSelectedClassId(v === "" ? null : Number(v));
               }}
-              style={{ marginRight: "0.5rem" }}
             >
               <option value="">All classes</option>
               {classes.map((c) => (

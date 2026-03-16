@@ -297,6 +297,9 @@ export function TasksBoardView({
             onClick={onSyncJira}
             disabled={isSyncing}
           >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M11.53 2c0 0-4.46 4.51-4.46 9.87 0 5.46 4.46 10.13 4.46 10.13s4.46-4.67 4.46-10.13C16 6.51 11.53 2 11.53 2zM12 18.27c-3-3.6-3-7.53-3-7.53s0-3.93 3-7.53c3 3.6 3 7.53 3 7.53s0 3.93-3 7.53z" />
+            </svg>
             {isSyncing ? "Syncing..." : "Sync Jira"}
           </button>
         </div>
