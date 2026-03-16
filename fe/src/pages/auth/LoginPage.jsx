@@ -70,7 +70,7 @@ export function LoginPage() {
           <div className="auth-logo" aria-hidden="true">
             SWP
           </div>
-          <h1 className="auth-title">Software Project Workspace</h1>
+          <h1 className="auth-title">Software Development Project</h1>
           <p className="auth-subtitle">Student Project Management System</p>
         </header>
 
