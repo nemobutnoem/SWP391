@@ -45,14 +45,14 @@ export function Sidebar() {
         {isAdmin && (
           <div className="navGroup">
             <div className="navLabel">Administration</div>
-            <NavLink to="/topics" className={navClass}>
-              Project Topics
+            <NavLink to="/semesters" className={navClass}>
+              Semesters & Classes
             </NavLink>
             <NavLink to="/users" className={navClass}>
               User Management
             </NavLink>
-            <NavLink to="/semesters" className={navClass}>
-              Semesters & Classes
+            <NavLink to="/topics" className={navClass}>
+              Project Topics
             </NavLink>
             <NavLink to="/group/integrations" className={navClass}>
               Group Integrations
