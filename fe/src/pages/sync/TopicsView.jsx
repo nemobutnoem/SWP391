@@ -62,18 +62,23 @@ export function TopicsView({
                   </div>
                 </td>
                 <td>
-                  <Badge
-                    variant={
-                      topic.status === "ACTIVE"
+                  {(() => {
+                    const status = String(topic.status || "").toUpperCase();
+                    const variant =
+                      status === "ACTIVE"
                         ? "success"
-                        : topic.status === "ARCHIVED"
+                        : status === "ARCHIVED"
                           ? "neutral"
-                          : "warning"
-                    }
+                          : "warning";
+                    return (
+                  <Badge
+                    variant={variant}
                     size="sm"
                   >
-                    {topic.status}
+                    {status || "UNKNOWN"}
                   </Badge>
+                    );
+                  })()}
                 </td>
                 <td className="action-cell">
                   <div className="action-buttons">

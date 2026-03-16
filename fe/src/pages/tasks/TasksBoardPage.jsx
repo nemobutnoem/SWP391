@@ -49,11 +49,16 @@ function normalizeMemberOption(m) {
     student?.full_name ??
     m.account ??
     (userId ? `User ${userId}` : "");
+  const email =
+    m.email ??
+    student?.email ??
+    null;
 
   return {
     userId: userId == null ? null : Number(userId),
     name: String(name || "").trim(),
     jiraAccountId: m.jiraAccountId ?? m.jira_account_id ?? null,
+    email: email ? String(email).trim() : null,
   };
 }
 
@@ -84,7 +89,15 @@ export function TasksBoardPage() {
             const members = await groupService.listGroupMembers(gid);
             const options = (Array.isArray(members) ? members : [])
               .map(normalizeMemberOption)
-              .filter((x) => x.userId != null && x.name);
+              // Only show members who have logged in and mapped Jira account.
+              // Keep email domain check as a soft gate: allow if email missing.
+              .filter(
+                (x) =>
+                  x.userId != null &&
+                  x.name &&
+                  x.jiraAccountId &&
+                  (!x.email || x.email.toLowerCase().endsWith("@fpt.edu.vn")),
+              );
             return [gid, options];
           } catch (e) {
             console.warn("[TasksBoard] load members failed for group", gid, e);
@@ -144,6 +157,8 @@ export function TasksBoardPage() {
       await load();
     } catch (e) {
       console.error("[TasksBoard] updateAssignee failed:", e);
+      const msg = e?.message || "Update assignee failed";
+      window.alert(msg);
       await load();
     }
   };

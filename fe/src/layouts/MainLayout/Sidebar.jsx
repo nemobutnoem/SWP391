@@ -54,9 +54,6 @@ export function Sidebar() {
             <NavLink to="/semesters" className={navClass}>
               Semesters & Classes
             </NavLink>
-            <NavLink to="/admin/integrations" className={navClass}>
-              Integration Settings
-            </NavLink>
             <NavLink to="/group/integrations" className={navClass}>
               Group Integrations
             </NavLink>

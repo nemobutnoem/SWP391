@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import ReactDOM from "react-dom";
 import styles from "./taskDetailModal.module.css";
 
+const UNMAPPED_ASSIGNEE_VALUE = "__jira_external__";
+
 function formatDate(value) {
   if (!value) return "—";
   const d = new Date(value);
@@ -220,22 +222,45 @@ export function TaskDetailModal({
             {/* Assignee */}
             <div className={styles.detailRow}>
               <span className={styles.detailLabel}>Assignee</span>
-              <select
-                className={styles.detailSelect}
-                value={task.assigneeUserId ?? ""}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  const uid = v === "" ? null : Number(v);
-                  onAssigneeChange?.(task.id, task.groupId, uid);
-                }}
-              >
-                <option value="">Unassigned</option>
-                {(assigneeOptions || []).map((m) => (
-                  <option key={m.userId} value={m.userId}>
-                    {m.name}
-                  </option>
-                ))}
-              </select>
+              {(() => {
+                const options = assigneeOptions || [];
+                const hasMappedOption = options.some(
+                  (m) => Number(m.userId) === Number(task.assigneeUserId),
+                );
+                const fallbackName =
+                  task.assigneeName && task.assigneeName !== "Unassigned"
+                    ? task.assigneeName
+                    : null;
+                const selectValue = hasMappedOption
+                  ? task.assigneeUserId ?? ""
+                  : fallbackName
+                    ? UNMAPPED_ASSIGNEE_VALUE
+                    : "";
+                return (
+                  <select
+                    className={styles.detailSelect}
+                    value={selectValue}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v === UNMAPPED_ASSIGNEE_VALUE) return;
+                      const uid = v === "" ? null : Number(v);
+                      onAssigneeChange?.(task.id, task.groupId, uid);
+                    }}
+                  >
+                    <option value="">Unassigned</option>
+                    {!hasMappedOption && fallbackName && (
+                      <option value={UNMAPPED_ASSIGNEE_VALUE} disabled>
+                        {fallbackName} (Jira)
+                      </option>
+                    )}
+                    {(assigneeOptions || []).map((m) => (
+                      <option key={m.userId} value={m.userId}>
+                        {m.name}
+                      </option>
+                    ))}
+                  </select>
+                );
+              })()}
             </div>
 
             {/* Reporter */}

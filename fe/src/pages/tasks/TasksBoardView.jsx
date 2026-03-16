@@ -1,6 +1,9 @@
 import React from "react";
 import styles from "./tasksBoard.module.css";
 
+// Sentinel value to show Jira assignee that isn't mapped to a local member
+const UNMAPPED_ASSIGNEE_VALUE = "__jira_external__";
+
 const COLUMN_META = [
   { key: "TODO", title: "Backlog" },
   { key: "IN_PROGRESS", title: "In Progress" },
@@ -119,23 +122,47 @@ function TaskCard({
       <div className={styles.cardFooter}>
         <div className={styles.avatar} aria-hidden />
         <div className={styles.assignee}>
-          <select
-            className={styles.assigneeSelect}
-            value={task.assigneeUserId ?? ""}
-            onChange={(e) => {
-              const v = e.target.value;
-              const uid = v === "" ? null : Number(v);
-              onAssigneeChange?.(task.id, task.groupId, uid);
-            }}
-            onDragStart={(e) => e.stopPropagation()}
-          >
-            <option value="">Unassigned</option>
-            {(assigneeOptions || []).map((m) => (
-              <option key={m.userId} value={m.userId}>
-                {m.name}
-              </option>
-            ))}
-          </select>
+          {/** Keep Jira assignee visible even when it doesn't map to a local member */}
+          {(() => {
+            const options = assigneeOptions || [];
+            const hasMappedOption = options.some(
+              (m) => Number(m.userId) === Number(task.assigneeUserId),
+            );
+            const fallbackName =
+              task.assigneeName && task.assigneeName !== "Unassigned"
+                ? task.assigneeName
+                : null;
+            const selectValue = hasMappedOption
+              ? task.assigneeUserId ?? ""
+              : fallbackName
+                ? UNMAPPED_ASSIGNEE_VALUE
+                : "";
+            return (
+              <select
+                className={styles.assigneeSelect}
+                value={selectValue}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v === UNMAPPED_ASSIGNEE_VALUE) return; // read-only placeholder
+                  const uid = v === "" ? null : Number(v);
+                  onAssigneeChange?.(task.id, task.groupId, uid);
+                }}
+                onDragStart={(e) => e.stopPropagation()}
+              >
+                <option value="">Unassigned</option>
+                {!hasMappedOption && fallbackName && (
+                  <option value={UNMAPPED_ASSIGNEE_VALUE} disabled>
+                    {fallbackName} (Jira)
+                  </option>
+                )}
+                {options.map((m) => (
+                  <option key={m.userId} value={m.userId}>
+                    {m.name}
+                  </option>
+                ))}
+              </select>
+            );
+          })()}
         </div>
       </div>
     </div>
