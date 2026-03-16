@@ -36,17 +36,19 @@
 }
 
 .mwp-panel-title {
-  font-size: 0.8125rem;
-  font-weight: 800;
-  color: var(--slate-700);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  font-family: var(--font-heading);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--slate-800);
+  letter-spacing: 0.01em;
+  line-height: 1.2;
 }
 
 .mwp-panel-badge {
   margin-left: auto;
-  font-size: 0.6875rem;
-  font-weight: 700;
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 600;
   color: var(--slate-400);
   background: white;
   padding: 0.15rem 0.5rem;
@@ -75,11 +77,12 @@
 }
 
 .mwp-table-head .mwp-col {
-  font-size: 0.625rem;
-  font-weight: 800;
+  font-family: var(--font-body);
+  font-size: 0.6875rem;
+  font-weight: 700;
   color: var(--slate-400);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
 }
 
 .mwp-row {
@@ -139,8 +142,9 @@
 }
 
 .mwp-name {
+  font-family: var(--font-body);
   font-size: 0.8125rem;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--slate-800);
   white-space: nowrap;
   overflow: hidden;
@@ -257,12 +261,13 @@
 
 /* ── Status badges ── */
 .mwp-status {
-  font-size: 0.625rem;
-  font-weight: 800;
+  font-family: var(--font-body);
+  font-size: 0.6875rem;
+  font-weight: 700;
   padding: 0.15rem 0.5rem;
   border-radius: 99px;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.02em;
   white-space: nowrap;
 }
 

@@ -91,7 +91,7 @@
 
 .sidebarFooter {
   margin-top: auto;
-  padding-top: 1.5rem;
+  padding-top: 1.25rem;
   border-top: 1px solid var(--slate-100);
 }
 
@@ -99,51 +99,91 @@
   display: flex;
   align-items: center;
   gap: 0.875rem;
-  padding: 0.75rem;
-  background: var(--slate-50);
+  padding: 0.85rem;
+  background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%);
   border-radius: var(--radius-lg);
-  border: 1px solid var(--slate-200);
+  border: 1px solid #dbeafe;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.userCard::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at top right, rgba(56, 189, 248, 0.2), transparent 45%);
+  pointer-events: none;
+}
+
+.userCard:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
 }
 
 .userAvatar {
   width: 38px;
   height: 38px;
-  background: var(--brand-100);
-  color: var(--brand-700);
+  background: linear-gradient(135deg, var(--brand-500), var(--brand-700));
+  color: #ffffff;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 800;
   font-size: 0.875rem;
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.35);
+  z-index: 1;
 }
 
 .userInfo {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  gap: 0.25rem;
+  z-index: 1;
 }
 
 .userName {
   font-size: 0.875rem;
   font-weight: 700;
-  color: white;
+  color: var(--slate-800);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.userMeta {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
 }
 
 .userRole {
   display: inline-flex;
   font-size: 0.625rem;
   font-weight: 800;
-  color: var(--slate-500);
+  color: #0369a1;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  background: rgba(255, 255, 255, 0.05);
-  padding: 0.15rem 0.4rem;
-  border-radius: 4px;
+  background: rgba(186, 230, 253, 0.65);
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
   width: fit-content;
-  margin-top: 0.15rem;
+}
+
+.userPresence {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.625rem;
+  font-weight: 700;
+  color: #166534;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: rgba(187, 247, 208, 0.6);
+  border: 1px solid rgba(34, 197, 94, 0.4);
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
 }

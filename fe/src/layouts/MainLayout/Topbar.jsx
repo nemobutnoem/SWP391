@@ -42,13 +42,6 @@ export function Topbar() {
       </div>
 
       <div className="topbar__right">
-        <button className="btn-icon" title="Notifications">
-          🔔
-        </button>
-        <button className="btn-icon" title="Help">
-          ❓
-        </button>
-
         <div className="user-wrap" style={{ position: "relative" }}>
           <button
             className="topbar__user-btn"

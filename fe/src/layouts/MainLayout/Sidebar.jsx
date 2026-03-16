@@ -10,6 +10,13 @@ const navClass = ({ isActive }) =>
 export function Sidebar() {
   const { user } = useAuth();
   const role = user?.role;
+  const roleLabel =
+    typeof role === "string"
+      ? role
+          .toLowerCase()
+          .replace(/_/g, " ")
+          .replace(/\b\w/g, (char) => char.toUpperCase())
+      : "No Role";
 
   const isAdmin = role === ROLES.ADMIN;
   const isLecturer = role === ROLES.LECTURER;
@@ -101,7 +108,10 @@ export function Sidebar() {
           <div className="userAvatar">{userInitials}</div>
           <div className="userInfo">
             <div className="userName">{safeName}</div>
-            <div className="userRole">{role || "No Role"}</div>
+            <div className="userMeta">
+              <div className="userRole">{roleLabel}</div>
+              <div className="userPresence">Online</div>
+            </div>
           </div>
         </div>
       </div>

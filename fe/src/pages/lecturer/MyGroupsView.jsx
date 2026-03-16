@@ -135,12 +135,11 @@ export function MyGroupsView({
         }
       />
 
-      <div className="filters-row" style={{ display: "flex", gap: "0.75rem", margin: "0 0 1rem 0" }}>
+      <div className="filters-row groups-filters-row">
         <select
-          className="form-select"
+          className="form-select groups-filter-select"
           value={selectedSemesterId ?? ""}
           onChange={(e) => onSemesterChange?.(e.target.value ? Number(e.target.value) : null)}
-          style={{ maxWidth: "220px" }}
         >
           <option value="">All Semesters</option>
           {semesterOptions.map((s) => (
@@ -151,10 +150,9 @@ export function MyGroupsView({
         </select>
 
         <select
-          className="form-select"
+          className="form-select groups-filter-select"
           value={selectedClassId ?? ""}
           onChange={(e) => onClassChange?.(e.target.value ? Number(e.target.value) : null)}
-          style={{ maxWidth: "220px" }}
         >
           <option value="">All Classes</option>
           {classOptions

@@ -163,6 +163,46 @@
   outline: none;
 }
 
+.allocation-page .filter-select {
+  width: 100%;
+  padding: 0.56rem 2.25rem 0.56rem 0.85rem;
+  border: 1px solid var(--brand-200);
+  border-radius: 10px;
+  background-color: #ffffff;
+  background-image: linear-gradient(45deg, transparent 50%, var(--brand-600) 50%),
+    linear-gradient(135deg, var(--brand-600) 50%, transparent 50%);
+  background-position: calc(100% - 16px) calc(50% - 2px), calc(100% - 10px) calc(50% - 2px);
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+  color: var(--slate-800);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+}
+
+.allocation-page .filter-select:hover {
+  border-color: var(--brand-300);
+  background-color: #f8fbff;
+}
+
+.allocation-page .filter-select:focus {
+  border-color: var(--brand-500);
+  box-shadow: 0 0 0 3px var(--brand-100);
+  background-color: #ffffff;
+}
+
+.allocation-page .filter-select:disabled {
+  cursor: not-allowed;
+  border-color: var(--slate-200);
+  color: var(--slate-400);
+  background-color: var(--slate-100);
+  background-image: linear-gradient(45deg, transparent 50%, var(--slate-400) 50%),
+    linear-gradient(135deg, var(--slate-400) 50%, transparent 50%);
+}
+
 /* Table Enhancements */
 .group-meta {
   display: block;
@@ -240,6 +280,52 @@
   text-transform: uppercase;
   display: block;
   margin-bottom: 0.5rem;
+}
+
+/* Lecturer My Groups filters */
+.groups-filters-row {
+  display: flex;
+  gap: 0.75rem;
+  margin: 0 0 1rem 0;
+  flex-wrap: wrap;
+}
+
+.groups-filter-select {
+  width: 100%;
+  max-width: 220px;
+  padding: 0.56rem 2.2rem 0.56rem 0.85rem;
+  border: 1px solid var(--brand-200);
+  border-radius: 10px;
+  background-color: #ffffff;
+  background-image: linear-gradient(45deg, transparent 50%, var(--brand-600) 50%),
+    linear-gradient(135deg, var(--brand-600) 50%, transparent 50%);
+  background-position: calc(100% - 16px) calc(50% - 2px), calc(100% - 10px) calc(50% - 2px);
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+  color: var(--slate-800);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.groups-filter-select:hover {
+  border-color: var(--brand-300);
+  background-color: #f8fbff;
+}
+
+.groups-filter-select:focus {
+  border-color: var(--brand-500);
+  box-shadow: 0 0 0 3px var(--brand-100);
+  background-color: #ffffff;
+}
+
+@media (max-width: 768px) {
+  .groups-filter-select {
+    max-width: 100%;
+  }
 }
 
 /* Action Cell & Buttons */
