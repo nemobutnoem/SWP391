@@ -172,6 +172,17 @@ public class JiraClient {
 				.body(JsonNode.class);
 	}
 
+
+	public JsonNode searchAssignableUsers(String baseUrl, String email, String apiToken, String issueKey, String query) {
+		return buildClient(baseUrl, email, apiToken).get()
+				.uri(uriBuilder -> uriBuilder
+						.path("/rest/api/3/user/assignable/search")
+						.queryParam("issueKey", issueKey)
+						.queryParam("query", query)
+						.build())
+				.retrieve()
+				.body(JsonNode.class);
+	}
 	public JsonNode getUser(String baseUrl, String email, String apiToken, String accountId) {
 		return buildClient(baseUrl, email, apiToken).get()
 				.uri(uriBuilder -> uriBuilder
@@ -192,4 +203,6 @@ public class JiraClient {
 				.build();
 	}
 }
+
+
 

@@ -1,8 +1,13 @@
 import React, { useMemo } from "react";
 import "./memberWorkProgress.css";
 
-export function MemberWorkProgress({ tasks = [], activities = [] }) {
-  // ── Git stats per user (deduplicated by commit_sha) ──
+export function MemberWorkProgress({
+  tasks = [],
+  activities = [],
+  title = "Member Work Progress",
+  showJiraPanel = true,
+  showGitPanel = true,
+}) {
   const gitMembers = useMemo(() => {
     const seen = new Set();
     const unique = activities.filter((a) => {
@@ -10,6 +15,7 @@ export function MemberWorkProgress({ tasks = [], activities = [] }) {
       seen.add(a.commit_sha);
       return true;
     });
+
     const map = {};
     for (const act of unique) {
       const user = act.github_username;
@@ -19,12 +25,12 @@ export function MemberWorkProgress({ tasks = [], activities = [] }) {
       map[user].additions += act.additions || 0;
       map[user].deletions += act.deletions || 0;
     }
+
     return Object.entries(map)
       .map(([name, stats]) => ({ name, ...stats }))
       .sort((a, b) => b.commits - a.commits);
   }, [activities]);
 
-  // ── Jira task stats per assignee ──
   const jiraMembers = useMemo(() => {
     const map = {};
     for (const t of tasks) {
@@ -34,14 +40,16 @@ export function MemberWorkProgress({ tasks = [], activities = [] }) {
         t._raw?.assignee_name ||
         "Unassigned";
       if (name === "Unassigned") continue;
-      if (!map[name])
+      if (!map[name]) {
         map[name] = { total: 0, done: 0, inProgress: 0, todo: 0, overdue: 0 };
+      }
+
       map[name].total += 1;
       const st = t.status || "TODO";
       if (st === "DONE") map[name].done += 1;
-      else if (st === "IN_PROGRESS" || st === "IN_REVIEW")
-        map[name].inProgress += 1;
+      else if (st === "IN_PROGRESS" || st === "IN_REVIEW") map[name].inProgress += 1;
       else map[name].todo += 1;
+
       if (st !== "DONE" && t.dueDate) {
         const d = new Date(t.dueDate);
         const today = new Date();
@@ -49,6 +57,7 @@ export function MemberWorkProgress({ tasks = [], activities = [] }) {
         if (d < today) map[name].overdue += 1;
       }
     }
+
     return Object.entries(map)
       .map(([name, stats]) => ({ name, ...stats }))
       .sort((a, b) => b.done - a.done);
@@ -58,17 +67,19 @@ export function MemberWorkProgress({ tasks = [], activities = [] }) {
   const totalTasks = jiraMembers.reduce((s, m) => s + m.total, 0);
   const maxCommits = gitMembers.length > 0 ? gitMembers[0].commits : 1;
 
-  if (gitMembers.length === 0 && jiraMembers.length === 0) return null;
+  if ((showGitPanel && gitMembers.length === 0) && (showJiraPanel && jiraMembers.length === 0)) {
+    return null;
+  }
 
   return (
     <div className="mwp">
-      <h2 className="section-title">👥 Member Work Progress</h2>
+      <h2 className="section-title">{title}</h2>
 
       <div className="mwp-split">
-        {/* ──────── JIRA TASKS TABLE ──────── */}
+        {showJiraPanel && (
         <div className="mwp-panel">
           <div className="mwp-panel-header">
-            <span className="mwp-panel-icon mwp-panel-icon--jira">📋</span>
+            <span className="mwp-panel-icon mwp-panel-icon--jira">Tasks</span>
             <span className="mwp-panel-title">Jira Tasks</span>
             <span className="mwp-panel-badge">{totalTasks} tasks</span>
           </div>
@@ -89,7 +100,8 @@ export function MemberWorkProgress({ tasks = [], activities = [] }) {
                 const donePct = Math.round((m.done / m.total) * 100);
                 const hasOverdue = m.overdue > 0;
 
-                let statusLabel, statusClass;
+                let statusLabel;
+                let statusClass;
                 if (donePct === 100) {
                   statusLabel = "Completed";
                   statusClass = "mwp-status--done";
@@ -129,11 +141,11 @@ export function MemberWorkProgress({ tasks = [], activities = [] }) {
 
                     <div className="mwp-col mwp-col--breakdown">
                       <div className="mwp-breakdown">
-                        <span className="mwp-bd-item mwp-bd--done" title="Done">✓ {m.done}</span>
-                        <span className="mwp-bd-item mwp-bd--progress" title="In Progress">◐ {m.inProgress}</span>
-                        <span className="mwp-bd-item mwp-bd--todo" title="To Do">○ {m.todo}</span>
+                        <span className="mwp-bd-item mwp-bd--done" title="Done">OK {m.done}</span>
+                        <span className="mwp-bd-item mwp-bd--progress" title="In Progress">IP {m.inProgress}</span>
+                        <span className="mwp-bd-item mwp-bd--todo" title="To Do">TD {m.todo}</span>
                         {hasOverdue && (
-                          <span className="mwp-bd-item mwp-bd--overdue" title="Overdue">⚠ {m.overdue}</span>
+                          <span className="mwp-bd-item mwp-bd--overdue" title="Overdue">OD {m.overdue}</span>
                         )}
                       </div>
                     </div>
@@ -147,11 +159,12 @@ export function MemberWorkProgress({ tasks = [], activities = [] }) {
             </div>
           )}
         </div>
+        )}
 
-        {/* ──────── GIT ACTIVITY TABLE ──────── */}
+        {showGitPanel && (
         <div className="mwp-panel">
           <div className="mwp-panel-header">
-            <span className="mwp-panel-icon mwp-panel-icon--git">🔀</span>
+            <span className="mwp-panel-icon mwp-panel-icon--git">Git</span>
             <span className="mwp-panel-title">Git Contributions</span>
             <span className="mwp-panel-badge">{totalCommits} commits</span>
           </div>
@@ -193,6 +206,7 @@ export function MemberWorkProgress({ tasks = [], activities = [] }) {
             </div>
           )}
         </div>
+        )}
       </div>
     </div>
   );

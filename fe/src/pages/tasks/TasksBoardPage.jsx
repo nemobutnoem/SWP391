@@ -6,13 +6,14 @@ import { effectiveStatus } from "../../features/tasks/taskStats.js";
 import { jiraTaskService } from "../../services/jiraTasks/jiraTask.service.js";
 import { syncService } from "../../services/sync/sync.service.js";
 import { groupService } from "../../services/groups/group.service.js";
+import { useAuth } from "../../store/auth/useAuth.jsx";
+import { ROLES } from "../../routes/access/roles.js";
 
 function normalizeStatus(s) {
   const v = String(s ?? "").trim().toUpperCase();
   if (v === "TODO" || v === "TO DO" || v === "TO_DO") return "TODO";
   if (v === "IN_PROGRESS" || v === "IN PROGRESS" || v === "INPROGRESS")
     return "IN_PROGRESS";
-  // UI does not have a separate Review lane; treat it as In Progress.
   if (v === "IN_REVIEW" || v === "IN REVIEW" || v === "INREVIEW")
     return "IN_PROGRESS";
   if (v === "DONE") return "DONE";
@@ -29,7 +30,6 @@ function normalizeJiraTask(t) {
     assigneeName: t.assigneeName ?? t.assignee_name ?? t.assignee ?? "Unassigned",
     assigneeUserId: t.assigneeUserId ?? t.assignee_user_id ?? null,
     status: normalizeStatus(t.status),
-    // giữ raw nếu cần debug
     _raw: t,
   };
 }
@@ -53,17 +53,26 @@ function normalizeMemberOption(m) {
     m.email ??
     student?.email ??
     null;
+  const account = m.account ?? student?.account ?? null;
+  const studentCode = m.studentCode ?? m.student_code ?? student?.student_code ?? student?.studentCode ?? null;
+  const emailLocal = email && String(email).includes("@") ? String(email).split("@")[0].trim() : null;
 
   return {
     userId: userId == null ? null : Number(userId),
     name: String(name || "").trim(),
     jiraAccountId: m.jiraAccountId ?? m.jira_account_id ?? null,
     email: email ? String(email).trim() : null,
+    emailLocal,
+    account: account ? String(account).trim() : null,
+    studentCode: studentCode ? String(studentCode).trim() : null,
   };
 }
 
 export function TasksBoardPage() {
+  const { user } = useAuth();
+  const canEditTaskFields = user?.role !== ROLES.TEAM_MEMBER;
   const [query, setQuery] = useState("");
+  const [showOnlyMine, setShowOnlyMine] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [tasks, setTasks] = useState([]);
   const [membersByGroupId, setMembersByGroupId] = useState({});
@@ -89,13 +98,10 @@ export function TasksBoardPage() {
             const members = await groupService.listGroupMembers(gid);
             const options = (Array.isArray(members) ? members : [])
               .map(normalizeMemberOption)
-              // Only show members who have logged in and mapped Jira account.
-              // Keep email domain check as a soft gate: allow if email missing.
               .filter(
                 (x) =>
                   x.userId != null &&
                   x.name &&
-                  x.jiraAccountId &&
                   (!x.email || x.email.toLowerCase().endsWith("@fpt.edu.vn")),
               );
             return [gid, options];
@@ -118,21 +124,19 @@ export function TasksBoardPage() {
 
   useEffect(() => {
     load().catch((e) => console.error("[TasksBoard] load failed:", e));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleStatusChange = async (taskId, newStatus) => {
-    // optimistic UI: update trước cho mượt
     setTasks((prev) =>
       prev.map((t) => (Number(t.id) === Number(taskId) ? { ...t, status: newStatus } : t)),
     );
 
     try {
       await jiraTaskService.updateStatus(taskId, newStatus);
-      await load(); // reload để chắc chắn đồng bộ với mockDb/api
+      await load();
     } catch (e) {
       console.error("[TasksBoard] updateStatus failed:", e);
-      await load(); // rollback bằng cách reload
+      await load();
     }
   };
 
@@ -193,9 +197,31 @@ export function TasksBoardPage() {
 
   const filteredTasks = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return tasks;
-    return tasks.filter((t) => (t.title || "").toLowerCase().includes(q));
-  }, [query, tasks]);
+    const normalizedUserId =
+      user?.id == null || user.id === "" || Number.isNaN(Number(user.id)) ? null : Number(user.id);
+    const normalizedUserName = String(user?.name || "")
+      .trim()
+      .toLowerCase();
+
+    return tasks.filter((t) => {
+      const matchesQuery = !q || (t.title || "").toLowerCase().includes(q);
+      if (!matchesQuery) return false;
+      if (!showOnlyMine) return true;
+
+      const taskAssigneeId =
+        t.assigneeUserId == null || t.assigneeUserId === "" || Number.isNaN(Number(t.assigneeUserId))
+          ? null
+          : Number(t.assigneeUserId);
+      const taskAssigneeName = String(t.assigneeName || "")
+        .trim()
+        .toLowerCase();
+
+      if (normalizedUserId != null && taskAssigneeId != null) {
+        return taskAssigneeId === normalizedUserId;
+      }
+      return Boolean(normalizedUserName) && taskAssigneeName === normalizedUserName;
+    });
+  }, [query, showOnlyMine, tasks, user]);
 
   const columns = useMemo(() => {
     const base = {
@@ -248,7 +274,6 @@ export function TasksBoardPage() {
     setComments([]);
   }, []);
 
-  // Keep selectedTask in sync with optimistic updates from board
   const liveSelectedTask = useMemo(() => {
     if (!selectedTask) return null;
     return tasks.find((t) => Number(t.id) === Number(selectedTask.id)) || selectedTask;
@@ -259,9 +284,12 @@ export function TasksBoardPage() {
       <TasksBoardView
         query={query}
         onQueryChange={setQuery}
+        showOnlyMine={showOnlyMine}
+        onToggleShowOnlyMine={() => setShowOnlyMine((prev) => !prev)}
         isSyncing={isSyncing}
         onSyncJira={onSyncJira}
         columns={columns}
+        canEditTaskFields={canEditTaskFields}
         onStatusChange={handleStatusChange}
         membersByGroupId={membersByGroupId}
         onAssigneeChange={handleAssigneeChange}
@@ -277,6 +305,7 @@ export function TasksBoardPage() {
         onAddComment={handleAddComment}
         isLoadingComments={isLoadingComments}
         assigneeOptions={membersByGroupId?.[liveSelectedTask?.groupId] ?? []}
+        canEditTaskFields={canEditTaskFields}
         onStatusChange={handleStatusChange}
         onAssigneeChange={handleAssigneeChange}
         onDueDateChange={handleDueDateChange}
@@ -285,3 +314,4 @@ export function TasksBoardPage() {
     </>
   );
 }
+

@@ -4,6 +4,7 @@ import { studentService } from "../../services/students/student.service.js";
 import { gradeService } from "../../services/grades/grade.service.js";
 import { semesterService } from "../../services/semesters/semester.service.js";
 import { classService } from "../../services/classes/class.service.js";
+import { topicService } from "../../services/topics/topic.service.js";
 import { MyGroupsView } from "./MyGroupsView.jsx";
 import "../admin/adminManagement.css";
 
@@ -18,9 +19,9 @@ export function MyGroupsPage() {
   const [allMembers, setAllMembers] = useState([]);
   const [students, setStudents] = useState([]);
   const [grades, setGrades] = useState([]);
+  const [topics, setTopics] = useState([]);
+  const [topicSelections, setTopicSelections] = useState({});
 
-  // Create Group Modal State
-  const [showCreateModal, setShowCreateModal] = useState(false);
   const [semesters, setSemesters] = useState([]);
   const [allClasses, setAllClasses] = useState([]);
   const [selectedSemesterId, setSelectedSemesterId] = useState(null);
@@ -34,6 +35,7 @@ export function MyGroupsPage() {
     groupService.listMembers().then(setAllMembers);
     studentService.list().then(setStudents);
     gradeService.list().then(setGrades);
+    topicService.list().then(setTopics);
     semesterService.list().then((data) => {
       setSemesters(data);
       const active = data.find((s) => s.status?.toLowerCase() === "active");
@@ -45,6 +47,14 @@ export function MyGroupsPage() {
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    setTopicSelections(
+      Object.fromEntries(
+        allGroups.map((g) => [g.id, g.project_id ?? g.projectId ?? ""]),
+      ),
+    );
+  }, [allGroups]);
 
   // Filter groups by selected semester/class (optional)
   const myGroups = useMemo(() => {
@@ -69,15 +79,16 @@ export function MyGroupsPage() {
       const groupGrades = grades.filter(
         (gr) => gr.group_id === g.id,
       );
+      const topic = topics.find((t) => t.id === (g.project_id ?? g.projectId));
       const gradedGrades = groupGrades.filter((gr) => gr.score !== null);
       const avgScore =
         gradedGrades.length > 0
           ? (gradedGrades.reduce((s, gr) => s + gr.score, 0) / gradedGrades.length).toFixed(1)
           : null;
 
-      return { ...g, members, groupGrades, avgScore };
+      return { ...g, members, groupGrades, avgScore, topicName: topic?.name || null };
     });
-  }, [myGroups, allMembers, students, grades]);
+  }, [myGroups, allMembers, students, grades, topics]);
 
   const toggleExpand = (id) =>
     setExpandedGroupId(expandedGroupId === id ? null : id);
@@ -112,13 +123,24 @@ export function MyGroupsPage() {
     }
   };
 
-  const handleCreateGroup = async (formData) => {
+  const handleTopicSelectionChange = (groupId, topicId) => {
+    setTopicSelections((prev) => ({
+      ...prev,
+      [groupId]: topicId ? Number(topicId) : "",
+    }));
+  };
+
+  const handleAssignTopic = async (groupId) => {
     try {
-      await groupService.create(formData);
+      const topicId = topicSelections[groupId];
+      if (!topicId) {
+        alert("Please select a topic first.");
+        return;
+      }
+      await groupService.assignTopicAdmin(groupId, topicId);
       loadData();
-      setShowCreateModal(false);
     } catch (err) {
-      alert("Failed to create group: " + (err.response?.data?.message || err.message || err));
+      alert("Failed to assign topic: " + (err.response?.data?.message || err.message || err));
     }
   };
 
@@ -130,6 +152,11 @@ export function MyGroupsPage() {
     );
     return students.filter((s) => !memberStudentIds.has(s.id));
   }, [addMemberGroupId, allMembers, students]);
+
+  const availableTopics = useMemo(
+    () => topics.filter((t) => String(t.status || "").toUpperCase() !== "ARCHIVED"),
+    [topics],
+  );
 
   return (
     <MyGroupsView
@@ -143,12 +170,6 @@ export function MyGroupsPage() {
       onOpenAddMember={setAddMemberGroupId}
       onCloseAddMember={() => setAddMemberGroupId(null)}
       availableStudents={availableStudents}
-      showCreateModal={showCreateModal}
-      onOpenCreateModal={() => setShowCreateModal(true)}
-      onCloseCreateModal={() => setShowCreateModal(false)}
-      onCreateGroup={handleCreateGroup}
-      semesters={semesters}
-      allClasses={allClasses}
       semesterOptions={semesters}
       classOptions={allClasses}
       selectedSemesterId={selectedSemesterId}
@@ -158,6 +179,10 @@ export function MyGroupsPage() {
         setSelectedClassId(null);
       }}
       onClassChange={setSelectedClassId}
+      topics={availableTopics}
+      topicSelections={topicSelections}
+      onTopicSelectionChange={handleTopicSelectionChange}
+      onAssignTopic={handleAssignTopic}
     />
   );
 }

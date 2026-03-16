@@ -5,80 +5,6 @@ import { Button } from "../../components/common/Button.jsx";
 import { Modal } from "../../components/common/Modal.jsx";
 import "../admin/adminManagement.css";
 
-/* --- Create Group Form Modal --- */
-function CreateGroupModal({ isOpen, onClose, onSubmit, semesters, allClasses }) {
-  const [form, setForm] = useState({
-    group_code: "",
-    group_name: "",
-    description: "",
-    semester_id: "",
-    class_id: "",
-  });
-
-  const handle = (e) => setForm((p) => ({ ...p, [e.target.name]: e.target.value }));
-
-  return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Create Group">
-      <form
-        className="task-form"
-        onSubmit={(e) => {
-          e.preventDefault();
-          
-          if (!/^[a-zA-Z0-9_-]+$/.test(form.group_code)) {
-            alert("Group code can only contain letters, numbers, hyphens, and underscores (no spaces).");
-            return;
-          }
-
-          onSubmit({
-            group_code: form.group_code,
-            group_name: form.group_name,
-            description: form.description,
-            semester_id: Number(form.semester_id),
-            class_id: Number(form.class_id),
-          });
-        }}
-      >
-        <div className="form-group" style={{ marginBottom: "1rem" }}>
-          <label className="form-label">Semester *</label>
-          <select className="form-select" name="semester_id" value={form.semester_id} onChange={handle} required>
-            <option value="">-- Select Semester --</option>
-            {semesters.map((s) => (
-              <option key={s.id} value={s.id}>{s.name} ({s.code})</option>
-            ))}
-          </select>
-        </div>
-        <div className="form-group" style={{ marginBottom: "1rem" }}>
-          <label className="form-label">Class *</label>
-          <select className="form-select" name="class_id" value={form.class_id} onChange={handle} required>
-            <option value="">-- Select Class --</option>
-            {allClasses
-              .filter(c => !form.semester_id || c.semester_id === Number(form.semester_id))
-              .map((c) => (
-                <option key={c.id} value={c.id}>{c.class_code} - {c.class_name || c.major}</option>
-              ))}
-          </select>
-        </div>
-        <div className="form-group" style={{ marginBottom: "1rem" }}>
-          <label className="form-label">Group Code *</label>
-          <input className="form-input" name="group_code" value={form.group_code} onChange={handle} required placeholder="e.g. G1" />
-        </div>
-        <div className="form-group" style={{ marginBottom: "1rem" }}>
-          <label className="form-label">Group Name *</label>
-          <input className="form-input" name="group_name" value={form.group_name} onChange={handle} required placeholder="e.g. E-Commerce Platform" />
-        </div>
-        <div className="form-group" style={{ marginBottom: "1.5rem" }}>
-          <label className="form-label">Description</label>
-          <textarea className="form-input" name="description" value={form.description} onChange={handle} placeholder="Brief description..." />
-        </div>
-        <div className="modal-actions" style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-end", marginTop: "1rem" }}>
-          <Button variant="ghost" type="button" onClick={onClose}>Cancel</Button>
-          <Button variant="primary" type="submit">Create</Button>
-        </div>
-      </form>
-    </Modal>
-  );
-}
-
 /**
  * Presentation layer – nhận tất cả data và handler qua props.
  * Không có state, không gọi service.
@@ -100,12 +26,10 @@ export function MyGroupsView({
   onOpenAddMember,
   onCloseAddMember,
   availableStudents,
-  showCreateModal,
-  onOpenCreateModal,
-  onCloseCreateModal,
-  onCreateGroup,
-  semesters,
-  allClasses,
+  topics = [],
+  topicSelections = {},
+  onTopicSelectionChange,
+  onAssignTopic,
 }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedRole, setSelectedRole] = useState("Member");
@@ -128,11 +52,6 @@ export function MyGroupsView({
       <PageHeader
         title="My Supervised Groups"
         description="Detailed view of all groups under your supervision with member contribution scores and grade history."
-        actions={
-          <Button variant="primary" onClick={onOpenCreateModal}>
-            + Create Group
-          </Button>
-        }
       />
 
       <div className="filters-row" style={{ display: "flex", gap: "0.75rem", margin: "0 0 1rem 0" }}>
@@ -172,6 +91,7 @@ export function MyGroupsView({
           <thead>
             <tr>
               <th>Group</th>
+              <th>Topic</th>
               <th>Members</th>
               <th>Avg. Score</th>
               <th>Pending</th>
@@ -192,6 +112,13 @@ export function MyGroupsView({
                       </div>
                       <div className="group-meta">{g.description}</div>
                     </div>
+                  </td>
+                  <td>
+                    {g.topicName ? (
+                      <Badge variant="neutral" size="sm">{g.topicName}</Badge>
+                    ) : (
+                      <span className="text-secondary">No topic assigned</span>
+                    )}
                   </td>
                   <td>
                     <Badge variant="info" size="sm">
@@ -220,7 +147,50 @@ export function MyGroupsView({
 
                 {expandedGroupId === g.id && (
                   <tr className="expanded-row">
-                    <td colSpan="4" className="expanded-content-cell">
+                    <td colSpan="5" className="expanded-content-cell">
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: "1rem", flexWrap: "wrap", marginBottom: "1rem" }}>
+                        <div style={{ minWidth: "320px", flex: "1 1 360px" }}>
+                          <span className="expanded-row-title" style={{ display: "block", marginBottom: "0.5rem" }}>
+                            Assigned Topic
+                          </span>
+                          <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
+                            <select
+                              className="form-select"
+                              value={topicSelections[g.id] ?? ""}
+                              onChange={(e) => onTopicSelectionChange?.(g.id, e.target.value)}
+                              onClick={(e) => e.stopPropagation()}
+                              style={{ minWidth: "260px" }}
+                            >
+                              <option value="">Select topic...</option>
+                              {topics.map((topic) => (
+                                <option key={topic.id} value={topic.id}>
+                                  {topic.name} ({topic.code})
+                                </option>
+                              ))}
+                            </select>
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onAssignTopic?.(g.id);
+                              }}
+                            >
+                              Save Topic
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div style={{ textAlign: "right", minWidth: "180px" }}>
+                          <div className="text-secondary" style={{ fontSize: "0.75rem", marginBottom: "0.25rem" }}>
+                            Current topic
+                          </div>
+                          <div style={{ fontWeight: 700 }}>
+                            {g.topicName || "Not assigned"}
+                          </div>
+                        </div>
+                      </div>
+
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <span className="expanded-row-title">Member Contribution Scores</span>
                         <button
@@ -393,15 +363,6 @@ export function MyGroupsView({
         </div>
       </Modal>
 
-      {showCreateModal && (
-        <CreateGroupModal
-          isOpen={showCreateModal}
-          onClose={onCloseCreateModal}
-          onSubmit={onCreateGroup}
-          semesters={semesters}
-          allClasses={allClasses}
-        />
-      )}
     </div>
   );
 }

@@ -12,6 +12,7 @@ export function LoginPage() {
   const navigate = useNavigate();
 
   const [role, setRole] = useState(ROLES.TEAM_MEMBER);
+  const [googleAccountType, setGoogleAccountType] = useState("STUDENT");
   const [name, setName] = useState("");
 
   const [account, setAccount] = useState("lead1");
@@ -22,6 +23,14 @@ export function LoginPage() {
   const roleOptions = useMemo(
     () => [ROLES.ADMIN, ROLES.LECTURER, ROLES.TEAM_LEAD, ROLES.TEAM_MEMBER],
     []
+  );
+
+  const googleRoleOptions = useMemo(
+    () => [
+      { value: "STUDENT", label: "Student" },
+      { value: "LECTURER", label: "Lecturer" },
+    ],
+    [],
   );
 
   const onSubmit = async (e) => {
@@ -50,7 +59,10 @@ export function LoginPage() {
     setError("");
     try {
       setIsSubmitting(true);
-      await loginWithGoogle({ credential: credentialResponse.credential });
+      await loginWithGoogle({
+        credential: credentialResponse.credential,
+        accountType: googleAccountType,
+      });
       navigate("/dashboard", { replace: true });
     } catch (err) {
       setError(err?.response?.data?.message || err?.message || "Google Login failed");
@@ -122,11 +134,7 @@ export function LoginPage() {
           {env.useMock && (
             <div className="form-group auth-role">
               <label htmlFor="loginRole">Role</label>
-              <select
-                id="loginRole"
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-              >
+              <select id="loginRole" value={role} onChange={(e) => setRole(e.target.value)}>
                 {roleOptions.map((r) => (
                   <option key={r} value={r}>
                     {ROLE_LABELS[r]}
@@ -144,27 +152,48 @@ export function LoginPage() {
               className="auth-primary-btn"
               disabled={isSubmitting}
             >
-              {isSubmitting ? "Signing in…" : "Login"}
+              {isSubmitting ? "Signing in..." : "Login"}
             </Button>
           </div>
 
-          <div className="auth-divider" style={{ margin: "20px 0", textAlign: "center", textTransform: "uppercase", fontSize: "0.85rem", color: "#666" }}>
+          <div className="auth-divider">
             <span>Or</span>
           </div>
 
-          <div className="google-login-container" style={{ display: "flex", justifyContent: "center" }}>
-            <GoogleLogin
-              onSuccess={handleGoogleSuccess}
-              onError={handleGoogleError}
-              useOneTap
-              theme="filled_blue"
-              text="continue_with"
-            />
-          </div>
+          <div className="auth-google-panel">
+            <div className="form-group auth-role auth-google-role">
+              <label htmlFor="googleAccountType">Sign in with Google as</label>
+              <select
+                id="googleAccountType"
+                value={googleAccountType}
+                onChange={(e) => setGoogleAccountType(e.target.value)}
+                disabled={isSubmitting}
+              >
+                {googleRoleOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
 
+            <div className="auth-google-hint">
+              New Google accounts will be created with the selected account type.
+            </div>
+
+            <div className="google-login-container">
+              <GoogleLogin
+                onSuccess={handleGoogleSuccess}
+                onError={handleGoogleError}
+                useOneTap
+                theme="filled_blue"
+                text="continue_with"
+              />
+            </div>
+          </div>
         </form>
 
-        <footer className="auth-footer">© SWP Project — Academic Use Only</footer>
+        <footer className="auth-footer">Academic Use Only</footer>
       </div>
     </div>
   );

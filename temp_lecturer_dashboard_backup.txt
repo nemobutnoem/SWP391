@@ -6,7 +6,6 @@ import { jiraTaskService } from "../../services/jiraTasks/jiraTask.service.js";
 import { githubActivityService } from "../../services/githubActivities/githubActivity.service.js";
 import { semesterService } from "../../services/semesters/semester.service.js";
 import { classService } from "../../services/classes/class.service.js";
-import { studentService } from "../../services/students/student.service.js";
 import { PageHeader } from "../../components/common/PageHeader.jsx";
 import { StatCard } from "../../components/common/StatCard.jsx";
 import { Badge } from "../../components/common/Badge.jsx";
@@ -47,13 +46,11 @@ export function LecturerDashboardView() {
 
   const [allGroups, setAllGroups] = useState([]);
   const [allMembers, setAllMembers] = useState([]);
-  const [students, setStudents] = useState([]);
   const [grades, setGrades] = useState([]);
   const [jiraTasks, setJiraTasks] = useState([]);
   const [githubActivities, setGithubActivities] = useState([]);
   const [expandedGroupId, setExpandedGroupId] = useState(null);
-  const [activeTab, setActiveTab] = useState({});
-  const [collapsedBranches, setCollapsedBranches] = useState({});
+  const [activeTab, setActiveTab] = useState({}); // { [groupId]: "tasks" | "activity" }
   const [semesters, setSemesters] = useState([]);
   const [activeSemester, setActiveSemester] = useState(null);
   const [selectedSemesterId, setSelectedSemesterId] = useState(null);
@@ -63,18 +60,14 @@ export function LecturerDashboardView() {
   useEffect(() => {
     groupService.list().then(setAllGroups);
     groupService.listMembers().then(setAllMembers);
-    studentService.list().then(setStudents).catch(() => setStudents([]));
     gradeService.list().then(setGrades);
     jiraTaskService.list().then(setJiraTasks).catch(() => setJiraTasks([]));
     githubActivityService.list().then(setGithubActivities).catch(() => setGithubActivities([]));
     semesterService.list().then(setSemesters).catch(() => setSemesters([]));
-    semesterService
-      .getActive()
-      .then((s) => {
-        setActiveSemester(s);
-        setSelectedSemesterId((prev) => prev ?? s?.id ?? null);
-      })
-      .catch(() => {});
+    semesterService.getActive().then((s) => {
+      setActiveSemester(s);
+      setSelectedSemesterId((prev) => prev ?? s?.id ?? null);
+    }).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -83,13 +76,17 @@ export function LecturerDashboardView() {
     }
   }, [activeSemester, selectedSemesterId]);
 
+  // load classes when semester changes
   useEffect(() => {
     const semId = selectedSemesterId || activeSemester?.id || null;
     classService
       .list(semId)
       .then((list) => {
         setClasses(list || []);
-        setSelectedClassId((prev) => (prev && !list?.some((c) => c.id === prev) ? null : prev));
+        // reset class filter if not in list
+        setSelectedClassId((prev) =>
+          prev && !list?.some((c) => c.id === prev) ? null : prev,
+        );
       })
       .catch(() => setClasses([]));
   }, [selectedSemesterId, activeSemester]);
@@ -119,14 +116,18 @@ export function LecturerDashboardView() {
   };
 
   const myGroups = useMemo(() => {
-    const filteredBySem = selectedSemesterId
-      ? allGroups.filter((g) => (g.semester_id ?? g.semesterId) === selectedSemesterId)
+    const semId = selectedSemesterId;
+    const filteredBySem = semId
+      ? allGroups.filter((g) => (g.semester_id ?? g.semesterId) === semId)
       : allGroups;
     if (!selectedClassId) return filteredBySem;
     return filteredBySem.filter((g) => (g.class_id ?? g.classId) === selectedClassId);
   }, [allGroups, selectedSemesterId, selectedClassId]);
 
-  const selectedGroupIds = useMemo(() => new Set(myGroups.map((g) => g.id)), [myGroups]);
+  const selectedGroupIds = useMemo(
+    () => new Set(myGroups.map((g) => g.id)),
+    [myGroups],
+  );
 
   const myGrades = useMemo(
     () => grades.filter((g) => selectedGroupIds.has(g.group_id ?? g.groupId)),
@@ -134,36 +135,16 @@ export function LecturerDashboardView() {
   );
   const pendingCount = myGrades.filter((g) => g.status === "PENDING").length;
 
-  const totalStudents = useMemo(
-    () => allMembers.filter((m) => selectedGroupIds.has(m.group_id)).length,
-    [allMembers, selectedGroupIds],
-  );
+  const totalStudents = useMemo(() => {
+    return allMembers.filter((m) => selectedGroupIds.has(m.group_id)).length;
+  }, [myGroups, allMembers, selectedGroupIds]);
 
   const tasksForSelectedGroups = useMemo(
     () => jiraTasks.filter((t) => selectedGroupIds.has(t.group_id ?? t.groupId)),
     [jiraTasks, selectedGroupIds],
   );
 
-  const loginLabelByUserId = useMemo(() => {
-    return new Map(
-      students.map((student) => [
-        student.user_id ?? student.userId,
-        student.email ? String(student.email).split("@")[0] : (student.student_code || student.full_name),
-      ]),
-    );
-  }, [students]);
-
-  const loginLabelByGithub = useMemo(() => {
-    return new Map(
-      students
-        .filter((student) => student.github_username)
-        .map((student) => [
-          student.github_username,
-          student.email ? String(student.email).split("@")[0] : (student.student_code || student.full_name),
-        ]),
-    );
-  }, [students]);
-
+  // Build per-group data
   const enrichedGroups = useMemo(() => {
     return myGroups.map((g) => {
       const members = allMembers.filter((m) => m.group_id === g.id);
@@ -171,17 +152,13 @@ export function LecturerDashboardView() {
       const rawActivities = githubActivities
         .filter((a) => a.group_id === g.id)
         .sort((a, b) => new Date(b.occurred_at) - new Date(a.occurred_at));
-
+      // Deduplicate commits that appear on multiple branches
       const seenSha = new Set();
       const activities = rawActivities.filter((a) => {
         if (!a.commit_sha || seenSha.has(a.commit_sha)) return false;
         seenSha.add(a.commit_sha);
         return true;
-      }).map((activity) => ({
-        ...activity,
-        displayName: loginLabelByGithub.get(activity.github_username) || activity.github_username,
-      }));
-
+      });
       const activitiesByBranch = Object.entries(
         activities.reduce((acc, activity) => {
           const branch = activity.ref_name || "main";
@@ -201,57 +178,51 @@ export function LecturerDashboardView() {
             return new Date(b.occurred_at) - new Date(a.occurred_at);
           }),
         }));
-
       const groupGrades = myGrades.filter((gr) => gr.group_id === g.id);
-      const normalizedTasks = tasks.map((task) => ({
-        ...task,
-        displayAssignee:
-          loginLabelByUserId.get(task.assigneeUserId ?? task.assignee_user_id) ||
-          task.assigneeName ||
-          "Unassigned",
-      }));
 
-      const doneTasks = normalizedTasks.filter((t) => normalizeTaskStatus(t.status) === "DONE").length;
-      const inProgressTasks = normalizedTasks.filter(
+      const doneTasks = tasks.filter((t) => t.status === "Done" || t.status === "DONE").length;
+      const totalTasks = tasks.length;
+      const inProgressTasks = tasks.filter(
         (t) => normalizeTaskStatus(t.status) === "IN_PROGRESS",
       ).length;
-      const todoTasks = normalizedTasks.filter((t) => normalizeTaskStatus(t.status) === "TODO").length;
-      const overdueTasks = normalizedTasks.filter((t) => {
+      const todoTasks = tasks.filter(
+        (t) => normalizeTaskStatus(t.status) === "TODO",
+      ).length;
+      const overdueTasks = tasks.filter((t) => {
         const due = t.dueDate || t.due_date;
         return due && daysLeft(due) < 0 && normalizeTaskStatus(t.status) !== "DONE";
       }).length;
-      const totalTasks = normalizedTasks.length;
       const progressPct = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
 
       return {
         ...g,
         members,
-        tasks: normalizedTasks,
+        tasks,
         activities,
         activitiesByBranch,
         groupGrades,
         doneTasks,
         inProgressTasks,
         todoTasks,
-        overdueTasks,
         totalTasks,
+        overdueTasks,
         progressPct,
         totalCommits: activities.length,
       };
     });
-  }, [myGroups, allMembers, jiraTasks, githubActivities, myGrades, loginLabelByGithub, loginLabelByUserId]);
+  }, [myGroups, allMembers, jiraTasks, githubActivities, myGrades]);
+
+  const toggleGroup = (id) => {
+    setExpandedGroupId(expandedGroupId === id ? null : id);
+  };
 
   const getTab = (groupId) => activeTab[groupId] || "tasks";
   const setTab = (groupId, tab) => setActiveTab((prev) => ({ ...prev, [groupId]: tab }));
-  const toggleBranch = (groupId, branch) => {
-    const key = `${groupId}::${branch}`;
-    setCollapsedBranches((prev) => ({ ...prev, [key]: !prev[key] }));
-  };
 
   return (
     <div className="dashboard-view">
       <PageHeader
-        title="Lecturer Dashboard"
+        title="Lecturer Dashboard 👋"
         description={`Semester: ${semesterLabel} • You supervise ${myGroups.length} group(s) with ${totalStudents} students. ${pendingCount} pending grade(s).`}
         actions={
           <div className="action-buttons">
@@ -276,7 +247,6 @@ export function LecturerDashboardView() {
                 ))}
               {!activeSemester && <option value="">All semesters</option>}
             </select>
-
             <select
               className="semester-select"
               value={selectedClassId ?? ""}
@@ -293,7 +263,6 @@ export function LecturerDashboardView() {
                 </option>
               ))}
             </select>
-
             <Button variant="secondary" size="sm" onClick={() => navigate("/classes")}>
               My Groups
             </Button>
@@ -301,24 +270,26 @@ export function LecturerDashboardView() {
         }
       />
 
+      {/* KPI Row */}
       <div className="dashboard-view__grid">
-        <StatCard title="Groups" value={myGroups.length} subtext="Supervised" icon="Groups" />
-        <StatCard title="Students" value={totalStudents} subtext="Under guidance" icon="Students" />
+        <StatCard title="Groups" value={myGroups.length} subtext="Supervised" icon="📋" />
+        <StatCard title="Students" value={totalStudents} subtext="Under guidance" icon="🧑‍🎓" />
         <StatCard
           title="Pending Grades"
           value={pendingCount}
           subtext={pendingCount > 0 ? "Action needed" : "All clear"}
           trend={pendingCount > 0 ? "warning" : "success"}
-          icon="Grades"
+          icon="📝"
         />
         <StatCard
           title="Total Tasks"
           value={tasksForSelectedGroups.length}
-          subtext={`${tasksForSelectedGroups.filter((t) => normalizeTaskStatus(t.status) === "DONE").length} completed`}
-          icon="Tasks"
+          subtext={`${tasksForSelectedGroups.filter((t) => t.status === "Done" || t.status === "DONE").length} completed`}
+          icon="✅"
         />
       </div>
 
+      {/* Group Cards */}
       <div className="lecturer-groups-section">
         <h2 className="section-title" style={{ marginBottom: "1rem" }}>
           My Groups ({enrichedGroups.length})
@@ -336,18 +307,21 @@ export function LecturerDashboardView() {
 
           return (
             <div key={g.id} className={`lecturer-group-card ${isExpanded ? "lecturer-group-card--expanded" : ""}`}>
-              <div className="lecturer-group-header" onClick={() => setExpandedGroupId(isExpanded ? null : g.id)}>
+              {/* Group Header - always visible */}
+              <div className="lecturer-group-header" onClick={() => toggleGroup(g.id)}>
                 <div className="lecturer-group-info">
-                  <span className="lecturer-group-icon">{isExpanded ? "Open" : "Closed"}</span>
+                  <span className="lecturer-group-icon">{isExpanded ? "📂" : "📁"}</span>
                   <div>
                     <div className="lecturer-group-name">{g.group_name}</div>
                     <div className="lecturer-group-meta">
-                      {g.members.length} members • {g.totalTasks} tasks • {g.totalCommits} commits
+                      {g.members.length} members · {g.totalTasks} tasks · {g.totalCommits} commits
                     </div>
                   </div>
                 </div>
                 <div className="lecturer-group-stats">
-                  {g.overdueTasks > 0 && <Badge variant="danger" size="sm">{g.overdueTasks} overdue</Badge>}
+                  {g.overdueTasks > 0 && (
+                    <Badge variant="danger" size="sm">{g.overdueTasks} overdue</Badge>
+                  )}
                   <Badge variant={g.totalTasks > 0 && g.doneTasks === g.totalTasks ? "success" : "info"} size="sm">
                     {g.doneTasks}/{g.totalTasks} done
                   </Badge>
@@ -355,20 +329,38 @@ export function LecturerDashboardView() {
                 </div>
               </div>
 
+              {/* Expanded Detail */}
               {isExpanded && (
                 <div className="lecturer-group-detail">
+                  {/* Tab Buttons */}
                   <div className="lecturer-tabs">
-                    <button className={`lecturer-tab ${tab === "tasks" ? "lecturer-tab--active" : ""}`} onClick={() => setTab(g.id, "tasks")}>
-                      Jira Tasks ({g.tasks.length})
+                    <button
+                      className={`lecturer-tab ${tab === "tasks" ? "lecturer-tab--active" : ""}`}
+                      onClick={() => setTab(g.id, "tasks")}
+                    >
+                      📋 Jira Tasks ({g.tasks.length})
                     </button>
-                    <button className={`lecturer-tab ${tab === "activity" ? "lecturer-tab--active" : ""}`} onClick={() => setTab(g.id, "activity")}>
-                      GitHub Activity ({g.activities.length})
+                    <button
+                      className={`lecturer-tab ${tab === "activity" ? "lecturer-tab--active" : ""}`}
+                      onClick={() => setTab(g.id, "activity")}
+                    >
+                      ⬆️ GitHub Activity ({g.activities.length})
                     </button>
-                    <button className={`lecturer-tab ${tab === "insights" ? "lecturer-tab--active" : ""}`} onClick={() => setTab(g.id, "insights")}>
-                      Insights
+                    <button
+                      className={`lecturer-tab ${tab === "grades" ? "lecturer-tab--active" : ""}`}
+                      onClick={() => setTab(g.id, "grades")}
+                    >
+                      📝 Grades ({g.groupGrades.length})
+                    </button>
+                    <button
+                      className={`lecturer-tab ${tab === "insights" ? "lecturer-tab--active" : ""}`}
+                      onClick={() => setTab(g.id, "insights")}
+                    >
+                      📊 Insights
                     </button>
                   </div>
 
+                  {/* Tab Content: Tasks */}
                   {tab === "tasks" && (
                     <div className="lecturer-tab-content">
                       {g.tasks.length === 0 ? (
@@ -389,7 +381,10 @@ export function LecturerDashboardView() {
                             </div>
 
                             <div className="lecturer-progress-bar">
-                              <div className="lecturer-progress-bar__fill" style={{ width: `${g.progressPct}%` }} />
+                              <div
+                                className="lecturer-progress-bar__fill"
+                                style={{ width: `${g.progressPct}%` }}
+                              />
                             </div>
 
                             <div className="lecturer-progress-grid">
@@ -415,69 +410,67 @@ export function LecturerDashboardView() {
                           <section className="lecturer-member-progress">
                             <MemberWorkProgress
                               title="Team Member Progress"
-                              showGitPanel={false}
                               tasks={g.tasks.map((t) => ({
                                 ...t,
                                 status: normalizeTaskStatus(t.status),
                                 dueDate: t.dueDate || t.due_date || "",
-                                assigneeName: t.displayAssignee || t.assigneeName || "Unassigned",
+                                assigneeName: t.assigneeName || "Unassigned",
                               }))}
                               activities={g.activities}
                             />
                           </section>
 
                           <table className="lecturer-task-table">
-                            <thead>
-                              <tr>
-                                <th>Key</th>
-                                <th>Task</th>
-                                <th>Status</th>
-                                <th>Priority</th>
-                                <th>Due</th>
-                                <th>Assignee</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {g.tasks.map((t) => {
-                                const due = t.dueDate || t.due_date;
-                                const dl = daysLeft(due);
-                                return (
-                                  <tr key={t.id}>
-                                    <td><code>{t.jira_issue_key}</code></td>
-                                    <td>{t.title || t.summary}</td>
-                                    <td>
-                                      <Badge
-                                        variant={
-                                          normalizeTaskStatus(t.status) === "DONE"
-                                            ? "success"
-                                            : normalizeTaskStatus(t.status) === "IN_PROGRESS"
-                                              ? "warning"
-                                              : "info"
-                                        }
-                                        size="sm"
-                                      >
-                                        {t.status}
-                                      </Badge>
-                                    </td>
-                                    <td>{t.priority || "-"}</td>
-                                    <td>
-                                      {due ? (
-                                        <span style={{ color: dl !== null && dl < 0 ? "var(--danger-500)" : dl !== null && dl <= 3 ? "var(--warning-500)" : "inherit" }}>
-                                          {due} {dl !== null && dl < 0 ? "!" : ""}
-                                        </span>
-                                      ) : "-"}
-                                    </td>
-                                    <td>{t.displayAssignee || t.assigneeName || "Unassigned"}</td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
+                          <thead>
+                            <tr>
+                              <th>Key</th>
+                              <th>Task</th>
+                              <th>Status</th>
+                              <th>Priority</th>
+                              <th>Due</th>
+                              <th>Assignee</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {g.tasks.map((t) => {
+                              const due = t.dueDate || t.due_date;
+                              const dl = daysLeft(due);
+                              return (
+                                <tr key={t.id}>
+                                  <td><code>{t.jira_issue_key}</code></td>
+                                  <td>{t.title || t.summary}</td>
+                                  <td>
+                                    <Badge
+                                      variant={
+                                        t.status === "Done" || t.status === "DONE" ? "success"
+                                          : t.status === "In Progress" || t.status === "IN_PROGRESS" ? "warning"
+                                            : "info"
+                                      }
+                                      size="sm"
+                                    >
+                                      {t.status}
+                                    </Badge>
+                                  </td>
+                                  <td>{t.priority || "—"}</td>
+                                  <td>
+                                    {due ? (
+                                      <span style={{ color: dl !== null && dl < 0 ? "var(--danger-500)" : dl !== null && dl <= 3 ? "var(--warning-500)" : "inherit" }}>
+                                        {due} {dl !== null && dl < 0 ? "⚠️" : ""}
+                                      </span>
+                                    ) : "—"}
+                                  </td>
+                                  <td>{t.assigneeName || "Unassigned"}</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
                           </table>
                         </>
                       )}
                     </div>
                   )}
 
+                  {/* Tab Content: Activity */}
                   {tab === "activity" && (
                     <div className="lecturer-tab-content">
                       {g.activities.length === 0 ? (
@@ -485,85 +478,66 @@ export function LecturerDashboardView() {
                           No GitHub activity yet. Sync from the Sync page.
                         </div>
                       ) : (
-                        <>
-                          <section className="lecturer-member-progress">
-                            <MemberWorkProgress
-                              title="Git Contributors"
-                              showJiraPanel={false}
-                              activities={g.activities.map((a) => ({
-                                ...a,
-                                github_username: a.displayName || a.github_username,
-                              }))}
-                            />
-                          </section>
-
-                          <div className="lecturer-branch-groups">
-                            {g.activitiesByBranch.map((branchGroup) => {
-                              const branchKey = `${g.id}::${branchGroup.branch}`;
-                              const isCollapsed = Boolean(collapsedBranches[branchKey]);
-
-                              return (
-                                <section
-                                  key={branchGroup.branch}
-                                  className={`lecturer-branch-group ${isCollapsed ? "lecturer-branch-group--collapsed" : ""}`}
-                                >
-                                  <button
-                                    type="button"
-                                    className="lecturer-branch-group__header lecturer-branch-group__toggle"
-                                    onClick={() => toggleBranch(g.id, branchGroup.branch)}
-                                    aria-expanded={!isCollapsed}
-                                  >
-                                    <div className="lecturer-branch-group__title-wrap">
-                                      <div className="lecturer-branch-group__title">
-                                        Branch: <code>{branchGroup.branch}</code>
-                                      </div>
-                                      <div className="lecturer-branch-group__subtitle">
-                                        Sorted by member name inside this branch
-                                      </div>
-                                    </div>
-
-                                    <div className="lecturer-branch-group__meta">
-                                      <Badge variant="info" size="sm">
-                                        {branchGroup.items.length} commit{branchGroup.items.length !== 1 ? "s" : ""}
-                                      </Badge>
-                                      <span
-                                        className={`lecturer-branch-group__chevron ${isCollapsed ? "is-collapsed" : ""}`}
-                                      >
-                                        v
-                                      </span>
-                                    </div>
-                                  </button>
-
-                                  {!isCollapsed && (
-                                    <div className="activity-feed lecturer-branch-group__content">
-                                      {branchGroup.items.map((a) => (
-                                        <div key={a.id} className="feed-item">
-                                          <div className="feed-icon" style={{ background: "var(--brand-500)18", color: "var(--brand-500)" }}>↑</div>
-                                          <div className="feed-content">
-                                            <div className="feed-text">
-                                              <strong>{a.displayName || a.github_username}</strong> {a.commit_message || `pushed ${a.pushed_commit_count || 0} commit(s)`}
-                                            </div>
-                                            <div className="feed-meta">
-                                              <span className="feed-time">{timeAgo(a.occurred_at)}</span>
-                                              {a.pushed_commit_count > 1 && (
-                                                <Badge variant="info" size="sm">{a.pushed_commit_count} commits</Badge>
-                                              )}
-                                              {a.commit_sha && <code className="lecturer-commit-sha">{a.commit_sha.slice(0, 7)}</code>}
-                                            </div>
-                                          </div>
-                                        </div>
-                                      ))}
-                                    </div>
+                        <div className="activity-feed">
+                          {g.activities.slice(0, 15).map((a) => (
+                            <div key={a.id} className="feed-item">
+                              <div className="feed-icon" style={{ background: "var(--brand-500)18", color: "var(--brand-500)" }}>⬆️</div>
+                              <div className="feed-content">
+                                <div className="feed-text">
+                                  <strong>{a.github_username}</strong>{" "}
+                                  {a.commit_message || `pushed ${a.pushed_commit_count || 0} commit(s)`}
+                                </div>
+                                <div className="feed-meta">
+                                  <span className="feed-time">{timeAgo(a.occurred_at)}</span>
+                                  {a.pushed_commit_count > 1 && (
+                                    <Badge variant="info" size="sm">{a.pushed_commit_count} commits</Badge>
                                   )}
-                                </section>
-                              );
-                            })}
-                          </div>
-                        </>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       )}
                     </div>
                   )}
 
+                  {/* Tab Content: Grades */}
+                  {tab === "grades" && (
+                    <div className="lecturer-tab-content">
+                      {g.groupGrades.length === 0 ? (
+                        <div className="text-secondary" style={{ padding: "1rem" }}>
+                          No grades yet.
+                        </div>
+                      ) : (
+                        <table className="lecturer-task-table">
+                          <thead>
+                            <tr>
+                              <th>Milestone</th>
+                              <th>Score</th>
+                              <th>Status</th>
+                              <th>Feedback</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {g.groupGrades.map((gr) => (
+                              <tr key={gr.id}>
+                                <td>{gr.milestone || "—"}</td>
+                                <td>{gr.score != null ? gr.score : "—"}</td>
+                                <td>
+                                  <Badge variant={gr.status === "GRADED" ? "success" : "warning"} size="sm">
+                                    {gr.status}
+                                  </Badge>
+                                </td>
+                                <td>{gr.feedback || "—"}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Tab Content: Insights */}
                   {tab === "insights" && (
                     <div className="lecturer-tab-content">
                       <GitHubInsights activities={g.activities} weeks={12} />

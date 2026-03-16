@@ -10,13 +10,13 @@ export const authApi = {
     );
     const accessToken = res.data?.accessToken || res.data?.token;
     if (accessToken) tokenStorage.set(accessToken);
-    return res.data; // expect { user, ... }
+    return res.data;
   },
 
-  async loginWithGoogle({ credential }) {
+  async loginWithGoogle({ credential, accountType }) {
     const res = await http.post(
       "/auth/google",
-      { credential },
+      { credential, account_type: accountType },
       { auth: false }
     );
     const accessToken = res.data?.accessToken || res.data?.token;
@@ -25,7 +25,6 @@ export const authApi = {
   },
 
   async getSession() {
-    // Backend does not expose a dedicated /me endpoint currently.
     return null;
   },
 

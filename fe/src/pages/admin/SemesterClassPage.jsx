@@ -16,7 +16,6 @@ export function SemesterClassPage() {
 
   const [selectedSemesterId, setSelectedSemesterId] = useState(null);
 
-  // Modals
   const [semesterModalOpen, setSemesterModalOpen] = useState(false);
   const [editingSemester, setEditingSemester] = useState(null);
   const [classModalOpen, setClassModalOpen] = useState(false);
@@ -47,18 +46,19 @@ export function SemesterClassPage() {
   const enrichedClasses = useMemo(() => {
     return classes.map((c) => {
       const lecturer = lecturers.find((l) => l.id === c.lecturer_id);
-      const studentCount = students.filter((s) => s.class_id === c.id).length;
+      const classStudents = students.filter((s) => s.class_id === c.id || s.classId === c.id);
+      const studentCount = classStudents.length;
       const classGroups = groups.filter((g) => g.class_id === c.id || g.classId === c.id);
       return {
         ...c,
         lecturer_name: lecturer?.full_name || "Unassigned",
         student_count: studentCount,
+        students: classStudents,
         groups: classGroups,
       };
     });
   }, [classes, lecturers, students, groups]);
 
-  // Semester handlers
   const handleCreateSemester = () => {
     setEditingSemester(null);
     setSemesterModalOpen(true);
@@ -85,7 +85,7 @@ export function SemesterClassPage() {
     }
   };
   const handleDeleteSemester = async (id) => {
-    const classCount = classes.filter(c => c.semester_id === id).length;
+    const classCount = classes.filter((c) => c.semester_id === id).length;
     const warning = classCount > 0
       ? `This semester has ${classCount} class(es). You must remove all classes before deleting. Continue?`
       : "Are you sure you want to delete this semester?";
@@ -102,7 +102,6 @@ export function SemesterClassPage() {
     }
   };
 
-  // Class handlers
   const handleCreateClass = () => {
     setEditingClass(null);
     setClassModalOpen(true);
@@ -132,7 +131,7 @@ export function SemesterClassPage() {
     }
   };
   const handleDeleteClass = async (id) => {
-    const studentCount = students.filter(s => s.class_id === id).length;
+    const studentCount = students.filter((s) => s.class_id === id).length;
     const warning = studentCount > 0
       ? `This class has ${studentCount} student(s). You must reassign them before deleting. Continue?`
       : "Are you sure you want to delete this class?";
@@ -146,7 +145,6 @@ export function SemesterClassPage() {
     }
   };
 
-  // Assign lecturer to class
   const handleOpenAssign = (cls) => {
     setAssigningClass(cls);
     setAssignModalOpen(true);
@@ -179,7 +177,6 @@ export function SemesterClassPage() {
       onSelectSemester={setSelectedSemesterId}
       enrichedClasses={enrichedClasses}
       lecturers={lecturers}
-      // semester modal
       semesterModalOpen={semesterModalOpen}
       editingSemester={editingSemester}
       onCreateSemester={handleCreateSemester}
@@ -187,7 +184,6 @@ export function SemesterClassPage() {
       onCloseSemesterModal={() => setSemesterModalOpen(false)}
       onSubmitSemester={handleSubmitSemester}
       onDeleteSemester={handleDeleteSemester}
-      // class modal
       classModalOpen={classModalOpen}
       editingClass={editingClass}
       onCreateClass={handleCreateClass}
@@ -195,7 +191,6 @@ export function SemesterClassPage() {
       onCloseClassModal={() => setClassModalOpen(false)}
       onSubmitClass={handleSubmitClass}
       onDeleteClass={handleDeleteClass}
-      // assign lecturer
       assignModalOpen={assignModalOpen}
       assigningClass={assigningClass}
       onOpenAssign={handleOpenAssign}

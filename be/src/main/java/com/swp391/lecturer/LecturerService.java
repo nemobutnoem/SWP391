@@ -5,9 +5,10 @@ import com.swp391.common.ApiException;
 import com.swp391.group.StudentGroupRepository;
 import com.swp391.lecturer.dto.CreateLecturerRequest;
 import com.swp391.lecturer.dto.UpdateLecturerRequest;
-import com.swp391.user.UserRepository;
-import com.swp391.user.UserEntity;
 import com.swp391.security.UserPrincipal;
+import com.swp391.student.StudentRepository;
+import com.swp391.user.UserEntity;
+import com.swp391.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +22,7 @@ public class LecturerService {
     private final UserRepository userRepository;
     private final ClassRepository classRepository;
     private final StudentGroupRepository groupRepository;
+    private final StudentRepository studentRepository;
 
     public List<LecturerEntity> listAll() {
         return lecturerRepository.findAll();
@@ -35,7 +37,20 @@ public class LecturerService {
     public LecturerEntity create(CreateLecturerRequest request, UserPrincipal principal) {
         ensureAdmin(principal);
 
-        UserEntity user = new UserEntity();
+        UserEntity user;
+        if (request.userId() != null) {
+            if (lecturerRepository.findByUserId(request.userId()).isPresent()) {
+                throw ApiException.badRequest("This account is already linked to a lecturer profile.");
+            }
+            if (studentRepository.findByUserId(request.userId()).isPresent()) {
+                throw ApiException.badRequest("This account is already linked to a student profile.");
+            }
+            user = userRepository.findById(request.userId())
+                    .orElseThrow(() -> ApiException.notFound("User not found with id: " + request.userId()));
+        } else {
+            user = new UserEntity();
+        }
+
         String account = request.email() != null && request.email().contains("@") ? request.email().split("@")[0]
                 : request.email();
         user.setAccount(account);

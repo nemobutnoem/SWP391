@@ -105,6 +105,20 @@ export function AuthProvider({ children }) {
         writeStorage(STORAGE_KEY_MOCK, null);
         writeStorage(STORAGE_KEY_API, null);
       },
+      updateUser: (patch) => {
+        setSession((prev) => {
+          if (!prev?.user) return prev;
+          const next = {
+            ...prev,
+            user: {
+              ...prev.user,
+              ...(patch || {}),
+            },
+          };
+          writeStorage(env.useMock ? STORAGE_KEY_MOCK : STORAGE_KEY_API, next);
+          return next;
+        });
+      },
     };
   }, [session]);
 

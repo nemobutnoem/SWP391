@@ -1,8 +1,27 @@
 import React from "react";
 import styles from "./tasksBoard.module.css";
 
-// Sentinel value to show Jira assignee that isn't mapped to a local member
 const UNMAPPED_ASSIGNEE_VALUE = "__jira_external__";
+
+const normalizeLookup = (value) => String(value || "").trim().toLowerCase();
+
+function resolveMappedAssignee(task, options) {
+  const normalizedAssigneeId = Number(task?.assigneeUserId);
+  if (!Number.isNaN(normalizedAssigneeId) && normalizedAssigneeId > 0) {
+    const byUserId = (options || []).find((m) => Number(m.userId) === normalizedAssigneeId);
+    if (byUserId) return byUserId;
+  }
+
+  const assigneeKey = normalizeLookup(task?.assigneeName);
+  if (!assigneeKey || assigneeKey === "unassigned") return null;
+
+  return (options || []).find((m) => {
+    const aliases = [m.name, m.account, m.emailLocal, m.studentCode]
+      .map(normalizeLookup)
+      .filter(Boolean);
+    return aliases.includes(assigneeKey);
+  }) || null;
+}
 
 const COLUMN_META = [
   { key: "TODO", title: "Backlog" },
@@ -12,7 +31,6 @@ const COLUMN_META = [
 ];
 
 function parseDateOnlyToMs(value) {
-  // Jira `duedate` is typically yyyy-MM-dd (date-only). Parse as UTC midnight to avoid TZ drift.
   if (!value) return null;
   const s = String(value).trim();
   const m = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/.exec(s);
@@ -44,10 +62,7 @@ function formatDueDate(value) {
 }
 
 function isOverdue(task, statusKey) {
-  // Nếu task đã được đưa vào cột OVERDUE từ columns thì tone danger
   if (statusKey === "OVERDUE") return true;
-
-  // Optional: nếu có dueDate và quá hạn thì cũng danger
   if (!task?.dueDate) return false;
   const ms = parseDateOnlyToMs(task.dueDate);
   if (ms == null) return false;
@@ -57,6 +72,7 @@ function isOverdue(task, statusKey) {
 function TaskCard({
   task,
   statusKey,
+  canEditTaskFields,
   assigneeOptions,
   onAssigneeChange,
   onDueDateChange,
@@ -64,12 +80,11 @@ function TaskCard({
   onTaskClick,
 }) {
   const overdue = isOverdue(task, statusKey);
+  const [priorityDraft, setPriorityDraft] = React.useState(task.priority || "");
 
-	const [priorityDraft, setPriorityDraft] = React.useState(task.priority || "");
-
-	React.useEffect(() => {
-		setPriorityDraft(task.priority || "");
-	}, [task.priority]);
+  React.useEffect(() => {
+    setPriorityDraft(task.priority || "");
+  }, [task.priority]);
 
   const handleDragStart = (e) => {
     e.dataTransfer.setData("taskId", task.id.toString());
@@ -77,10 +92,11 @@ function TaskCard({
   };
 
   const handleCardClick = (e) => {
-    // Don't open modal if user clicked on an interactive element
     if (e.target.closest("select, input, button")) return;
     onTaskClick?.(task);
   };
+
+  const matchedAssignee = resolveMappedAssignee(task, assigneeOptions || []);
 
   return (
     <div
@@ -103,6 +119,7 @@ function TaskCard({
             className={styles.inlineInput}
             type="date"
             value={task.dueDate || ""}
+            disabled={!canEditTaskFields}
             onChange={(e) => onDueDateChange?.(task.id, e.target.value)}
             onDragStart={(e) => e.stopPropagation()}
           />
@@ -110,6 +127,7 @@ function TaskCard({
             className={styles.inlineInput}
             placeholder="Priority"
             value={priorityDraft}
+            disabled={!canEditTaskFields}
             onChange={(e) => setPriorityDraft(e.target.value)}
             onBlur={(e) => onPriorityChange?.(task.id, e.target.value)}
             onKeyDown={(e) => {
@@ -122,18 +140,14 @@ function TaskCard({
       <div className={styles.cardFooter}>
         <div className={styles.avatar} aria-hidden />
         <div className={styles.assignee}>
-          {/** Keep Jira assignee visible even when it doesn't map to a local member */}
           {(() => {
             const options = assigneeOptions || [];
-            const hasMappedOption = options.some(
-              (m) => Number(m.userId) === Number(task.assigneeUserId),
-            );
             const fallbackName =
               task.assigneeName && task.assigneeName !== "Unassigned"
                 ? task.assigneeName
                 : null;
-            const selectValue = hasMappedOption
-              ? task.assigneeUserId ?? ""
+            const selectValue = matchedAssignee
+              ? matchedAssignee.userId
               : fallbackName
                 ? UNMAPPED_ASSIGNEE_VALUE
                 : "";
@@ -141,16 +155,17 @@ function TaskCard({
               <select
                 className={styles.assigneeSelect}
                 value={selectValue}
+                disabled={!canEditTaskFields}
                 onChange={(e) => {
                   const v = e.target.value;
-                  if (v === UNMAPPED_ASSIGNEE_VALUE) return; // read-only placeholder
+                  if (v === UNMAPPED_ASSIGNEE_VALUE) return;
                   const uid = v === "" ? null : Number(v);
                   onAssigneeChange?.(task.id, task.groupId, uid);
                 }}
                 onDragStart={(e) => e.stopPropagation()}
               >
                 <option value="">Unassigned</option>
-                {!hasMappedOption && fallbackName && (
+                {!matchedAssignee && fallbackName && (
                   <option value={UNMAPPED_ASSIGNEE_VALUE} disabled>
                     {fallbackName} (Jira)
                   </option>
@@ -173,6 +188,7 @@ function Column({
   title,
   statusKey,
   tasks,
+  canEditTaskFields,
   onStatusChange,
   membersByGroupId,
   onAssigneeChange,
@@ -183,8 +199,6 @@ function Column({
   const [isOver, setIsOver] = React.useState(false);
 
   const handleDragOver = (e) => {
-    // OVERDUE is a computed lane (based on due date), not a real status in Jira.
-    // Keep it read-only: don't allow dropping tasks into it.
     if (statusKey === "OVERDUE") return;
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
@@ -228,6 +242,7 @@ function Column({
             key={t.id}
             task={t}
             statusKey={statusKey}
+            canEditTaskFields={canEditTaskFields}
             assigneeOptions={membersByGroupId?.[t.groupId] ?? []}
             onAssigneeChange={onAssigneeChange}
             onDueDateChange={onDueDateChange}
@@ -240,19 +255,21 @@ function Column({
   );
 }
 
-// FIX CHÍNH: thêm onStatusChange ở đây
 export function TasksBoardView({
   query,
   onQueryChange,
+  showOnlyMine,
+  onToggleShowOnlyMine,
   isSyncing,
   onSyncJira,
   columns,
+  canEditTaskFields,
   onStatusChange,
   membersByGroupId,
   onAssigneeChange,
-	onDueDateChange,
-	onPriorityChange,
-	onTaskClick,
+  onDueDateChange,
+  onPriorityChange,
+  onTaskClick,
 }) {
   return (
     <div className={styles.page}>
@@ -266,13 +283,23 @@ export function TasksBoardView({
           />
         </div>
 
-        <button
+        <div className={styles.topbarActions}>
+          <button
+            type="button"
+            className={`${styles.mineBtn} ${showOnlyMine ? styles.mineBtnActive : ""}`}
+            onClick={onToggleShowOnlyMine}
+          >
+            {showOnlyMine ? "Showing My Tasks" : "My Tasks"}
+          </button>
+
+          <button
             className={`${styles.syncBtnJira} ${isSyncing ? styles.syncing : ""}`}
             onClick={onSyncJira}
             disabled={isSyncing}
           >
             {isSyncing ? "Syncing..." : "Sync Jira"}
           </button>
+        </div>
       </div>
 
       <div className={styles.board}>
@@ -282,12 +309,13 @@ export function TasksBoardView({
             title={col.title}
             statusKey={col.key}
             tasks={columns[col.key] ?? []}
+            canEditTaskFields={canEditTaskFields}
             onStatusChange={onStatusChange}
             membersByGroupId={membersByGroupId}
             onAssigneeChange={onAssigneeChange}
-			onDueDateChange={onDueDateChange}
-			onPriorityChange={onPriorityChange}
-			onTaskClick={onTaskClick}
+            onDueDateChange={onDueDateChange}
+            onPriorityChange={onPriorityChange}
+            onTaskClick={onTaskClick}
           />
         ))}
       </div>

@@ -54,9 +54,6 @@ export function Sidebar() {
             <NavLink to="/topics" className={navClass}>
               Project Topics
             </NavLink>
-            <NavLink to="/allocations" className={navClass}>
-              Group Allocation
-            </NavLink>
             <NavLink to="/group/integrations" className={navClass}>
               Group Integrations
             </NavLink>
@@ -69,9 +66,6 @@ export function Sidebar() {
             <div className="navLabel">My Teaching</div>
             <NavLink to="/classes" className={navClass}>
               My Groups
-            </NavLink>
-            <NavLink to="/grading" className={navClass}>
-              Grading
             </NavLink>
             <NavLink to="/srs" className={navClass}>
               SRS Requirements

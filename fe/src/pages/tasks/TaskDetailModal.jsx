@@ -3,9 +3,28 @@ import ReactDOM from "react-dom";
 import styles from "./taskDetailModal.module.css";
 
 const UNMAPPED_ASSIGNEE_VALUE = "__jira_external__";
+const normalizeLookup = (value) => String(value || "").trim().toLowerCase();
+
+function resolveMappedAssignee(task, options) {
+  const normalizedAssigneeId = Number(task?.assigneeUserId);
+  if (!Number.isNaN(normalizedAssigneeId) && normalizedAssigneeId > 0) {
+    const byUserId = (options || []).find((m) => Number(m.userId) === normalizedAssigneeId);
+    if (byUserId) return byUserId;
+  }
+
+  const assigneeKey = normalizeLookup(task?.assigneeName);
+  if (!assigneeKey || assigneeKey === "unassigned") return null;
+
+  return (options || []).find((m) => {
+    const aliases = [m.name, m.account, m.emailLocal, m.studentCode]
+      .map(normalizeLookup)
+      .filter(Boolean);
+    return aliases.includes(assigneeKey);
+  }) || null;
+}
 
 function formatDate(value) {
-  if (!value) return "—";
+  if (!value) return "-";
   const d = new Date(value);
   if (isNaN(d.getTime())) return String(value);
   return new Intl.DateTimeFormat("en-US", {
@@ -65,6 +84,7 @@ export function TaskDetailModal({
   onAddComment,
   isLoadingComments,
   assigneeOptions,
+  canEditTaskFields,
   onStatusChange,
   onAssigneeChange,
   onDueDateChange,
@@ -104,6 +124,7 @@ export function TaskDetailModal({
   const storyPoints = raw.story_points ?? raw.storyPoints ?? null;
   const jiraCreatedAt = raw.jira_created_at || raw.jiraCreatedAt || "";
   const jiraUpdatedAt = raw.jira_updated_at || raw.jiraUpdatedAt || "";
+  const matchedAssignee = resolveMappedAssignee(task, assigneeOptions || []);
 
   const handleSubmitComment = async (e) => {
     e.preventDefault();
@@ -121,7 +142,6 @@ export function TaskDetailModal({
   return ReactDOM.createPortal(
     <div className={styles.overlay} onClick={onClose}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-        {/* Header */}
         <div className={styles.header}>
           <div className={styles.headerLeft}>
             {issueKey && <span className={styles.issueKey}>{issueKey}</span>}
@@ -132,9 +152,7 @@ export function TaskDetailModal({
           </button>
         </div>
 
-        {/* Content two-column layout */}
         <div className={styles.body}>
-          {/* Left: main content */}
           <div className={styles.mainCol}>
             <h2 className={styles.title}>{task.title}</h2>
 
@@ -145,7 +163,6 @@ export function TaskDetailModal({
               </div>
             )}
 
-            {/* Comments */}
             <div className={styles.section}>
               <h4 className={styles.sectionLabel}>
                 Comments{" "}
@@ -203,9 +220,7 @@ export function TaskDetailModal({
             </div>
           </div>
 
-          {/* Right: details sidebar */}
           <div className={styles.sideCol}>
-            {/* Status */}
             <div className={styles.detailRow}>
               <span className={styles.detailLabel}>Status</span>
               <select
@@ -219,20 +234,16 @@ export function TaskDetailModal({
               </select>
             </div>
 
-            {/* Assignee */}
             <div className={styles.detailRow}>
               <span className={styles.detailLabel}>Assignee</span>
               {(() => {
                 const options = assigneeOptions || [];
-                const hasMappedOption = options.some(
-                  (m) => Number(m.userId) === Number(task.assigneeUserId),
-                );
                 const fallbackName =
                   task.assigneeName && task.assigneeName !== "Unassigned"
                     ? task.assigneeName
                     : null;
-                const selectValue = hasMappedOption
-                  ? task.assigneeUserId ?? ""
+                const selectValue = matchedAssignee
+                  ? matchedAssignee.userId
                   : fallbackName
                     ? UNMAPPED_ASSIGNEE_VALUE
                     : "";
@@ -240,6 +251,7 @@ export function TaskDetailModal({
                   <select
                     className={styles.detailSelect}
                     value={selectValue}
+                    disabled={!canEditTaskFields}
                     onChange={(e) => {
                       const v = e.target.value;
                       if (v === UNMAPPED_ASSIGNEE_VALUE) return;
@@ -248,7 +260,7 @@ export function TaskDetailModal({
                     }}
                   >
                     <option value="">Unassigned</option>
-                    {!hasMappedOption && fallbackName && (
+                    {!matchedAssignee && fallbackName && (
                       <option value={UNMAPPED_ASSIGNEE_VALUE} disabled>
                         {fallbackName} (Jira)
                       </option>
@@ -263,7 +275,6 @@ export function TaskDetailModal({
               })()}
             </div>
 
-            {/* Reporter */}
             {reporterName && (
               <div className={styles.detailRow}>
                 <span className={styles.detailLabel}>Reporter</span>
@@ -274,7 +285,6 @@ export function TaskDetailModal({
               </div>
             )}
 
-            {/* Priority */}
             <div className={styles.detailRow}>
               <span className={styles.detailLabel}>Priority</span>
               <div className={styles.priorityWrap}>
@@ -285,6 +295,7 @@ export function TaskDetailModal({
                 <select
                   className={styles.detailSelect}
                   value={task.priority || ""}
+                  disabled={!canEditTaskFields}
                   onChange={(e) => onPriorityChange?.(task.id, e.target.value)}
                 >
                   <option value="">None</option>
@@ -297,18 +308,17 @@ export function TaskDetailModal({
               </div>
             </div>
 
-            {/* Due Date */}
             <div className={styles.detailRow}>
               <span className={styles.detailLabel}>Due Date</span>
               <input
                 type="date"
                 className={styles.detailInput}
                 value={task.dueDate || ""}
+                disabled={!canEditTaskFields}
                 onChange={(e) => onDueDateChange?.(task.id, e.target.value)}
               />
             </div>
 
-            {/* Sprint */}
             {sprintName && (
               <div className={styles.detailRow}>
                 <span className={styles.detailLabel}>Sprint</span>
@@ -318,7 +328,6 @@ export function TaskDetailModal({
               </div>
             )}
 
-            {/* Story Points */}
             {storyPoints != null && (
               <div className={styles.detailRow}>
                 <span className={styles.detailLabel}>Story Points</span>
@@ -328,7 +337,6 @@ export function TaskDetailModal({
               </div>
             )}
 
-            {/* Labels */}
             {labels && (
               <div className={styles.detailRow}>
                 <span className={styles.detailLabel}>Labels</span>
@@ -340,7 +348,6 @@ export function TaskDetailModal({
               </div>
             )}
 
-            {/* Parent */}
             {parentIssueKey && (
               <div className={styles.detailRow}>
                 <span className={styles.detailLabel}>Parent</span>
@@ -350,7 +357,6 @@ export function TaskDetailModal({
               </div>
             )}
 
-            {/* Created */}
             {jiraCreatedAt && (
               <div className={styles.detailRow}>
                 <span className={styles.detailLabel}>Created</span>
@@ -360,7 +366,6 @@ export function TaskDetailModal({
               </div>
             )}
 
-            {/* Updated */}
             {jiraUpdatedAt && (
               <div className={styles.detailRow}>
                 <span className={styles.detailLabel}>Updated</span>

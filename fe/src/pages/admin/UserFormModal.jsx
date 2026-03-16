@@ -2,32 +2,43 @@ import React, { useState } from "react";
 import { Modal } from "../../components/common/Modal.jsx";
 import { Button } from "../../components/common/Button.jsx";
 
+const normalizeStudentCode = (value, email = "") => {
+  const rawValue = String(value || "").trim();
+  const fallback = !rawValue && email.includes("@") ? email.split("@")[0] : rawValue;
+  if (!fallback) return "";
+  const trimmed = fallback.length <= 8 ? fallback : fallback.slice(-8);
+  return trimmed.toUpperCase();
+};
+
 export function UserFormModal({
   isOpen,
   onClose,
   onSubmit,
   initialData = null,
   defaultRole = "STUDENT",
+  forcedRole = null,
   classes = [],
 }) {
-  // Parent truyền `key` để remount khi initialData thay đổi,
-  // nên lazy init chạy fresh mỗi lần mở modal – không cần useEffect.
+  const resolvedRole = forcedRole || (initialData?.student_code ? "STUDENT" : initialData?.department ? "LECTURER" : defaultRole);
+
   const [formData, setFormData] = useState(() =>
     initialData
       ? {
-          full_name: initialData.full_name || "",
+          user_id: initialData.user_id || initialData.id || null,
+          full_name: initialData.full_name || initialData.account || "",
           email: initialData.email || "",
-          role: initialData.student_code ? "STUDENT" : "LECTURER",
-          student_code: initialData.student_code || "",
+          role: resolvedRole,
+          student_code: resolvedRole === "STUDENT" ? normalizeStudentCode(initialData.student_code, initialData.email || "") : "",
           major: initialData.major || "SE",
           department: initialData.department || "Software Engineering",
           github_username: initialData.github_username || "",
           class_id: initialData.class_id || "",
         }
       : {
+          user_id: null,
           full_name: "",
           email: "",
-          role: defaultRole,
+          role: resolvedRole,
           student_code: "",
           major: "SE",
           department: "Software Engineering",
@@ -48,21 +59,16 @@ export function UserFormModal({
     if (name === "email") {
       if (!value.trim()) {
         error = "Email is required";
-      } else {
-        if (formData.role === "STUDENT") {
-          if (!/^[a-zA-Z0-9._%+-]+@fpt\.edu\.vn$/.test(value)) {
-            error = "Student email must end with @fpt.edu.vn";
-          }
-        } else {
-          if (!/^[a-zA-Z0-9._%+-]+@fu\.edu\.vn$/.test(value)) {
-            error = "Lecturer email must end with @fu.edu.vn";
-          }
+      } else if (formData.role === "STUDENT") {
+        if (!/^[a-zA-Z0-9._%+-]+@fpt\.edu\.vn$/.test(value)) {
+          error = "Student email must end with @fpt.edu.vn";
         }
+      } else if (!/^[a-zA-Z0-9._%+-]+@fu\.edu\.vn$/.test(value)) {
+        error = "Lecturer email must end with @fu.edu.vn";
       }
     }
     if (name === "student_code" && formData.role === "STUDENT") {
       if (!value.trim()) error = "Student code is required";
-      // e.g., SE123456
       else if (!/^[A-Z]{2}\d{6}$/i.test(value)) error = "Format: SE123456";
     }
     return error;
@@ -70,20 +76,47 @@ export function UserFormModal({
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    const error = validate(name, value);
-    setErrors((prev) => ({ ...prev, [name]: error }));
-    if (submitError) setSubmitError(""); // Clear general error when user types
+    let nextValue = value;
+    let nextFormData = null;
+
+    if (name === "student_code") {
+      nextValue = normalizeStudentCode(value, formData.email);
+    }
+
+    if (name === "email" && formData.role === "STUDENT") {
+      nextFormData = {
+        ...formData,
+        email: value,
+        student_code: normalizeStudentCode(formData.student_code, value),
+      };
+    } else {
+      nextFormData = { ...formData, [name]: nextValue };
+    }
+
+    setFormData(nextFormData);
+
+    const error = validate(name, nextValue);
+    const nextErrors = { ...errors, [name]: error };
+    if (name === "email" && formData.role === "STUDENT") {
+      nextErrors.student_code = validate("student_code", nextFormData.student_code);
+    }
+    setErrors(nextErrors);
+    if (submitError) setSubmitError("");
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitError("");
-    
-    // Final validation check
+
+    const payload = {
+      ...formData,
+      student_code: formData.role === "STUDENT" ? normalizeStudentCode(formData.student_code, formData.email) : formData.student_code,
+    };
+
     const newErrors = {};
-    Object.keys(formData).forEach(key => {
-      const error = validate(key, formData[key]);
+    Object.keys(payload).forEach((key) => {
+      if (key === "user_id") return;
+      const error = validate(key, payload[key]);
       if (error) newErrors[key] = error;
     });
 
@@ -94,7 +127,7 @@ export function UserFormModal({
     }
 
     try {
-      await onSubmit(formData);
+      await onSubmit(payload);
       onClose();
     } catch (err) {
       setSubmitError(err.message || "Failed to save user. Please check your data.");
@@ -110,7 +143,7 @@ export function UserFormModal({
       <form onSubmit={handleSubmit} className="task-form">
         {submitError && (
           <div className="form-summary-error">
-            <span className="error-icon">⚠️</span>
+            <span className="error-icon">!</span>
             {submitError}
           </div>
         )}
@@ -144,7 +177,7 @@ export function UserFormModal({
           </div>
           <div className="form-group">
             <label>System Role</label>
-            <select name="role" value={formData.role} onChange={handleChange}>
+            <select name="role" value={formData.role} onChange={handleChange} disabled={Boolean(forcedRole)}>
               <option value="STUDENT">Student</option>
               <option value="LECTURER">Lecturer</option>
             </select>
@@ -169,11 +202,7 @@ export function UserFormModal({
               </div>
               <div className="form-group">
                 <label>Major</label>
-                <select
-                  name="major"
-                  value={formData.major}
-                  onChange={handleChange}
-                >
+                <select name="major" value={formData.major} onChange={handleChange}>
                   <option value="SE">Software Engineering</option>
                   <option value="AI">Artificial Intelligence</option>
                   <option value="GD">Graphic Design</option>
@@ -182,12 +211,8 @@ export function UserFormModal({
             </div>
             <div className="form-group">
               <label>Class</label>
-              <select
-                name="class_id"
-                value={formData.class_id}
-                onChange={handleChange}
-              >
-                <option value="">— No Class —</option>
+              <select name="class_id" value={formData.class_id} onChange={handleChange}>
+                <option value="">No Class</option>
                 {classes.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.class_code} {c.class_name ? `- ${c.class_name}` : ""}
@@ -199,16 +224,10 @@ export function UserFormModal({
         ) : (
           <div className="form-group">
             <label>Department</label>
-            <select
-              name="department"
-              value={formData.department}
-              onChange={handleChange}
-            >
+            <select name="department" value={formData.department} onChange={handleChange}>
               <option value="Software Engineering">Software Engineering</option>
               <option value="Computer Science">Computer Science</option>
-              <option value="Business Administration">
-                Business Administration
-              </option>
+              <option value="Business Administration">Business Administration</option>
             </select>
           </div>
         )}

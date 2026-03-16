@@ -15,6 +15,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClientResponseException;
 
+import java.text.Normalizer;
+
 @Service
 @RequiredArgsConstructor
 public class JiraService {
@@ -181,9 +183,9 @@ public class JiraService {
 										var userOpt = userRepository.findById(student.getUserId());
 										if (userOpt.isPresent()) {
 											var u = userOpt.get();
-											u.setJiraAccountId(assigneeAccountId);
-											userRepository.save(u);
+											if (persistJiraAccountIdIfAvailable(u, assigneeAccountId)) {
 											assigneeUserId = u.getId();
+										}
 										}
 									}
 								}
@@ -309,7 +311,7 @@ public class JiraService {
 		if (assigneeUserId != null) {
 			var user = userRepository.findById(assigneeUserId)
 					.orElseThrow(() -> new IllegalArgumentException("Assignee user not found"));
-			accountId = resolveAndPersistAccountId(cfg, user);
+			accountId = resolveAndPersistAccountId(cfg, issueKey, user);
 			resolvedFrom = (accountId != null && !accountId.equals(user.getJiraAccountId())) ? "refreshed" : "stored";
 
 			if (accountId == null || accountId.isBlank()) {
@@ -341,7 +343,7 @@ public class JiraService {
 				// Fallback: try to re-resolve accountId and retry once (handles stale stored accountId)
 				if (assigneeUserId != null) {
 					var user = userRepository.findById(assigneeUserId).orElse(null);
-					String fallbackAccountId = resolveAndPersistAccountId(cfg, user);
+					String fallbackAccountId = resolveAndPersistAccountId(cfg, issueKey, user);
 					if (fallbackAccountId != null && !fallbackAccountId.equals(accountId)) {
 						log.info("[pushAssignee] Retry assign with resolved accountId={}, old={}", fallbackAccountId, accountId);
 						try {
@@ -370,35 +372,122 @@ public class JiraService {
 		}
 	}
 
-	private String resolveAndPersistAccountId(GroupIntegrationService.JiraConfig cfg, com.swp391.user.UserEntity user) {
+	private boolean persistJiraAccountIdIfAvailable(com.swp391.user.UserEntity user, String jiraAccountId) {
+		if (user == null || jiraAccountId == null || jiraAccountId.isBlank()) return false;
+		var existing = userRepository.findByJiraAccountId(jiraAccountId).orElse(null);
+		if (existing != null && !existing.getId().equals(user.getId())) {
+			log.warn("[JiraService] jira_account_id {} already belongs to userId={}, skip linking for userId={}", jiraAccountId, existing.getId(), user.getId());
+			return false;
+		}
+		user.setJiraAccountId(jiraAccountId);
+		userRepository.save(user);
+		return true;
+	}
+	private String resolveAndPersistAccountId(GroupIntegrationService.JiraConfig cfg, String issueKey, com.swp391.user.UserEntity user) {
 		if (user == null) return null;
-		// If already stored and looks like an Atlassian accountId (no '@' and length > 10), prefer it
 		String stored = user.getJiraAccountId();
 		if (stored != null && !stored.isBlank() && !stored.contains("@") && stored.length() > 8) {
 			return stored;
 		}
 
-		String searchQuery = null;
 		var student = studentRepository.findByUserId(user.getId()).orElse(null);
-		if (student != null && student.getEmail() != null && !student.getEmail().isBlank()) {
-			searchQuery = student.getEmail();
-		} else if (user.getAccount() != null && !user.getAccount().isBlank()) {
-			searchQuery = user.getAccount();
-		}
-		if (searchQuery == null) return null;
-		try {
-			var users = jiraClient.searchUsers(cfg.baseUrl(), cfg.email(), cfg.apiToken(), searchQuery);
-			if (users.isArray() && users.size() > 0) {
-				String resolved = users.get(0).path("accountId").asText(null);
-				if (resolved != null && !resolved.isBlank()) {
-					user.setJiraAccountId(resolved);
-					userRepository.save(user);
+		String email = student != null ? normalizeLookup(student.getEmail()) : null;
+		String fullName = student != null ? normalizeLookup(student.getFullName()) : null;
+		String account = normalizeLookup(user.getAccount());
+		String emailLocal = email != null && email.contains("@") ? email.substring(0, email.indexOf("@")) : null;
+
+		java.util.LinkedHashSet<String> queries = buildLookupQueries(email, emailLocal, fullName, account);
+
+		for (String query : queries) {
+			try {
+				JsonNode assignableUsers = null;
+				try {
+					assignableUsers = jiraClient.searchAssignableUsers(cfg.baseUrl(), cfg.email(), cfg.apiToken(), issueKey, query);
+				} catch (Exception ex) {
+					log.warn("[resolveAndPersistAccountId] Jira assignable search failed for issueKey={}, query={}: {}", issueKey, query, ex.getMessage());
+				}
+
+				String resolved = pickBestAccountId(assignableUsers, email, emailLocal, fullName, account);
+				if (resolved == null) {
+					var users = jiraClient.searchUsers(cfg.baseUrl(), cfg.email(), cfg.apiToken(), query);
+					resolved = pickBestAccountId(users, email, emailLocal, fullName, account);
+				}
+				if (resolved != null && persistJiraAccountIdIfAvailable(user, resolved)) {
 					return resolved;
 				}
+			} catch (Exception ex) {
+				log.warn("[resolveAndPersistAccountId] Jira user search failed for query={}: {}", query, ex.getMessage());
 			}
-		} catch (Exception ignored) {
 		}
 		return null;
+	}
+
+		private java.util.LinkedHashSet<String> buildLookupQueries(String email, String emailLocal, String fullName, String account) {
+		java.util.LinkedHashSet<String> queries = new java.util.LinkedHashSet<>();
+		addQuery(queries, email);
+		addQuery(queries, emailLocal);
+		addQuery(queries, fullName);
+		addQuery(queries, account);
+
+		String normalizedFullName = stripAccents(fullName);
+		addQuery(queries, normalizedFullName);
+
+		for (String token : splitTokens(fullName)) addQuery(queries, token);
+		for (String token : splitTokens(normalizedFullName)) addQuery(queries, token);
+		for (String token : splitTokens(emailLocal)) addQuery(queries, token);
+		for (String token : splitTokens(account)) addQuery(queries, token);
+		return queries;
+	}
+
+	private void addQuery(java.util.LinkedHashSet<String> queries, String value) {
+		String normalized = normalizeLookup(value);
+		if (normalized != null) queries.add(normalized);
+	}
+
+	private java.util.List<String> splitTokens(String value) {
+		String normalized = normalizeLookup(value);
+		if (normalized == null) return java.util.List.of();
+		return java.util.Arrays.stream(normalized.split("[^a-z0-9]+"))
+				.map(String::trim)
+				.filter(token -> token.length() >= 3)
+				.distinct()
+				.toList();
+	}
+
+	private String stripAccents(String value) {
+		String normalized = normalizeLookup(value);
+		if (normalized == null) return null;
+		String decomposed = Normalizer.normalize(normalized, Normalizer.Form.NFD);
+		return decomposed.replaceAll("\\p{M}+", "").replace('d', 'd');
+	}
+private String pickBestAccountId(JsonNode users, String email, String emailLocal, String fullName, String account) {
+		if (users == null || !users.isArray() || users.isEmpty()) return null;
+
+		for (JsonNode candidate : users) {
+			String candidateEmail = normalizeLookup(candidate.path("emailAddress").asText(null));
+			String candidateName = normalizeLookup(candidate.path("displayName").asText(null));
+			String candidateAccountId = candidate.path("accountId").asText(null);
+			if (candidateAccountId == null || candidateAccountId.isBlank()) continue;
+			if (email != null && email.equals(candidateEmail)) return candidateAccountId;
+			if (fullName != null && fullName.equals(candidateName)) return candidateAccountId;
+		}
+
+		for (JsonNode candidate : users) {
+			String candidateName = normalizeLookup(candidate.path("displayName").asText(null));
+			String candidateAccountId = candidate.path("accountId").asText(null);
+			if (candidateAccountId == null || candidateAccountId.isBlank()) continue;
+			if (emailLocal != null && candidateName != null && candidateName.contains(emailLocal)) return candidateAccountId;
+			if (account != null && candidateName != null && candidateName.contains(account)) return candidateAccountId;
+		}
+
+		String fallback = users.get(0).path("accountId").asText(null);
+		return (fallback == null || fallback.isBlank()) ? null : fallback;
+	}
+
+	private String normalizeLookup(String value) {
+		if (value == null) return null;
+		String normalized = value.trim().toLowerCase(java.util.Locale.ROOT);
+		return normalized.isBlank() ? null : normalized;
 	}
 
 	@Transactional
@@ -569,4 +658,13 @@ public class JiraService {
 		}
 	}
 }
+
+
+
+
+
+
+
+
+
 

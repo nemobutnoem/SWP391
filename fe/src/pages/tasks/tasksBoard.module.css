@@ -2,6 +2,22 @@
   animation: fadeIn 0.4s ease-out;
 }
 
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.topbarActions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -17,6 +33,14 @@
   flex: 1;
   position: relative;
   max-width: 480px;
+  min-width: 260px;
+}
+
+.searchWrap {
+  flex: 1;
+  position: relative;
+  max-width: 480px;
+  min-width: 260px;
 }
 
 .search-input {
@@ -32,7 +56,51 @@
   box-shadow: var(--shadow-sm);
 }
 
+.search {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: white;
+  border: 1px solid var(--slate-200);
+  border-radius: var(--radius-md);
+  font-size: 0.9375rem;
+  color: var(--slate-900);
+  outline: none;
+  transition: all 0.2s;
+  box-shadow: var(--shadow-sm);
+}
+
+.mineBtn {
+  padding: 0.5rem 0.9rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  border: 1px solid var(--brand-200, #bfdbfe);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  background: linear-gradient(180deg, #ffffff 0%, #eff6ff 100%);
+  color: var(--brand-700, #1d4ed8);
+  box-shadow: var(--shadow-sm);
+}
+
+.mineBtn:hover {
+  border-color: var(--brand-400, #60a5fa);
+  background: linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%);
+}
+
+.mineBtnActive {
+  background: linear-gradient(135deg, #2563eb 0%, #0ea5e9 100%);
+  color: white;
+  border-color: transparent;
+  box-shadow: 0 10px 20px rgba(37, 99, 235, 0.24);
+}
+
 .search-input:focus {
+  border-color: var(--brand-400);
+  box-shadow: 0 0 0 4px var(--brand-50);
+}
+
+.search:focus {
   border-color: var(--brand-400);
   box-shadow: 0 0 0 4px var(--brand-50);
 }
@@ -403,4 +471,90 @@
 @keyframes pulse {
   0%, 100% { opacity: 0.7; }
   50% { opacity: 1; }
+}
+.cardFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--slate-100);
+}
+
+.cardDue {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--slate-400);
+}
+
+.dueDanger {
+  color: var(--danger);
+  background: var(--danger-light);
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+}
+
+.cardEditRow {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.inlineInput {
+  flex: 1;
+  min-width: 0;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--slate-600);
+  background: var(--slate-50);
+  border: 1px solid var(--slate-200);
+  border-radius: var(--radius-sm);
+  outline: none;
+  transition: all 0.2s;
+  box-sizing: border-box;
+}
+
+.inlineInput:hover {
+  border-color: var(--brand-300);
+  background: white;
+}
+
+.avatar {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  border-radius: 50%;
+  background: var(--brand-100);
+}
+
+.assignee {
+  flex: 1;
+  min-width: 0;
+}
+
+.assigneeSelect {
+  width: 100%;
+  min-width: 0;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--slate-600);
+  background: var(--slate-50);
+  border: 1px solid var(--slate-200);
+  border-radius: var(--radius-sm);
+  outline: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-sizing: border-box;
+}
+
+.assigneeSelect:hover {
+  border-color: var(--brand-300);
+  background: white;
+}
+
+.cardDanger {
+  border-color: #fecaca;
+  background: #fffdfd;
 }

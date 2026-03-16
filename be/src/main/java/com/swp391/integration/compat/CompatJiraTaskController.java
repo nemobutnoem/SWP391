@@ -121,6 +121,7 @@ public class CompatJiraTaskController {
 		ensureMember(issue.getGroupId(), principal);
 
 		boolean changed = false;
+		boolean isTeamMember = "TEAM_MEMBER".equalsIgnoreCase(principal.getRole());
 
 		if (req.status() != null && !req.status().isBlank()) {
 			// Push status to Jira as well (so Jira changes, not just local DB).
@@ -136,6 +137,9 @@ public class CompatJiraTaskController {
 
 		Integer assigneeUserId = req.assigneeUserId() != null ? req.assigneeUserId() : req.assigneeUserIdSnake();
 		if (assigneeUserId != null) {
+			if (isTeamMember) {
+				throw new SecurityException("TEAM_MEMBER can only update task status");
+			}
 			// 0 (or negative) means "unassigned" from UI.
 			Integer normalizedAssignee = assigneeUserId <= 0 ? null : assigneeUserId;
 			if (normalizedAssignee != null) {
@@ -153,6 +157,9 @@ public class CompatJiraTaskController {
 
 		String dueDateRaw = req.dueDate() != null ? req.dueDate() : req.dueDateSnake();
 		if (dueDateRaw != null || req.priority() != null) {
+			if (isTeamMember) {
+				throw new SecurityException("TEAM_MEMBER can only update task status");
+			}
 			java.util.Map<String, Object> fields = new java.util.LinkedHashMap<>();
 
 			if (dueDateRaw != null) {

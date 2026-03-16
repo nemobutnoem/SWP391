@@ -33,9 +33,10 @@ export const authMock = {
     return next;
   },
 
-  async loginWithGoogle({ credential }) {
+  async loginWithGoogle({ credential, accountType }) {
     await sleep(120);
-    const next = { user: { id: "fake-google-1", name: "MockUser", role: "TEAM_MEMBER" } };
+    const role = String(accountType || "STUDENT").toUpperCase() === "LECTURER" ? "LECTURER" : "TEAM_MEMBER";
+    const next = { user: { id: "fake-google-1", name: "MockUser", role } };
     writeStorage(next);
     return next;
   },

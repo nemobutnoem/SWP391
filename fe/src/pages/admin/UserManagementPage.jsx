@@ -8,16 +8,13 @@ import { semesterService } from "../../services/semesters/semester.service.js";
 import { UserManagementView } from "./UserManagementView.jsx";
 import "./adminManagement.css";
 
-/**
- * Container layer - quan ly state, goi service, truyen data + handler xuong View.
- * Khong chua JSX UI truc tiep.
- */
 export function UserManagementPage() {
   const [activeTab, setActiveTab] = useState("STUDENTS");
   const [searchQuery, setSearchQuery] = useState("");
   const [majorFilter, setMajorFilter] = useState("ALL");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
+  const [modalRole, setModalRole] = useState("STUDENT");
 
   const [localStudents, setLocalStudents] = useState([]);
   const [localLecturers, setLocalLecturers] = useState([]);
@@ -40,15 +37,18 @@ export function UserManagementPage() {
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     setMajorFilter("ALL");
+    setSearchQuery("");
   };
 
   const handleOpenCreate = () => {
     setEditingUser(null);
+    setModalRole(activeTab === "LECTURERS" ? "LECTURER" : "STUDENT");
     setIsModalOpen(true);
   };
 
   const handleOpenEdit = (user) => {
     setEditingUser(user);
+    setModalRole(activeTab === "LECTURERS" ? "LECTURER" : "STUDENT");
     setIsModalOpen(true);
   };
 
@@ -75,6 +75,7 @@ export function UserManagementPage() {
         setLocalLecturers(updatedLecturers);
       }
       setIsModalOpen(false);
+      setEditingUser(null);
     } catch (e) {
       console.error("Error saving user:", e);
       throw new Error(e.response?.data?.message || e.message || "Unknown error occurred");
@@ -83,7 +84,6 @@ export function UserManagementPage() {
 
   const enrichedStudents = useMemo(() => {
     return localStudents.map((s) => {
-      // Find the group this student belongs to via the group_members table
       const membership = members.find((m) => m.student_id === s.id);
       const group = membership
         ? groups.find((g) => g.id === membership.group_id)
@@ -112,19 +112,28 @@ export function UserManagementPage() {
   }, [localLecturers, classes, groups]);
 
   const filteredData = useMemo(() => {
-    const data = activeTab === "STUDENTS" ? enrichedStudents : enrichedLecturers;
-    return data.filter((u) => {
-      const nameMatch = u.full_name.toLowerCase().includes(searchQuery.toLowerCase());
-      const codeMatch = u.student_code && u.student_code.toLowerCase().includes(searchQuery.toLowerCase());
-      const majorMatch = majorFilter === "ALL" || u.major === majorFilter;
-      return (nameMatch || codeMatch) && majorMatch;
+    const q = searchQuery.toLowerCase().trim();
+
+    if (activeTab === "STUDENTS") {
+      return enrichedStudents.filter((u) => {
+        const nameMatch = u.full_name.toLowerCase().includes(q);
+        const codeMatch = u.student_code && u.student_code.toLowerCase().includes(q);
+        const majorMatch = majorFilter === "ALL" || u.major === majorFilter;
+        return (nameMatch || codeMatch) && majorMatch;
+      });
+    }
+
+    return enrichedLecturers.filter((u) => {
+      const nameMatch = u.full_name.toLowerCase().includes(q);
+      const departmentMatch = (u.department || "").toLowerCase().includes(q);
+      return !q || nameMatch || departmentMatch;
     });
   }, [activeTab, enrichedStudents, enrichedLecturers, searchQuery, majorFilter]);
 
   const handleDelete = async (user) => {
     let warning = `Are you sure you want to delete ${user.full_name}?`;
     if (activeTab === "LECTURERS") {
-      const classCount = classes.filter(c => c.lecturer_id === user.id).length;
+      const classCount = classes.filter((c) => c.lecturer_id === user.id).length;
       if (classCount > 0) {
         warning = `${user.full_name} is assigned to ${classCount} class(es). Unassign them first before deleting. Continue?`;
       }
@@ -158,9 +167,13 @@ export function UserManagementPage() {
       filteredData={filteredData}
       isModalOpen={isModalOpen}
       editingUser={editingUser}
+      modalRole={modalRole}
       onOpenCreate={handleOpenCreate}
       onOpenEdit={handleOpenEdit}
-      onCloseModal={() => setIsModalOpen(false)}
+      onCloseModal={() => {
+        setIsModalOpen(false);
+        setEditingUser(null);
+      }}
       onSubmit={handleSubmit}
       onDelete={handleDelete}
       studentCount={localStudents.length}

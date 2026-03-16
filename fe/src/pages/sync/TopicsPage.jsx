@@ -37,7 +37,14 @@ export function TopicsPage() {
       setTopics(updatedTopics);
       setIsModalOpen(false);
     } catch (e) {
-      alert("Error saving topic: " + (e.response?.data?.message || e.message));
+      const fieldErrors = e?.data?.details?.fields;
+      const details = fieldErrors && typeof fieldErrors === "object"
+        ? Object.entries(fieldErrors)
+            .map(([field, message]) => `${field}: ${message}`)
+            .join("\n")
+        : null;
+      alert("Error saving topic: " + (details || e?.data?.message || e.message));
+      throw e;
     }
   };
 

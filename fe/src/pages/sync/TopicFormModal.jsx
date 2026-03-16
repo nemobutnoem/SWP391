@@ -23,13 +23,20 @@ export function TopicFormModal({
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({
+      ...prev,
+      [name]: name === "code" ? value.toUpperCase() : value,
+    }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onSubmit(formData);
-    onClose();
+    await onSubmit({
+      ...formData,
+      code: formData.code.trim().toUpperCase(),
+      name: formData.name.trim(),
+      description: formData.description.trim(),
+    });
   };
 
   return (

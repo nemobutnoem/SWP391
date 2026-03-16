@@ -70,4 +70,12 @@ export const groupMock = {
     const idx = mockDb.groupMembers.findIndex((m) => m.id === Number(memberId));
     if (idx >= 0) mockDb.groupMembers.splice(idx, 1);
   },
+
+  async assignTopicAdmin(groupId, projectId) {
+    await sleep(200);
+    const group = mockDb.groups.find((g) => g.id === Number(groupId));
+    if (!group) throw new Error("Group not found");
+    group.project_id = Number(projectId);
+    return { ...group };
+  },
 };
