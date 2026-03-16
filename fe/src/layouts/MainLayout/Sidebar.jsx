@@ -100,7 +100,9 @@ export function Sidebar() {
         <div className="userCard">
           <div className="userAvatar">{userInitials}</div>
           <div className="userInfo">
-            <div className="userName">{safeName}</div>
+            <div className="userName" style={{ color: "#64748b" }}>
+              {safeName}
+            </div>
             <div className="userRole">{role || "No Role"}</div>
           </div>
         </div>
