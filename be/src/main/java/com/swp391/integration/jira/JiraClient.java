@@ -161,6 +161,27 @@ public class JiraClient {
 		}
 	}
 
+	public JsonNode searchUsers(String baseUrl, String email, String apiToken, String query) {
+		// Jira Cloud user search (GDPR-safe): GET /rest/api/3/user/search?query={query}
+		return buildClient(baseUrl, email, apiToken).get()
+				.uri(uriBuilder -> uriBuilder
+						.path("/rest/api/3/user/search")
+						.queryParam("query", query)
+						.build())
+				.retrieve()
+				.body(JsonNode.class);
+	}
+
+	public JsonNode getUser(String baseUrl, String email, String apiToken, String accountId) {
+		return buildClient(baseUrl, email, apiToken).get()
+				.uri(uriBuilder -> uriBuilder
+						.path("/rest/api/3/user")
+						.queryParam("accountId", accountId)
+						.build())
+				.retrieve()
+				.body(JsonNode.class);
+	}
+
 	private RestClient buildClient(String baseUrl, String email, String apiToken) {
 		String basic = (email == null ? "" : email) + ":" + (apiToken == null ? "" : apiToken);
 		String auth = "Basic " + Base64.getEncoder().encodeToString(basic.getBytes(StandardCharsets.UTF_8));

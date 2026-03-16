@@ -13,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestClientResponseException;
 
 @Service
 @RequiredArgsConstructor
@@ -79,7 +80,7 @@ public class JiraService {
 				String status = fields.path("status").path("name").asText(null);
 				String assigneeAccountId = fields.path("assignee").path("accountId").asText(null);
 				String assigneeDisplayName = fields.path("assignee").path("displayName").asText(null);
-					String priority = fields.path("priority").path("name").asText(null);
+				String priority = fields.path("priority").path("name").asText(null);
 				String dueDate = fields.path("duedate").asText(null);
 				String updated = fields.path("updated").asText(null);
 				String created = fields.path("created").asText(null);
@@ -167,6 +168,29 @@ public class JiraService {
 						assigneeUserId = userRepository.findByJiraAccountId(assigneeAccountId)
 								.map(u -> u.getId())
 								.orElse(null);
+
+						// Fallback: fetch Jira user to get email, map to student, and persist jira_account_id
+						if (assigneeUserId == null) {
+							try {
+								var jiraUser = jiraClient.getUser(cfg.baseUrl(), cfg.email(), cfg.apiToken(), assigneeAccountId);
+								String emailAddr = jiraUser.path("emailAddress").asText(null);
+								if (emailAddr != null && !emailAddr.isBlank()) {
+									var studentOpt = studentRepository.findByEmailIgnoreCase(emailAddr);
+									if (studentOpt.isPresent()) {
+										var student = studentOpt.get();
+										var userOpt = userRepository.findById(student.getUserId());
+										if (userOpt.isPresent()) {
+											var u = userOpt.get();
+											u.setJiraAccountId(assigneeAccountId);
+											userRepository.save(u);
+											assigneeUserId = u.getId();
+										}
+									}
+								}
+							} catch (Exception ex) {
+								log.warn("[syncIssues] Unable to resolve assignee by email for accountId={}: {}", assigneeAccountId, ex.getMessage());
+							}
+						}
 					}
 					entity.setAssigneeUserId(assigneeUserId);
 					entity.setAssigneeDisplayName(assigneeDisplayName);
@@ -281,35 +305,100 @@ public class JiraService {
 		}
 
 		String accountId = null;
+		String resolvedFrom = null;
 		if (assigneeUserId != null) {
 			var user = userRepository.findById(assigneeUserId)
 					.orElseThrow(() -> new IllegalArgumentException("Assignee user not found"));
-			accountId = user.getJiraAccountId();
+			accountId = resolveAndPersistAccountId(cfg, user);
+			resolvedFrom = (accountId != null && !accountId.equals(user.getJiraAccountId())) ? "refreshed" : "stored";
+
 			if (accountId == null || accountId.isBlank()) {
-				throw new IllegalArgumentException("Selected user does not have jira_account_id configured");
+				throw new IllegalArgumentException("Selected user does not have a valid Jira accountId (could not resolve from email/account)");
 			}
 		}
 
-		OutboundSyncLogEntity log = new OutboundSyncLogEntity();
-		log.setTarget("jira");
-		log.setEntityType("Jira_Issue");
-		log.setEntityLocalId(issue.getId());
-		log.setRemoteId(issueKey);
-		log.setAction("assign_assignee");
-		log.setRequestedByUserId(principal.getUserId());
-		log.setStatus("PENDING");
-		log = outboundSyncLogRepository.save(log);
+		OutboundSyncLogEntity syncLog = new OutboundSyncLogEntity();
+		syncLog.setTarget("jira");
+		syncLog.setEntityType("Jira_Issue");
+		syncLog.setEntityLocalId(issue.getId());
+		syncLog.setRemoteId(issueKey);
+		syncLog.setAction("assign_assignee");
+		syncLog.setRequestedByUserId(principal.getUserId());
+		syncLog.setStatus("PENDING");
+		syncLog = outboundSyncLogRepository.save(syncLog);
 
 		try {
 			jiraClient.assignIssue(cfg.baseUrl(), cfg.email(), cfg.apiToken(), issueKey, accountId);
-			log.setStatus("SUCCESS");
-			outboundSyncLogRepository.save(log);
+			syncLog.setStatus("SUCCESS");
+			outboundSyncLogRepository.save(syncLog);
 		} catch (Exception ex) {
-			log.setStatus("FAILED");
-			log.setErrorMessage(ex.getMessage());
-			outboundSyncLogRepository.save(log);
+			if (ex instanceof RestClientResponseException rc) {
+				// Jira 404 commonly means accountId not assignable or not found in project
+				String msg = rc.getResponseBodyAsString();
+				log.warn("[pushAssignee] Jira rejected assign: status={}, issueKey={}, accountId={}, resolvedFrom={}, body={}",
+						rc.getStatusCode(), issueKey, accountId, resolvedFrom, msg);
+
+				// Fallback: try to re-resolve accountId and retry once (handles stale stored accountId)
+				if (assigneeUserId != null) {
+					var user = userRepository.findById(assigneeUserId).orElse(null);
+					String fallbackAccountId = resolveAndPersistAccountId(cfg, user);
+					if (fallbackAccountId != null && !fallbackAccountId.equals(accountId)) {
+						log.info("[pushAssignee] Retry assign with resolved accountId={}, old={}", fallbackAccountId, accountId);
+						try {
+							jiraClient.assignIssue(cfg.baseUrl(), cfg.email(), cfg.apiToken(), issueKey, fallbackAccountId);
+							syncLog.setStatus("SUCCESS");
+							outboundSyncLogRepository.save(syncLog);
+							return;
+						} catch (RestClientResponseException rc2) {
+							log.warn("[pushAssignee] Retry failed: status={}, body={}", rc2.getStatusCode(), rc2.getResponseBodyAsString());
+						} catch (Exception ex2) {
+							log.warn("[pushAssignee] Retry failed: {}", ex2.getMessage());
+						}
+					}
+				}
+
+				throw new IllegalArgumentException(
+						"Jira rejected assignee (issue=" + issueKey + ", accountId=" + accountId + "): " +
+								"user not found or not assignable to the project. " +
+								"Check jira_account_id, user is in the project People list, and permission 'Assignable User'. " +
+								"Jira said: " + msg);
+			}
+			syncLog.setStatus("FAILED");
+			syncLog.setErrorMessage(ex.getMessage());
+			outboundSyncLogRepository.save(syncLog);
 			throw ex;
 		}
+	}
+
+	private String resolveAndPersistAccountId(GroupIntegrationService.JiraConfig cfg, com.swp391.user.UserEntity user) {
+		if (user == null) return null;
+		// If already stored and looks like an Atlassian accountId (no '@' and length > 10), prefer it
+		String stored = user.getJiraAccountId();
+		if (stored != null && !stored.isBlank() && !stored.contains("@") && stored.length() > 8) {
+			return stored;
+		}
+
+		String searchQuery = null;
+		var student = studentRepository.findByUserId(user.getId()).orElse(null);
+		if (student != null && student.getEmail() != null && !student.getEmail().isBlank()) {
+			searchQuery = student.getEmail();
+		} else if (user.getAccount() != null && !user.getAccount().isBlank()) {
+			searchQuery = user.getAccount();
+		}
+		if (searchQuery == null) return null;
+		try {
+			var users = jiraClient.searchUsers(cfg.baseUrl(), cfg.email(), cfg.apiToken(), searchQuery);
+			if (users.isArray() && users.size() > 0) {
+				String resolved = users.get(0).path("accountId").asText(null);
+				if (resolved != null && !resolved.isBlank()) {
+					user.setJiraAccountId(resolved);
+					userRepository.save(user);
+					return resolved;
+				}
+			}
+		} catch (Exception ignored) {
+		}
+		return null;
 	}
 
 	@Transactional

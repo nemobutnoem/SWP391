@@ -22,7 +22,6 @@ import { AllocationPage } from "../pages/admin/AllocationPage.jsx";
 import { SemesterClassPage } from "../pages/admin/SemesterClassPage.jsx";
 import { MyGroupsPage } from "../pages/lecturer/MyGroupsPage.jsx";
 import { GradingPage } from "../pages/lecturer/GradingPage.jsx";
-import { AdminIntegrationPage } from "../pages/admin/AdminIntegrationPage.jsx";
 import { GroupIntegrationPage } from "../pages/admin/GroupIntegrationPage.jsx";
 import { SRSBuilderPage } from "../pages/srs/SRSBuilderPage.jsx";
 
@@ -42,7 +41,6 @@ export function AppRoutes() {
             <Route path="/topics" element={<TopicsPage />} />
             <Route path="/users" element={<UserManagementPage />} />
             <Route path="/semesters" element={<SemesterClassPage />} />
-            <Route path="/admin/integrations" element={<AdminIntegrationPage />} />
           </Route>
 
           {/* Lecturer - Academic Management */}

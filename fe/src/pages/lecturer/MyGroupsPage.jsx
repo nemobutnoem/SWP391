@@ -23,6 +23,8 @@ export function MyGroupsPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [semesters, setSemesters] = useState([]);
   const [allClasses, setAllClasses] = useState([]);
+  const [selectedSemesterId, setSelectedSemesterId] = useState(null);
+  const [selectedClassId, setSelectedClassId] = useState(null);
 
   // Add-member modal state
   const [addMemberGroupId, setAddMemberGroupId] = useState(null);
@@ -32,7 +34,11 @@ export function MyGroupsPage() {
     groupService.listMembers().then(setAllMembers);
     studentService.list().then(setStudents);
     gradeService.list().then(setGrades);
-    semesterService.list().then(setSemesters);
+    semesterService.list().then((data) => {
+      setSemesters(data);
+      const active = data.find((s) => s.status?.toLowerCase() === "active");
+      if (active) setSelectedSemesterId(active.id);
+    });
     classService.list().then(setAllClasses);
   };
 
@@ -40,8 +46,16 @@ export function MyGroupsPage() {
     loadData();
   }, []);
 
-  // BE already filters groups by role, so allGroups = lecturer's own groups
-  const myGroups = allGroups;
+  // Filter groups by selected semester/class (optional)
+  const myGroups = useMemo(() => {
+    const bySem = selectedSemesterId
+      ? allGroups.filter((g) => (g.semester_id ?? g.semesterId) === selectedSemesterId)
+      : allGroups;
+    const byClass = selectedClassId
+      ? bySem.filter((g) => (g.class_id ?? g.classId) === selectedClassId)
+      : bySem;
+    return byClass;
+  }, [allGroups, selectedSemesterId, selectedClassId]);
 
   const enrichedGroups = useMemo(() => {
     return myGroups.map((g) => {
@@ -135,6 +149,15 @@ export function MyGroupsPage() {
       onCreateGroup={handleCreateGroup}
       semesters={semesters}
       allClasses={allClasses}
+      semesterOptions={semesters}
+      classOptions={allClasses}
+      selectedSemesterId={selectedSemesterId}
+      selectedClassId={selectedClassId}
+      onSemesterChange={(id) => {
+        setSelectedSemesterId(id);
+        setSelectedClassId(null);
+      }}
+      onClassChange={setSelectedClassId}
     />
   );
 }

@@ -163,7 +163,6 @@ export function MemberWorkProgress({ tasks = [], activities = [] }) {
               <div className="mwp-table-head mwp-grid--git">
                 <span className="mwp-col">Member</span>
                 <span className="mwp-col">Commits</span>
-                <span className="mwp-col">Lines Changed</span>
               </div>
 
               {gitMembers.map((m) => {
@@ -171,7 +170,7 @@ export function MemberWorkProgress({ tasks = [], activities = [] }) {
                 const barPct = Math.round((m.commits / maxCommits) * 100);
 
                 return (
-                  <div key={m.name} className="mwp-row mwp-grid--git">
+                  <div key={m.name} className="mwp-row mwp-grid--git mwp-grid--git-compact">
                     <div className="mwp-col mwp-col--member">
                       <div className="mwp-avatar mwp-avatar--git">{initial}</div>
                       <span className="mwp-name">{m.name}</span>
@@ -187,11 +186,6 @@ export function MemberWorkProgress({ tasks = [], activities = [] }) {
                         </div>
                         <span className="mwp-commit-num">{m.commits}</span>
                       </div>
-                    </div>
-
-                    <div className="mwp-col mwp-col--lines">
-                      <span className="mwp-add">+{m.additions}</span>
-                      <span className="mwp-del">-{m.deletions}</span>
                     </div>
                   </div>
                 );

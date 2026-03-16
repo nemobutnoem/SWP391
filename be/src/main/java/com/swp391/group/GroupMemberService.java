@@ -32,6 +32,7 @@ public class GroupMemberService {
                             m.getStudentId(),
                             userId,
                             student == null ? null : student.getFullName(),
+                            student == null ? null : student.getEmail(),
                             user == null ? null : user.getAccount(),
                             user == null ? null : user.getJiraAccountId(),
                             m.getRoleInGroup()

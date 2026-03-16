@@ -7,6 +7,7 @@ public record GroupMemberDto(
         @JsonProperty("student_id") Integer studentId,
         Integer userId,
         String fullName,
+        String email,
         String account,
         @JsonProperty("jira_account_id") String jiraAccountId,
         @JsonProperty("role_in_group") String roleInGroup

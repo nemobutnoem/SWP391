@@ -4,6 +4,8 @@ import { groupService } from "../../services/groups/group.service.js";
 import { gradeService } from "../../services/grades/grade.service.js";
 import { jiraTaskService } from "../../services/jiraTasks/jiraTask.service.js";
 import { githubActivityService } from "../../services/githubActivities/githubActivity.service.js";
+import { semesterService } from "../../services/semesters/semester.service.js";
+import { classService } from "../../services/classes/class.service.js";
 import { PageHeader } from "../../components/common/PageHeader.jsx";
 import { StatCard } from "../../components/common/StatCard.jsx";
 import { Badge } from "../../components/common/Badge.jsx";
@@ -40,6 +42,11 @@ export function LecturerDashboardView() {
   const [githubActivities, setGithubActivities] = useState([]);
   const [expandedGroupId, setExpandedGroupId] = useState(null);
   const [activeTab, setActiveTab] = useState({}); // { [groupId]: "tasks" | "activity" }
+  const [semesters, setSemesters] = useState([]);
+  const [activeSemester, setActiveSemester] = useState(null);
+  const [selectedSemesterId, setSelectedSemesterId] = useState(null);
+  const [classes, setClasses] = useState([]);
+  const [selectedClassId, setSelectedClassId] = useState(null);
 
   useEffect(() => {
     groupService.list().then(setAllGroups);
@@ -47,16 +54,86 @@ export function LecturerDashboardView() {
     gradeService.list().then(setGrades);
     jiraTaskService.list().then(setJiraTasks).catch(() => setJiraTasks([]));
     githubActivityService.list().then(setGithubActivities).catch(() => setGithubActivities([]));
+    semesterService.list().then(setSemesters).catch(() => setSemesters([]));
+    semesterService.getActive().then((s) => {
+      setActiveSemester(s);
+      setSelectedSemesterId((prev) => prev ?? s?.id ?? null);
+    }).catch(() => {});
   }, []);
 
-  const myGroups = allGroups;
-  const myGrades = grades;
+  useEffect(() => {
+    if (!selectedSemesterId && activeSemester?.id) {
+      setSelectedSemesterId(activeSemester.id);
+    }
+  }, [activeSemester, selectedSemesterId]);
+
+  // load classes when semester changes
+  useEffect(() => {
+    const semId = selectedSemesterId || activeSemester?.id || null;
+    classService
+      .list(semId)
+      .then((list) => {
+        setClasses(list || []);
+        // reset class filter if not in list
+        setSelectedClassId((prev) =>
+          prev && !list?.some((c) => c.id === prev) ? null : prev,
+        );
+      })
+      .catch(() => setClasses([]));
+  }, [selectedSemesterId, activeSemester]);
+
+  const semesterLabel =
+    semesters.find((s) => s.id === selectedSemesterId)?.code ||
+    activeSemester?.code ||
+    "Current semester";
+
+  const renderSemLabel = (sem) => {
+    if (!sem) return "";
+    const isActive = activeSemester && sem.id === activeSemester.id;
+    if (isActive) return `${sem.code} (Active)`;
+
+    const start = sem.start_date ?? sem.startDate ?? null;
+    const end = sem.end_date ?? sem.endDate ?? null;
+    const today = new Date();
+    let tag = "Past";
+    if (start && !isNaN(new Date(start).getTime()) && new Date(start) > today) {
+      tag = "Upcoming";
+    } else if (end && !isNaN(new Date(end).getTime()) && new Date(end) < today) {
+      tag = "Past";
+    } else if (start && end && new Date(start) <= today && today <= new Date(end)) {
+      tag = "Active";
+    }
+    return `${sem.code} (${tag})`;
+  };
+
+  const myGroups = useMemo(() => {
+    const semId = selectedSemesterId;
+    const filteredBySem = semId
+      ? allGroups.filter((g) => (g.semester_id ?? g.semesterId) === semId)
+      : allGroups;
+    if (!selectedClassId) return filteredBySem;
+    return filteredBySem.filter((g) => (g.class_id ?? g.classId) === selectedClassId);
+  }, [allGroups, selectedSemesterId, selectedClassId]);
+
+  const selectedGroupIds = useMemo(
+    () => new Set(myGroups.map((g) => g.id)),
+    [myGroups],
+  );
+
+  const myGrades = useMemo(
+    () => grades.filter((g) => selectedGroupIds.has(g.group_id ?? g.groupId)),
+    [grades, selectedGroupIds],
+  );
   const pendingCount = myGrades.filter((g) => g.status === "PENDING").length;
 
   const totalStudents = useMemo(() => {
-    const ids = new Set(myGroups.map((g) => g.id));
-    return allMembers.filter((m) => ids.has(m.group_id)).length;
-  }, [myGroups, allMembers]);
+    return allMembers.filter((m) => selectedGroupIds.has(m.group_id)).length;
+  }, [myGroups, allMembers, selectedGroupIds]);
+
+  const tasksForSelectedGroups = useMemo(
+    () => jiraTasks.filter((t) => selectedGroupIds.has(t.group_id ?? t.groupId)),
+    [jiraTasks, selectedGroupIds],
+  );
 
   // Build per-group data
   const enrichedGroups = useMemo(() => {
@@ -107,9 +184,46 @@ export function LecturerDashboardView() {
     <div className="dashboard-view">
       <PageHeader
         title="Lecturer Dashboard 👋"
-        description={`You supervise ${myGroups.length} group(s) with ${totalStudents} students. ${pendingCount} pending grade(s).`}
+        description={`Semester: ${semesterLabel} • You supervise ${myGroups.length} group(s) with ${totalStudents} students. ${pendingCount} pending grade(s).`}
         actions={
           <div className="action-buttons">
+            <select
+              className="semester-select"
+              value={selectedSemesterId ?? ""}
+              onChange={(e) => {
+                const v = e.target.value;
+                setSelectedSemesterId(v === "" ? activeSemester?.id ?? null : Number(v));
+              }}
+              style={{ marginRight: "0.5rem" }}
+            >
+              {activeSemester && (
+                <option value={activeSemester.id}>{renderSemLabel(activeSemester)}</option>
+              )}
+              {semesters
+                .filter((s) => !activeSemester || s.id !== activeSemester.id)
+                .map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {renderSemLabel(s)}
+                  </option>
+                ))}
+              {!activeSemester && <option value="">All semesters</option>}
+            </select>
+            <select
+              className="semester-select"
+              value={selectedClassId ?? ""}
+              onChange={(e) => {
+                const v = e.target.value;
+                setSelectedClassId(v === "" ? null : Number(v));
+              }}
+              style={{ marginRight: "0.5rem" }}
+            >
+              <option value="">All classes</option>
+              {classes.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.class_code || c.classCode || `Class #${c.id}`}
+                </option>
+              ))}
+            </select>
             <Button variant="secondary" size="sm" onClick={() => navigate("/classes")}>
               My Groups
             </Button>
@@ -133,8 +247,8 @@ export function LecturerDashboardView() {
         />
         <StatCard
           title="Total Tasks"
-          value={jiraTasks.length}
-          subtext={`${jiraTasks.filter((t) => t.status === "Done" || t.status === "DONE").length} completed`}
+          value={tasksForSelectedGroups.length}
+          subtext={`${tasksForSelectedGroups.filter((t) => t.status === "Done" || t.status === "DONE").length} completed`}
           icon="✅"
         />
       </div>

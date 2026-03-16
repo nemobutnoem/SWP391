@@ -87,6 +87,12 @@ export function MyGroupsView({
   enrichedGroups,
   expandedGroupId,
   onToggleExpand,
+  semesterOptions = [],
+  classOptions = [],
+  selectedSemesterId,
+  selectedClassId,
+  onSemesterChange,
+  onClassChange,
   onRoleChange,
   onAddMember,
   onRemoveMember,
@@ -128,6 +134,38 @@ export function MyGroupsView({
           </Button>
         }
       />
+
+      <div className="filters-row" style={{ display: "flex", gap: "0.75rem", margin: "0 0 1rem 0" }}>
+        <select
+          className="form-select"
+          value={selectedSemesterId ?? ""}
+          onChange={(e) => onSemesterChange?.(e.target.value ? Number(e.target.value) : null)}
+          style={{ maxWidth: "220px" }}
+        >
+          <option value="">All Semesters</option>
+          {semesterOptions.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.code || s.name || `Semester #${s.id}`}
+            </option>
+          ))}
+        </select>
+
+        <select
+          className="form-select"
+          value={selectedClassId ?? ""}
+          onChange={(e) => onClassChange?.(e.target.value ? Number(e.target.value) : null)}
+          style={{ maxWidth: "220px" }}
+        >
+          <option value="">All Classes</option>
+          {classOptions
+            .filter((c) => !selectedSemesterId || c.semester_id === selectedSemesterId || c.semesterId === selectedSemesterId)
+            .map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.class_code || c.classCode || `Class #${c.id}`}
+              </option>
+            ))}
+        </select>
+      </div>
 
       <div className="table-container">
         <table className="admin-table">
