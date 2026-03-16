@@ -276,6 +276,7 @@ export function SemesterClassView({
                   <th>Major</th>
                   <th>Lecturer</th>
                   <th>Students</th>
+                  <th>Groups</th>
                   <th>Status</th>
                   <th className="action-cell">Actions</th>
                 </tr>
@@ -283,7 +284,7 @@ export function SemesterClassView({
               <tbody>
                 {enrichedClasses.length === 0 ? (
                   <tr>
-                    <td colSpan="7" style={{ textAlign: "center", padding: "2rem", color: "var(--slate-400)" }}>
+                    <td colSpan="8" style={{ textAlign: "center", padding: "2rem", color: "var(--slate-400)" }}>
                       No classes in this semester yet. Click "+ New Class" to create one.
                     </td>
                   </tr>
@@ -305,6 +306,19 @@ export function SemesterClassView({
                         </span>
                       </td>
                       <td>{c.student_count}</td>
+                      <td>
+                        {c.groups && c.groups.length > 0 ? (
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.25rem" }}>
+                            {c.groups.map(g => (
+                              <Badge key={g.id} variant="info" size="sm" title={g.group_name}>
+                                {g.group_code || g.group_name}
+                              </Badge>
+                            ))}
+                          </div>
+                        ) : (
+                          <span style={{ fontSize: "0.85rem", color: "var(--slate-400)" }}>None</span>
+                        )}
+                      </td>
                       <td>
                         <Badge variant={c.status?.toLowerCase() === "active" ? "success" : "default"} size="sm">
                           {c.status}

@@ -3,6 +3,7 @@ import { semesterService } from "../../services/semesters/semester.service.js";
 import { classService } from "../../services/classes/class.service.js";
 import { lecturerService } from "../../services/lecturers/lecturer.service.js";
 import { studentService } from "../../services/students/student.service.js";
+import { groupService } from "../../services/groups/group.service.js";
 import { SemesterClassView } from "./SemesterClassView.jsx";
 import "./adminManagement.css";
 
@@ -11,6 +12,7 @@ export function SemesterClassPage() {
   const [classes, setClasses] = useState([]);
   const [lecturers, setLecturers] = useState([]);
   const [students, setStudents] = useState([]);
+  const [groups, setGroups] = useState([]);
 
   const [selectedSemesterId, setSelectedSemesterId] = useState(null);
 
@@ -31,6 +33,7 @@ export function SemesterClassPage() {
     });
     lecturerService.list().then(setLecturers);
     studentService.list().then(setStudents);
+    groupService.list().then(setGroups);
   }, []);
 
   useEffect(() => {
@@ -45,13 +48,15 @@ export function SemesterClassPage() {
     return classes.map((c) => {
       const lecturer = lecturers.find((l) => l.id === c.lecturer_id);
       const studentCount = students.filter((s) => s.class_id === c.id).length;
+      const classGroups = groups.filter((g) => g.class_id === c.id || g.classId === c.id);
       return {
         ...c,
         lecturer_name: lecturer?.full_name || "Unassigned",
         student_count: studentCount,
+        groups: classGroups,
       };
     });
-  }, [classes, lecturers, students]);
+  }, [classes, lecturers, students, groups]);
 
   // Semester handlers
   const handleCreateSemester = () => {
