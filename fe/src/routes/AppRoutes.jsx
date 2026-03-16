@@ -41,6 +41,7 @@ export function AppRoutes() {
             <Route path="/topics" element={<TopicsPage />} />
             <Route path="/users" element={<UserManagementPage />} />
             <Route path="/semesters" element={<SemesterClassPage />} />
+            <Route path="/allocations" element={<AllocationPage />} />
           </Route>
 
           {/* Lecturer - Academic Management */}

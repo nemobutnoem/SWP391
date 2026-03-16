@@ -54,6 +54,9 @@ export function Sidebar() {
             <NavLink to="/topics" className={navClass}>
               Project Topics
             </NavLink>
+            <NavLink to="/allocations" className={navClass}>
+              Group Allocation
+            </NavLink>
             <NavLink to="/group/integrations" className={navClass}>
               Group Integrations
             </NavLink>
