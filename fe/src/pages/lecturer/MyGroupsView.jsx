@@ -31,6 +31,7 @@ export function MyGroupsView({
   onTopicSelectionChange,
   onAssignTopic,
   onCreateGroup,
+  onRefreshGroupJira,
 }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedRole, setSelectedRole] = useState("Member");
@@ -227,24 +228,52 @@ export function MyGroupsView({
                       </div>
 
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <span className="expanded-row-title">Member Contribution Scores</span>
-                        <button
-                          className="btn btn-primary btn-sm"
-                          style={{ padding: "0.375rem 0.75rem", fontSize: "0.8125rem", borderRadius: "6px", border: "none", background: "var(--brand-600, #2563eb)", color: "white", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.375rem" }}
-                          onClick={(e) => { e.stopPropagation(); onOpenAddMember(g.id); }}
-                        >
-                          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-                            <path d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"/>
-                          </svg>
-                          Add Student
-                        </button>
+                        <div>
+                          <span className="expanded-row-title">Member Contribution Scores</span>
+                          {g.hasContributionData && (
+                            <div className="text-secondary" style={{ fontSize: "0.75rem", marginTop: "0.25rem" }}>
+                              Auto-calculated from Jira story points
+                            </div>
+                          )}
+                          {!g.hasContributionData && (
+                            <div className="text-secondary" style={{ fontSize: "0.75rem", marginTop: "0.25rem" }}>
+                              No contribution data yet. Add story points in Jira to calculate member percentages.
+                            </div>
+                          )}
+                        </div>
+                        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                          <button
+                            className="btn btn-secondary btn-sm"
+                            style={{ padding: "0.375rem 0.75rem", fontSize: "0.8125rem", borderRadius: "6px", border: "1px solid var(--slate-300, #cbd5e1)", background: "white", color: "var(--slate-700, #334155)", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.375rem" }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onRefreshGroupJira?.(g.id);
+                            }}
+                          >
+                            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                              <path d="M8 1.5a6.5 6.5 0 0 1 5.11 10.52.75.75 0 1 1-1.18-.92A5 5 0 1 0 8 13a4.98 4.98 0 0 0 3.03-1.02.75.75 0 1 1 .9 1.2A6.5 6.5 0 1 1 8 1.5Zm4.75.5a.75.75 0 0 1 .75.75V6a.75.75 0 0 1-1.5 0V4.56l-1.22 1.22a.75.75 0 1 1-1.06-1.06l2.5-2.5A.75.75 0 0 1 12.75 2Z" />
+                            </svg>
+                            Refresh Jira Data
+                          </button>
+                          <button
+                            className="btn btn-primary btn-sm"
+                            style={{ padding: "0.375rem 0.75rem", fontSize: "0.8125rem", borderRadius: "6px", border: "none", background: "var(--brand-600, #2563eb)", color: "white", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.375rem" }}
+                            onClick={(e) => { e.stopPropagation(); onOpenAddMember(g.id); }}
+                          >
+                            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                              <path d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"/>
+                            </svg>
+                            Add Student
+                          </button>
+                        </div>
                       </div>
                       <table className="admin-table" style={{ marginTop: "0.75rem" }}>
                         <thead>
                           <tr>
                             <th>Member</th>
                             <th>Student Code</th>
-                            <th>Role</th>
+                            <th>Group Role</th>
+                            {g.hasContributionData && <th>Contribution %</th>}
                             <th>GitHub</th>
                             <th style={{ width: "60px" }}></th>
                           </tr>
@@ -272,6 +301,20 @@ export function MyGroupsView({
                                   <option value="Member">MEMBER</option>
                                 </select>
                               </td>
+                              {g.hasContributionData && (
+                                <td>
+                                  {m.contribution_pct != null ? (
+                                    <div style={{ display: "flex", flexDirection: "column", gap: "0.2rem" }}>
+                                      <strong style={{ color: "var(--brand-700)" }}>{m.contribution_pct}%</strong>
+                                      <span className="text-secondary" style={{ fontSize: "0.75rem" }}>
+                                        {m.member_story_points} SP
+                                      </span>
+                                    </div>
+                                  ) : (
+                                    <span className="text-secondary">-</span>
+                                  )}
+                                </td>
+                              )}
                               <td>
                                 <span className="text-secondary">@{m.github_username}</span>
                               </td>
@@ -290,6 +333,22 @@ export function MyGroupsView({
                           ))}
                         </tbody>
                       </table>
+
+                      {!g.hasContributionData && (
+                        <div
+                          style={{
+                            marginTop: "0.875rem",
+                            padding: "0.875rem 1rem",
+                            borderRadius: "8px",
+                            background: "var(--slate-50, #f8fafc)",
+                            border: "1px dashed var(--slate-300, #cbd5e1)",
+                            color: "var(--slate-600, #475569)",
+                            fontSize: "0.875rem",
+                          }}
+                        >
+                          No story points yet. Member contribution percentage will appear automatically after Jira tasks are assigned story points.
+                        </div>
+                      )}
 
                       {g.groupGrades.length > 0 && (
                         <>
@@ -348,6 +407,7 @@ export function MyGroupsView({
             <select
               value={selectedRole}
               onChange={(e) => setSelectedRole(e.target.value)}
+              aria-label="Group role"
               style={{ padding: "0.5rem 0.75rem", border: "1px solid var(--slate-300, #cbd5e1)", borderRadius: "6px", fontSize: "0.875rem" }}
             >
               <option value="Member">MEMBER</option>

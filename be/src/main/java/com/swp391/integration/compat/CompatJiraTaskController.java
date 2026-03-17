@@ -275,6 +275,16 @@ public class CompatJiraTaskController {
 	}
 
 	private void ensureMember(Integer groupId, UserPrincipal principal) {
+		String role = principal.getRole();
+		if ("Admin".equalsIgnoreCase(role)) {
+			return;
+		}
+		if ("Lecturer".equalsIgnoreCase(role)) {
+			if (!resolveGroupIdsForLecturer(principal).contains(groupId)) {
+				throw new SecurityException("You are not assigned to this group");
+			}
+			return;
+		}
 		var student = studentRepository.findByUserId(principal.getUserId())
 				.orElseThrow(() -> new IllegalArgumentException("Student not found for current user"));
 		memberRepository.findByGroupIdAndStudentId(groupId, student.getId())

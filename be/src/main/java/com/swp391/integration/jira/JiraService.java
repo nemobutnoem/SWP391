@@ -2,7 +2,9 @@ package com.swp391.integration.jira;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.swp391.group.GroupMemberRepository;
+import com.swp391.group.StudentGroupRepository;
 import com.swp391.integration.GroupIntegrationService;
+import com.swp391.lecturer.LecturerRepository;
 import com.swp391.security.UserPrincipal;
 import com.swp391.student.StudentRepository;
 import com.swp391.integration.sync.OutboundSyncLogEntity;
@@ -27,6 +29,8 @@ public class JiraService {
 	private final OutboundSyncLogRepository outboundSyncLogRepository;
 	private final StudentRepository studentRepository;
 	private final GroupMemberRepository memberRepository;
+	private final StudentGroupRepository groupRepository;
+	private final LecturerRepository lecturerRepository;
 	private final GroupIntegrationService integrationService;
 	private final UserRepository userRepository;
 	private final TaskCommentRepository taskCommentRepository;
@@ -569,6 +573,20 @@ private String pickBestAccountId(JsonNode users, String email, String emailLocal
 	}
 
 	private void ensureMember(Integer groupId, UserPrincipal principal) {
+		String role = principal.getRole();
+		if ("Admin".equalsIgnoreCase(role)) {
+			return;
+		}
+		if ("Lecturer".equalsIgnoreCase(role)) {
+			var lecturer = lecturerRepository.findByUserId(principal.getUserId())
+					.orElseThrow(() -> new IllegalArgumentException("Lecturer not found for current user"));
+			var group = groupRepository.findById(groupId)
+					.orElseThrow(() -> new IllegalArgumentException("Group not found"));
+			if (!lecturer.getId().equals(group.getLecturerId())) {
+				throw new SecurityException("You are not assigned to this group");
+			}
+			return;
+		}
 		var student = studentRepository.findByUserId(principal.getUserId())
 				.orElseThrow(() -> new IllegalArgumentException("Student not found for current user"));
 		memberRepository.findByGroupIdAndStudentId(groupId, student.getId())

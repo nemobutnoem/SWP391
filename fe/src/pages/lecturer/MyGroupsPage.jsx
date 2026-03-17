@@ -5,6 +5,8 @@ import { gradeService } from "../../services/grades/grade.service.js";
 import { semesterService } from "../../services/semesters/semester.service.js";
 import { classService } from "../../services/classes/class.service.js";
 import { topicService } from "../../services/topics/topic.service.js";
+import { jiraTaskService } from "../../services/jiraTasks/jiraTask.service.js";
+import { syncService } from "../../services/sync/sync.service.js";
 import { MyGroupsView } from "./MyGroupsView.jsx";
 import "../admin/adminManagement.css";
 
@@ -20,6 +22,7 @@ export function MyGroupsPage() {
   const [students, setStudents] = useState([]);
   const [grades, setGrades] = useState([]);
   const [topics, setTopics] = useState([]);
+  const [jiraTasks, setJiraTasks] = useState([]);
   const [topicSelections, setTopicSelections] = useState({});
 
   const [semesters, setSemesters] = useState([]);
@@ -36,6 +39,7 @@ export function MyGroupsPage() {
     studentService.list().then(setStudents);
     gradeService.list().then(setGrades);
     topicService.list().then(setTopics);
+    jiraTaskService.list().then(setJiraTasks).catch(() => setJiraTasks([]));
     semesterService.list().then((data) => {
       setSemesters(data);
       const active = data.find((s) => s.status?.toLowerCase() === "active");
@@ -69,11 +73,38 @@ export function MyGroupsPage() {
 
   const enrichedGroups = useMemo(() => {
     return myGroups.map((g) => {
+      const groupTasks = jiraTasks.filter((task) => Number(task.group_id ?? task.groupId) === Number(g.id));
+
+      const scoredTasks = groupTasks.filter((task) => {
+        const storyPoints = Number(task.story_points ?? task.storyPoints);
+        const assigneeUserId = task.assigneeUserId ?? task.assignee_user_id;
+        return Number.isFinite(storyPoints) && storyPoints > 0 && assigneeUserId;
+      });
+
+      const totalStoryPoints = scoredTasks.reduce(
+        (sum, task) => sum + Number(task.story_points ?? task.storyPoints ?? 0),
+        0,
+      );
+
       const members = allMembers
         .filter((m) => m.group_id === g.id)
         .map((m) => {
           const student = students.find((s) => s.id === m.student_id);
-          return { ...student, ...m, member_id: m.id };
+          const memberUserId = student?.user_id ?? student?.userId;
+          const memberStoryPoints = scoredTasks
+            .filter((task) => Number(task.assigneeUserId ?? task.assignee_user_id) === Number(memberUserId))
+            .reduce((sum, task) => sum + Number(task.story_points ?? task.storyPoints ?? 0), 0);
+
+          return {
+            ...student,
+            ...m,
+            member_id: m.id,
+            member_story_points: memberStoryPoints,
+            contribution_pct:
+              totalStoryPoints > 0 && memberStoryPoints > 0
+                ? Number(((memberStoryPoints / totalStoryPoints) * 100).toFixed(1))
+                : null,
+          };
         });
 
       const groupGrades = grades.filter(
@@ -86,9 +117,17 @@ export function MyGroupsPage() {
           ? (gradedGrades.reduce((s, gr) => s + gr.score, 0) / gradedGrades.length).toFixed(1)
           : null;
 
-      return { ...g, members, groupGrades, avgScore, topicName: topic?.name || null };
+      return {
+        ...g,
+        members,
+        groupGrades,
+        avgScore,
+        topicName: topic?.name || null,
+        totalStoryPoints,
+        hasContributionData: totalStoryPoints > 0,
+      };
     });
-  }, [myGroups, allMembers, students, grades, topics]);
+  }, [myGroups, allMembers, students, grades, topics, jiraTasks]);
 
   const toggleExpand = (id) =>
     setExpandedGroupId(expandedGroupId === id ? null : id);
@@ -165,6 +204,19 @@ export function MyGroupsPage() {
     }
   };
 
+  const handleRefreshGroupJira = async (groupId) => {
+    try {
+      const result = await syncService.syncJira({ groupId });
+      if (result?.ok === false) {
+        throw new Error(result?.message || "Jira refresh failed");
+      }
+      loadData();
+      window.alert("Jira data refreshed successfully.");
+    } catch (err) {
+      alert("Failed to refresh Jira data: " + (err.response?.data?.message || err.message || err));
+    }
+  };
+
   // Students available to add (not already in the target group)
   const availableStudents = useMemo(() => {
     if (!addMemberGroupId) return [];
@@ -205,6 +257,7 @@ export function MyGroupsPage() {
       onTopicSelectionChange={handleTopicSelectionChange}
       onAssignTopic={handleAssignTopic}
       onCreateGroup={handleCreateGroup}
+      onRefreshGroupJira={handleRefreshGroupJira}
     />
   );
 }
