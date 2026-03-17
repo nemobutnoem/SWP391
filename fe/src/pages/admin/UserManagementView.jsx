@@ -58,7 +58,11 @@ export function UserManagementView({
 
       <div className="filter-bar">
         <div className="search-input-wrapper">
-          <span className="search-icon">Search</span>
+          <span className="search-icon" aria-hidden="true">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M10.68 11.74a6 6 0 1 1 1.06-1.06l3.29 3.29a.75.75 0 1 1-1.06 1.06l-3.29-3.29ZM11.5 7a4.5 4.5 0 1 0-9 0 4.5 4.5 0 0 0 9 0Z" />
+            </svg>
+          </span>
           <input
             type="text"
             placeholder={`Search ${activeTab.toLowerCase()} by name or code...`}

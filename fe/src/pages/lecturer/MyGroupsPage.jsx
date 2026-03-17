@@ -144,6 +144,27 @@ export function MyGroupsPage() {
     }
   };
 
+  const handleCreateGroup = async (payload) => {
+    try {
+      if (!selectedSemesterId || !selectedClassId) {
+        alert("Please select a semester and class before creating a group.");
+        return;
+      }
+
+      await groupService.create({
+        semester_id: selectedSemesterId,
+        class_id: selectedClassId,
+        group_code: payload.group_code,
+        group_name: payload.group_name,
+        description: payload.description || "",
+      });
+      loadData();
+    } catch (err) {
+      alert("Failed to create group: " + (err.response?.data?.message || err.message || err));
+      throw err;
+    }
+  };
+
   // Students available to add (not already in the target group)
   const availableStudents = useMemo(() => {
     if (!addMemberGroupId) return [];
@@ -183,6 +204,7 @@ export function MyGroupsPage() {
       topicSelections={topicSelections}
       onTopicSelectionChange={handleTopicSelectionChange}
       onAssignTopic={handleAssignTopic}
+      onCreateGroup={handleCreateGroup}
     />
   );
 }

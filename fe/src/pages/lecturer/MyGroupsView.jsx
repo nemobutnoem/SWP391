@@ -30,9 +30,16 @@ export function MyGroupsView({
   topicSelections = {},
   onTopicSelectionChange,
   onAssignTopic,
+  onCreateGroup,
 }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedRole, setSelectedRole] = useState("Member");
+  const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
+  const [createGroupForm, setCreateGroupForm] = useState({
+    group_code: "",
+    group_name: "",
+    description: "",
+  });
 
   const filteredStudents = availableStudents.filter((s) => {
     const q = searchTerm.toLowerCase();
@@ -47,11 +54,41 @@ export function MyGroupsView({
   const handleAdd = (studentId) => {
     onAddMember(addMemberGroupId, studentId, selectedRole);
   };
+
+  const openCreateGroupModal = () => {
+    if (!selectedSemesterId || !selectedClassId) {
+      window.alert("Please select a semester and class before creating a group.");
+      return;
+    }
+    setCreateGroupForm({
+      group_code: "",
+      group_name: "",
+      description: "",
+    });
+    setIsCreateGroupOpen(true);
+  };
+
+  const handleCreateGroupSubmit = async (e) => {
+    e.preventDefault();
+    await onCreateGroup?.({
+      ...createGroupForm,
+      group_code: createGroupForm.group_code.trim(),
+      group_name: createGroupForm.group_name.trim(),
+      description: createGroupForm.description.trim(),
+    });
+    setIsCreateGroupOpen(false);
+  };
+
   return (
     <div className="user-mgmt-page">
       <PageHeader
         title="My Supervised Groups"
         description="Detailed view of all groups under your supervision with member contribution scores and grade history."
+        actions={
+          <Button variant="primary" size="sm" onClick={openCreateGroupModal}>
+            Create Group
+          </Button>
+        }
       />
 
       <div className="filters-row groups-filters-row">
@@ -359,6 +396,68 @@ export function MyGroupsView({
             )}
           </div>
         </div>
+      </Modal>
+
+      <Modal
+        isOpen={isCreateGroupOpen}
+        onClose={() => setIsCreateGroupOpen(false)}
+        title="Create Group"
+      >
+        <form onSubmit={handleCreateGroupSubmit} style={{ display: "flex", flexDirection: "column", gap: "0.875rem" }}>
+          <div style={{ display: "grid", gap: "0.375rem" }}>
+            <label style={{ fontSize: "0.875rem", fontWeight: 600 }}>Group Code</label>
+            <input
+              type="text"
+              value={createGroupForm.group_code}
+              onChange={(e) =>
+                setCreateGroupForm((prev) => ({ ...prev, group_code: e.target.value }))
+              }
+              placeholder="E.g. G01"
+              required
+              style={{ padding: "0.625rem 0.75rem", border: "1px solid var(--slate-300, #cbd5e1)", borderRadius: "6px" }}
+            />
+          </div>
+
+          <div style={{ display: "grid", gap: "0.375rem" }}>
+            <label style={{ fontSize: "0.875rem", fontWeight: 600 }}>Group Name</label>
+            <input
+              type="text"
+              value={createGroupForm.group_name}
+              onChange={(e) =>
+                setCreateGroupForm((prev) => ({ ...prev, group_name: e.target.value }))
+              }
+              placeholder="E.g. Group 1"
+              required
+              style={{ padding: "0.625rem 0.75rem", border: "1px solid var(--slate-300, #cbd5e1)", borderRadius: "6px" }}
+            />
+          </div>
+
+          <div style={{ display: "grid", gap: "0.375rem" }}>
+            <label style={{ fontSize: "0.875rem", fontWeight: 600 }}>Description</label>
+            <textarea
+              value={createGroupForm.description}
+              onChange={(e) =>
+                setCreateGroupForm((prev) => ({ ...prev, description: e.target.value }))
+              }
+              placeholder="Short note about this group..."
+              rows={3}
+              style={{ padding: "0.625rem 0.75rem", border: "1px solid var(--slate-300, #cbd5e1)", borderRadius: "6px", resize: "vertical" }}
+            />
+          </div>
+
+          <div className="text-secondary" style={{ fontSize: "0.8125rem" }}>
+            Group will be created for the currently selected semester and class.
+          </div>
+
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem" }}>
+            <Button variant="ghost" type="button" onClick={() => setIsCreateGroupOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="primary" type="submit">
+              Create Group
+            </Button>
+          </div>
+        </form>
       </Modal>
 
     </div>

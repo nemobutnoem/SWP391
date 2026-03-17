@@ -27,9 +27,6 @@ export function AdminDashboardView({ adminStats = DEFAULT_ADMIN_STATS, systemLog
             <Button variant="primary" size="sm" onClick={() => navigate("/semesters")}>
               Manage Semester
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => navigate("/admin/integrations")}>
-              Sync Logs
-            </Button>
           </div>
         }
       />
