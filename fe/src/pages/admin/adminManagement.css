@@ -549,3 +549,12 @@
 .class-student-dropdown-item .code-badge {
   margin-left: auto;
 }
+
+.jira-refresh-spin {
+  animation: jiraRefreshSpin 0.9s linear infinite;
+}
+
+@keyframes jiraRefreshSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

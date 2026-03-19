@@ -75,4 +75,7 @@ public class JiraIssueEntity {
 
 	@Column(name = "story_points")
 	private Double storyPoints;
+
+	@Column(name = "srs_category")
+	private String srsCategory;
 }

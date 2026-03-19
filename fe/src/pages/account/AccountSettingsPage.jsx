@@ -5,6 +5,7 @@ import { useAuth } from "../../store/auth/useAuth.jsx";
 import { ROLES } from "../../routes/access/roles.js";
 import { lecturerService } from "../../services/lecturers/lecturer.service.js";
 import { studentService } from "../../services/students/student.service.js";
+import { groupService } from "../../services/groups/group.service.js";
 import "./accountSettings.css";
 
 function readValue(obj, ...keys) {
@@ -30,6 +31,13 @@ function roleDescription(role) {
   }
 }
 
+function normalizeTeamPosition(rawRoleInGroup) {
+  const value = String(rawRoleInGroup || "").trim().toUpperCase();
+  if (value === "LEADER") return "Team Lead";
+  if (value === "MEMBER") return "Team Member";
+  return "User";
+}
+
 export function AccountSettingsPage() {
   const { user, updateUser } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -37,6 +45,7 @@ export function AccountSettingsPage() {
   const [message, setMessage] = useState(null);
   const [profileType, setProfileType] = useState("account");
   const [profileRecordId, setProfileRecordId] = useState(null);
+  const [teamPosition, setTeamPosition] = useState("User");
   const [form, setForm] = useState({
     fullName: "",
     email: "",
@@ -72,6 +81,7 @@ export function AccountSettingsPage() {
             studentCode: "",
             major: "",
           });
+          setTeamPosition("User");
           return;
         }
 
@@ -90,11 +100,28 @@ export function AccountSettingsPage() {
             studentCode: readValue(matched, "student_code", "studentCode"),
             major: readValue(matched, "major"),
           });
+
+          const studentId = Number(readValue(matched, "id"));
+          if (Number.isFinite(studentId)) {
+            const members = await groupService.listMembers();
+            const myMemberships = (Array.isArray(members) ? members : []).filter(
+              (item) => Number(readValue(item, "student_id", "studentId")) === studentId,
+            );
+            const teamRoleInGroup = myMemberships.find(
+              (item) => String(readValue(item, "role_in_group", "roleInGroup")).trim().toUpperCase() === "LEADER",
+            )
+              ? "LEADER"
+              : readValue(myMemberships[0], "role_in_group", "roleInGroup");
+            setTeamPosition(normalizeTeamPosition(teamRoleInGroup));
+          } else {
+            setTeamPosition("User");
+          }
           return;
         }
 
         setProfileType("account");
         setProfileRecordId(null);
+        setTeamPosition("User");
         setForm({
           fullName: user?.name || "",
           email: "",
@@ -122,10 +149,11 @@ export function AccountSettingsPage() {
   const summaryItems = useMemo(
     () => [
       { label: "Role", value: user?.role || "Unknown" },
+      { label: "Team Position", value: teamPosition },
       { label: "User ID", value: user?.id || "-" },
       { label: "Profile Type", value: profileType },
     ],
-    [profileType, user?.id, user?.role],
+    [profileType, teamPosition, user?.id, user?.role],
   );
 
   const handleChange = (field) => (event) => {

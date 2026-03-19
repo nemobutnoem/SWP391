@@ -59,7 +59,8 @@ public class CompatJiraTaskController {
 			@JsonProperty("sprint_name") String sprintName,
 			@JsonProperty("story_points") Double storyPoints,
 			@JsonProperty("jira_created_at") java.time.LocalDateTime jiraCreatedAt,
-			@JsonProperty("jira_updated_at") java.time.LocalDateTime jiraUpdatedAt) {
+			@JsonProperty("jira_updated_at") java.time.LocalDateTime jiraUpdatedAt,
+			@JsonProperty("srs_category") String srsCategory) {
 	}
 
 	public record UpdateTaskRequest(
@@ -121,7 +122,7 @@ public class CompatJiraTaskController {
 		ensureMember(issue.getGroupId(), principal);
 
 		boolean changed = false;
-		boolean isTeamMember = "TEAM_MEMBER".equalsIgnoreCase(principal.getRole());
+		boolean isRestrictedTeamMember = isRestrictedTeamMember(principal, issue.getGroupId());
 
 		if (req.status() != null && !req.status().isBlank()) {
 			// Push status to Jira as well (so Jira changes, not just local DB).
@@ -137,7 +138,7 @@ public class CompatJiraTaskController {
 
 		Integer assigneeUserId = req.assigneeUserId() != null ? req.assigneeUserId() : req.assigneeUserIdSnake();
 		if (assigneeUserId != null) {
-			if (isTeamMember) {
+			if (isRestrictedTeamMember) {
 				throw new SecurityException("TEAM_MEMBER can only update task status");
 			}
 			// 0 (or negative) means "unassigned" from UI.
@@ -157,7 +158,7 @@ public class CompatJiraTaskController {
 
 		String dueDateRaw = req.dueDate() != null ? req.dueDate() : req.dueDateSnake();
 		if (dueDateRaw != null || req.priority() != null) {
-			if (isTeamMember) {
+			if (isRestrictedTeamMember) {
 				throw new SecurityException("TEAM_MEMBER can only update task status");
 			}
 			java.util.Map<String, Object> fields = new java.util.LinkedHashMap<>();
@@ -271,7 +272,8 @@ public class CompatJiraTaskController {
 				e.getSprintName(),
 				e.getStoryPoints(),
 				e.getJiraCreatedAt(),
-				e.getJiraUpdatedAt());
+				e.getJiraUpdatedAt(),
+				e.getSrsCategory());
 	}
 
 	private void ensureMember(Integer groupId, UserPrincipal principal) {
@@ -289,6 +291,23 @@ public class CompatJiraTaskController {
 				.orElseThrow(() -> new IllegalArgumentException("Student not found for current user"));
 		memberRepository.findByGroupIdAndStudentId(groupId, student.getId())
 				.orElseThrow(() -> new SecurityException("You are not a member of this group"));
+	}
+
+	private boolean isRestrictedTeamMember(UserPrincipal principal, Integer groupId) {
+		String role = principal == null ? "" : principal.getRole();
+		if (!"TEAM_MEMBER".equalsIgnoreCase(role)) {
+			return false;
+		}
+		var student = studentRepository.findByUserId(principal.getUserId()).orElse(null);
+		if (student == null) {
+			return true;
+		}
+		var membership = memberRepository.findByGroupIdAndStudentId(groupId, student.getId()).orElse(null);
+		if (membership == null) {
+			return true;
+		}
+		String roleInGroup = membership.getRoleInGroup() == null ? "" : membership.getRoleInGroup();
+		return !"LEADER".equalsIgnoreCase(roleInGroup);
 	}
 
 	private Set<Integer> resolveGroupIdsForLecturer(UserPrincipal principal) {
@@ -313,6 +332,21 @@ public class CompatJiraTaskController {
 	}
 
 	public record CreateCommentRequest(@NotBlank String content) {
+	}
+
+	public record UpdateSrsCategoryRequest(@JsonProperty("srs_category") String srsCategory) {
+	}
+
+	@PatchMapping("/jira-tasks/{taskId}/srs-category")
+	public JiraTaskDto updateSrsCategory(@PathVariable Integer taskId,
+			@RequestBody UpdateSrsCategoryRequest req, Authentication auth) {
+		UserPrincipal principal = (UserPrincipal) auth.getPrincipal();
+		var entity = jiraIssueRepository.findById(taskId)
+				.orElseThrow(() -> new IllegalArgumentException("Task not found"));
+		ensureMember(entity.getGroupId(), principal);
+		entity.setSrsCategory(req.srsCategory());
+		jiraIssueRepository.save(entity);
+		return toDto(entity);
 	}
 
 	@GetMapping("/jira-tasks/{taskId}/comments")

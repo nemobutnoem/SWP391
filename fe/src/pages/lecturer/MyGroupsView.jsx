@@ -32,6 +32,8 @@ export function MyGroupsView({
   onAssignTopic,
   onCreateGroup,
   onRefreshGroupJira,
+  refreshingGroupId = null,
+  refreshStatusByGroupId = {},
 }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedRole, setSelectedRole] = useState("Member");
@@ -242,18 +244,40 @@ export function MyGroupsView({
                           )}
                         </div>
                         <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                          {refreshStatusByGroupId?.[g.id]?.text && (
+                            <div
+                              className="text-secondary"
+                              style={{
+                                fontSize: "0.75rem",
+                                alignSelf: "center",
+                                color:
+                                  refreshStatusByGroupId[g.id].type === "error"
+                                    ? "var(--red-600, #dc2626)"
+                                    : "var(--slate-500, #64748b)",
+                              }}
+                            >
+                              {refreshStatusByGroupId[g.id].text}
+                            </div>
+                          )}
                           <button
                             className="btn btn-secondary btn-sm"
                             style={{ padding: "0.375rem 0.75rem", fontSize: "0.8125rem", borderRadius: "6px", border: "1px solid var(--slate-300, #cbd5e1)", background: "white", color: "var(--slate-700, #334155)", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.375rem" }}
+                            disabled={refreshingGroupId === g.id}
                             onClick={(e) => {
                               e.stopPropagation();
                               onRefreshGroupJira?.(g.id);
                             }}
                           >
-                            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                            <svg
+                              width="14"
+                              height="14"
+                              viewBox="0 0 16 16"
+                              fill="currentColor"
+                              className={refreshingGroupId === g.id ? "jira-refresh-spin" : ""}
+                            >
                               <path d="M8 1.5a6.5 6.5 0 0 1 5.11 10.52.75.75 0 1 1-1.18-.92A5 5 0 1 0 8 13a4.98 4.98 0 0 0 3.03-1.02.75.75 0 1 1 .9 1.2A6.5 6.5 0 1 1 8 1.5Zm4.75.5a.75.75 0 0 1 .75.75V6a.75.75 0 0 1-1.5 0V4.56l-1.22 1.22a.75.75 0 1 1-1.06-1.06l2.5-2.5A.75.75 0 0 1 12.75 2Z" />
                             </svg>
-                            Refresh Jira Data
+                            {refreshingGroupId === g.id ? "Refreshing..." : "Refresh Jira Data"}
                           </button>
                           <button
                             className="btn btn-primary btn-sm"

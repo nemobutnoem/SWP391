@@ -41,4 +41,9 @@ export const jiraTaskApi = {
     const res = await http.post(`/jira-tasks/${taskId}/comments`, { content });
     return res.data;
   },
+
+  async updateSrsCategory(taskId, srsCategory) {
+    const res = await http.patch(`/jira-tasks/${taskId}/srs-category`, { srs_category: srsCategory });
+    return res.data;
+  },
 };

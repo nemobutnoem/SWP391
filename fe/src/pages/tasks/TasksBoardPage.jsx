@@ -61,6 +61,7 @@ function normalizeMemberOption(m) {
     userId: userId == null ? null : Number(userId),
     name: String(name || "").trim(),
     jiraAccountId: m.jiraAccountId ?? m.jira_account_id ?? null,
+    roleInGroup: m.roleInGroup ?? m.role_in_group ?? null,
     email: email ? String(email).trim() : null,
     emailLocal,
     account: account ? String(account).trim() : null,
@@ -70,7 +71,6 @@ function normalizeMemberOption(m) {
 
 export function TasksBoardPage() {
   const { user } = useAuth();
-  const canEditTaskFields = user?.role !== ROLES.TEAM_MEMBER;
   const [query, setQuery] = useState("");
   const [showOnlyMine, setShowOnlyMine] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -79,6 +79,25 @@ export function TasksBoardPage() {
   const [selectedTask, setSelectedTask] = useState(null);
   const [comments, setComments] = useState([]);
   const [isLoadingComments, setIsLoadingComments] = useState(false);
+
+  const canEditTaskFields = useMemo(() => {
+    if (user?.role !== ROLES.TEAM_MEMBER) return true;
+    const userId = Number(user?.id);
+    if (!Number.isFinite(userId)) return false;
+
+    const visibleGroupIds = new Set(
+      tasks.map((t) => Number(t.groupId)).filter((gid) => Number.isFinite(gid) && gid > 0),
+    );
+
+    for (const gid of visibleGroupIds) {
+      const me = (membersByGroupId[gid] || []).find((m) => Number(m.userId) === userId);
+      if (String(me?.roleInGroup || "").trim().toUpperCase() === "LEADER") {
+        return true;
+      }
+    }
+
+    return false;
+  }, [membersByGroupId, tasks, user?.id, user?.role]);
 
   const load = async () => {
     const data = await jiraTaskService.list();

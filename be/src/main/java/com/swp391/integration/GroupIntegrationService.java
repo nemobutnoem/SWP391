@@ -6,6 +6,8 @@ import com.swp391.integration.dto.UpdateGroupIntegrationsRequest;
 import com.swp391.security.UserPrincipal;
 import com.swp391.student.StudentRepository;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class GroupIntegrationService {
+	private static final Logger log = LoggerFactory.getLogger(GroupIntegrationService.class);
 	private final GroupIntegrationRepository repository;
 	private final AdminIntegrationRepository adminRepository;
 	private final StudentRepository studentRepository;
@@ -49,10 +52,10 @@ public class GroupIntegrationService {
 	}
 
 	@Transactional
-	public GroupIntegrationsResponse update(Integer groupId, UpdateGroupIntegrationsRequest request,
+	public void update(Integer groupId, UpdateGroupIntegrationsRequest request,
 			UserPrincipal principal) {
 		ensureMember(groupId, principal);
-		ensureTeamLead(principal);
+		ensureTeamLeadOrGroupLeader(groupId, principal);
 
 		GroupIntegrationEntity entity = repository.findByGroupId(groupId).orElseGet(() -> {
 			GroupIntegrationEntity e = new GroupIntegrationEntity();
@@ -73,8 +76,8 @@ public class GroupIntegrationService {
 			entity.setGithubToken(emptyToNull(request.githubToken()));
 		}
 
-		repository.save(entity);
-		return get(groupId, principal);
+		repository.saveAndFlush(entity);
+		log.info("Saved group integration entity: id={}, groupId={}", entity.getId(), entity.getGroupId());
 	}
 
 	public JiraConfig resolveJiraConfig(Integer groupId) {
@@ -119,11 +122,21 @@ public class GroupIntegrationService {
 				.orElseThrow(() -> new SecurityException("You are not a member of this group"));
 	}
 
-	private void ensureTeamLead(UserPrincipal principal) {
+	private void ensureTeamLeadOrGroupLeader(Integer groupId, UserPrincipal principal) {
 		String role = principal.getRole() == null ? "" : principal.getRole();
-		if (!role.equalsIgnoreCase("TEAM_LEAD") && !role.equalsIgnoreCase("ADMIN")) {
-			throw new SecurityException("Only TEAM_LEAD or ADMIN can update integration settings");
+		// Admin and Lecturer can always update
+		if ("ADMIN".equalsIgnoreCase(role) || "LECTURER".equalsIgnoreCase(role) || "TEAM_LEAD".equalsIgnoreCase(role)) {
+			return;
 		}
+		// Check if user is a Leader within this group
+		var student = studentRepository.findByUserId(principal.getUserId()).orElse(null);
+		if (student != null) {
+			var member = memberRepository.findByGroupIdAndStudentId(groupId, student.getId()).orElse(null);
+			if (member != null && "Leader".equalsIgnoreCase(member.getRoleInGroup())) {
+				return;
+			}
+		}
+		throw new SecurityException("Only group Leader, TEAM_LEAD, or ADMIN can update integration settings");
 	}
 
 	private static boolean hasText(String s) {

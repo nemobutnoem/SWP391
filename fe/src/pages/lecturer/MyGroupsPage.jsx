@@ -32,6 +32,17 @@ export function MyGroupsPage() {
 
   // Add-member modal state
   const [addMemberGroupId, setAddMemberGroupId] = useState(null);
+  const [refreshingGroupId, setRefreshingGroupId] = useState(null);
+  const [refreshStatusByGroupId, setRefreshStatusByGroupId] = useState({});
+
+  const loadJiraTasks = async () => {
+    try {
+      const list = await jiraTaskService.list();
+      setJiraTasks(Array.isArray(list) ? list : []);
+    } catch {
+      setJiraTasks([]);
+    }
+  };
 
   const loadData = () => {
     groupService.list().then(setAllGroups);
@@ -39,7 +50,7 @@ export function MyGroupsPage() {
     studentService.list().then(setStudents);
     gradeService.list().then(setGrades);
     topicService.list().then(setTopics);
-    jiraTaskService.list().then(setJiraTasks).catch(() => setJiraTasks([]));
+    loadJiraTasks();
     semesterService.list().then((data) => {
       setSemesters(data);
       const active = data.find((s) => s.status?.toLowerCase() === "active");
@@ -205,15 +216,33 @@ export function MyGroupsPage() {
   };
 
   const handleRefreshGroupJira = async (groupId) => {
+    if (refreshingGroupId != null) return;
+    setRefreshingGroupId(groupId);
+    setRefreshStatusByGroupId((prev) => ({
+      ...prev,
+      [groupId]: { type: "loading", text: "Refreshing Jira data..." },
+    }));
+
     try {
       const result = await syncService.syncJira({ groupId });
       if (result?.ok === false) {
         throw new Error(result?.message || "Jira refresh failed");
       }
-      loadData();
-      window.alert("Jira data refreshed successfully.");
+      await loadJiraTasks();
+      setRefreshStatusByGroupId((prev) => ({
+        ...prev,
+        [groupId]: { type: "success", text: "Jira data updated." },
+      }));
     } catch (err) {
-      alert("Failed to refresh Jira data: " + (err.response?.data?.message || err.message || err));
+      setRefreshStatusByGroupId((prev) => ({
+        ...prev,
+        [groupId]: {
+          type: "error",
+          text: err?.response?.data?.message || err?.message || "Failed to refresh Jira data.",
+        },
+      }));
+    } finally {
+      setRefreshingGroupId(null);
     }
   };
 
@@ -258,6 +287,8 @@ export function MyGroupsPage() {
       onAssignTopic={handleAssignTopic}
       onCreateGroup={handleCreateGroup}
       onRefreshGroupJira={handleRefreshGroupJira}
+      refreshingGroupId={refreshingGroupId}
+      refreshStatusByGroupId={refreshStatusByGroupId}
     />
   );
 }
