@@ -2,6 +2,7 @@ package com.swp391.integration;
 
 import jakarta.persistence.*;
 <<<<<<< HEAD
+<<<<<<< HEAD
 import lombok.Getter;
 import lombok.Setter;
 
@@ -37,6 +38,8 @@ public class GroupIntegrationEntity {
 	@Column(name = "updated_at", insertable = false, updatable = false)
 	private LocalDateTime updatedAt;
 =======
+=======
+>>>>>>> eb6e5285c66ffe32ec0db019fe1680dd33dd99ca
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -69,5 +72,8 @@ public class GroupIntegrationEntity {
 
     @Column(name = "updated_at", insertable = false, updatable = false)
     private LocalDateTime updatedAt;
+<<<<<<< HEAD
+>>>>>>> eb6e5285c66ffe32ec0db019fe1680dd33dd99ca
+=======
 >>>>>>> eb6e5285c66ffe32ec0db019fe1680dd33dd99ca
 }

@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 <<<<<<< HEAD
+<<<<<<< HEAD
 import java.time.Instant;
 import java.util.Date;
 import java.util.Map;
@@ -53,6 +54,8 @@ public class JwtService {
 				.getPayload();
 	}
 =======
+=======
+>>>>>>> eb6e5285c66ffe32ec0db019fe1680dd33dd99ca
 import java.util.Date;
 
 @Service
@@ -102,5 +105,8 @@ public class JwtService {
                 .parseSignedClaims(token)
                 .getPayload();
     }
+<<<<<<< HEAD
+>>>>>>> eb6e5285c66ffe32ec0db019fe1680dd33dd99ca
+=======
 >>>>>>> eb6e5285c66ffe32ec0db019fe1680dd33dd99ca
 }

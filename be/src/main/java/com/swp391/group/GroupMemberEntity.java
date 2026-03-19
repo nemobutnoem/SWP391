@@ -2,6 +2,7 @@ package com.swp391.group;
 
 import jakarta.persistence.*;
 <<<<<<< HEAD
+<<<<<<< HEAD
 import lombok.Getter;
 import lombok.Setter;
 
@@ -34,6 +35,8 @@ public class GroupMemberEntity {
 	@Column(name = "left_at")
 	private LocalDateTime leftAt;
 =======
+=======
+>>>>>>> eb6e5285c66ffe32ec0db019fe1680dd33dd99ca
 import lombok.Data;
 import java.time.LocalDateTime;
 
@@ -59,5 +62,8 @@ public class GroupMemberEntity {
 
     @Column(name = "joined_at")
     private LocalDateTime joinedAt;
+<<<<<<< HEAD
+>>>>>>> eb6e5285c66ffe32ec0db019fe1680dd33dd99ca
+=======
 >>>>>>> eb6e5285c66ffe32ec0db019fe1680dd33dd99ca
 }

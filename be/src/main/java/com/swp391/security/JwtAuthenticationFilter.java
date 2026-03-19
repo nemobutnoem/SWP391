@@ -1,8 +1,11 @@
 package com.swp391.security;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 import com.swp391.user.UserRepository;
 import io.jsonwebtoken.Claims;
+=======
+>>>>>>> eb6e5285c66ffe32ec0db019fe1680dd33dd99ca
 =======
 >>>>>>> eb6e5285c66ffe32ec0db019fe1680dd33dd99ca
 import jakarta.servlet.FilterChain;
@@ -16,7 +19,10 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 <<<<<<< HEAD
+<<<<<<< HEAD
 
+=======
+>>>>>>> eb6e5285c66ffe32ec0db019fe1680dd33dd99ca
 =======
 >>>>>>> eb6e5285c66ffe32ec0db019fe1680dd33dd99ca
 import java.io.IOException;
@@ -24,6 +30,7 @@ import java.io.IOException;
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
+<<<<<<< HEAD
 <<<<<<< HEAD
 	private final JwtService jwtService;
 	private final UserRepository userRepository;
@@ -56,6 +63,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 		filterChain.doFilter(request, response);
 	}
 =======
+=======
+>>>>>>> eb6e5285c66ffe32ec0db019fe1680dd33dd99ca
     private final JwtService jwtService;
 
     @Override
@@ -81,5 +90,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
         filterChain.doFilter(request, response);
     }
+<<<<<<< HEAD
+>>>>>>> eb6e5285c66ffe32ec0db019fe1680dd33dd99ca
+=======
 >>>>>>> eb6e5285c66ffe32ec0db019fe1680dd33dd99ca
 }

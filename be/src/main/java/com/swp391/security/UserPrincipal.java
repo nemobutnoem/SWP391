@@ -1,6 +1,7 @@
 package com.swp391.security;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 import com.swp391.user.UserEntity;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.GrantedAuthority;
@@ -58,6 +59,8 @@ public class UserPrincipal implements UserDetails {
 		return user.getStatus() == null || !user.getStatus().equalsIgnoreCase("inactive");
 	}
 =======
+=======
+>>>>>>> eb6e5285c66ffe32ec0db019fe1680dd33dd99ca
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -117,5 +120,8 @@ public class UserPrincipal implements UserDetails {
     public boolean isEnabled() {
         return true;
     }
+<<<<<<< HEAD
+>>>>>>> eb6e5285c66ffe32ec0db019fe1680dd33dd99ca
+=======
 >>>>>>> eb6e5285c66ffe32ec0db019fe1680dd33dd99ca
 }
