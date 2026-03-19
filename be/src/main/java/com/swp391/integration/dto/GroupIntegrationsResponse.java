@@ -1,7 +1,5 @@
 package com.swp391.integration.dto;
 
-<<<<<<< HEAD
-<<<<<<< HEAD
 public record GroupIntegrationsResponse(
 		Integer groupId,
 		String jiraBaseUrl,
@@ -10,19 +8,3 @@ public record GroupIntegrationsResponse(
 		boolean githubTokenSet
 ) {
 }
-=======
-=======
->>>>>>> eb6e5285c66ffe32ec0db019fe1680dd33dd99ca
-import com.fasterxml.jackson.annotation.JsonProperty;
-
-public record GroupIntegrationsResponse(
-    @JsonProperty("groupId") Integer groupId,
-    @JsonProperty("jiraBaseUrl") String jiraBaseUrl,
-    @JsonProperty("jiraEmail") String jiraEmail,
-    @JsonProperty("jiraApiTokenSet") boolean hasJiraToken,
-    @JsonProperty("githubTokenSet") boolean hasGithubToken
-) {}
-<<<<<<< HEAD
->>>>>>> eb6e5285c66ffe32ec0db019fe1680dd33dd99ca
-=======
->>>>>>> eb6e5285c66ffe32ec0db019fe1680dd33dd99ca

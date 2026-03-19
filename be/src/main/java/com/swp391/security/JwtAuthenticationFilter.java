@@ -1,13 +1,7 @@
 package com.swp391.security;
 
-<<<<<<< HEAD
-<<<<<<< HEAD
 import com.swp391.user.UserRepository;
 import io.jsonwebtoken.Claims;
-=======
->>>>>>> eb6e5285c66ffe32ec0db019fe1680dd33dd99ca
-=======
->>>>>>> eb6e5285c66ffe32ec0db019fe1680dd33dd99ca
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -18,20 +12,12 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-<<<<<<< HEAD
-<<<<<<< HEAD
 
-=======
->>>>>>> eb6e5285c66ffe32ec0db019fe1680dd33dd99ca
-=======
->>>>>>> eb6e5285c66ffe32ec0db019fe1680dd33dd99ca
 import java.io.IOException;
 
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
-<<<<<<< HEAD
-<<<<<<< HEAD
 	private final JwtService jwtService;
 	private final UserRepository userRepository;
 
@@ -62,36 +48,4 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 		}
 		filterChain.doFilter(request, response);
 	}
-=======
-=======
->>>>>>> eb6e5285c66ffe32ec0db019fe1680dd33dd99ca
-    private final JwtService jwtService;
-
-    @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
-            throws ServletException, IOException {
-        String authHeader = request.getHeader("Authorization");
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            filterChain.doFilter(request, response);
-            return;
-        }
-        
-        String jwt = authHeader.substring(7);
-        if (jwtService.isTokenValid(jwt)) {
-            Integer userId = jwtService.extractUserId(jwt);
-            String role = jwtService.extractRole(jwt);
-            
-            UserPrincipal principal = new UserPrincipal(userId, "token_user", role);
-            var authToken = new UsernamePasswordAuthenticationToken(
-                    principal, null, principal.getAuthorities()
-            );
-            authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-            SecurityContextHolder.getContext().setAuthentication(authToken);
-        }
-        filterChain.doFilter(request, response);
-    }
-<<<<<<< HEAD
->>>>>>> eb6e5285c66ffe32ec0db019fe1680dd33dd99ca
-=======
->>>>>>> eb6e5285c66ffe32ec0db019fe1680dd33dd99ca
 }

@@ -1,8 +1,6 @@
 package com.swp391.group;
 
 import jakarta.persistence.*;
-<<<<<<< HEAD
-<<<<<<< HEAD
 import lombok.Getter;
 import lombok.Setter;
 
@@ -34,36 +32,4 @@ public class GroupMemberEntity {
 
 	@Column(name = "left_at")
 	private LocalDateTime leftAt;
-=======
-=======
->>>>>>> eb6e5285c66ffe32ec0db019fe1680dd33dd99ca
-import lombok.Data;
-import java.time.LocalDateTime;
-
-@Entity
-@Table(name = "group_members")
-@Data
-public class GroupMemberEntity {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
-
-    @Column(name = "group_id")
-    private Integer groupId;
-
-    @Column(name = "student_id")
-    private Integer studentId;
-
-    @Column(name = "role_in_group")
-    private String roleInGroup;
-
-    @Column(name = "status")
-    private String status;
-
-    @Column(name = "joined_at")
-    private LocalDateTime joinedAt;
-<<<<<<< HEAD
->>>>>>> eb6e5285c66ffe32ec0db019fe1680dd33dd99ca
-=======
->>>>>>> eb6e5285c66ffe32ec0db019fe1680dd33dd99ca
 }
