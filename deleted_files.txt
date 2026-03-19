@@ -1,0 +1,107 @@
+﻿commit 400d9c4af7cb4b41bcaa17279ac3e77bd5936d69
+Author: nemobutnoem <hoangnvse182984@fpt.edu.vn>
+Date:   Tue Mar 17 11:41:08 2026 +0700
+
+    update % cong hien
+
+M	be/src/main/java/com/swp391/integration/compat/CompatJiraTaskController.java
+M	be/src/main/java/com/swp391/integration/jira/JiraService.java
+M	fe/src/pages/lecturer/MyGroupsPage.jsx
+M	fe/src/pages/lecturer/MyGroupsView.jsx
+
+commit ea390149e5b8bfdb112098a42fd3c9bae858a6ec
+Author: nemobutnoem <hoangnvse182984@fpt.edu.vn>
+Date:   Tue Mar 17 10:00:30 2026 +0700
+
+    update
+
+M	fe/src/pages/admin/UserManagementView.jsx
+M	fe/src/pages/dashboard/AdminDashboardView.jsx
+M	fe/src/pages/dashboard/DashboardPage.jsx
+M	fe/src/pages/lecturer/MyGroupsPage.jsx
+M	fe/src/pages/lecturer/MyGroupsView.jsx
+
+commit 1d955b09f1e708b01c2b18ffaf6cc044d0952907
+Merge: 6246854 ab1ba5e
+Author: nemobutnoem <hoangnvse182984@fpt.edu.vn>
+Date:   Tue Mar 17 00:42:35 2026 +0700
+
+    update
+
+commit ab1ba5e6e0506bb8698b606e30dc35268a4e17ca
+Merge: ec8b677 3bfbe94
+Author: phung <phungvpdse180699@fpt.edu.vn>
+Date:   Mon Mar 16 23:49:25 2026 +0700
+
+    Merge pull request #3 from nemobutnoem/phung/hotfix
+    
+    Phung/hotfix
+
+commit 3bfbe94b5e86b66dc9bd16ddec1e3b034fc40018
+Author: phung <phungvpdse180699@fpt.edu.vn>
+Date:   Mon Mar 16 23:47:52 2026 +0700
+
+    feat: change text font
+
+M	fe/src/pages/dashboard/memberWorkProgress.css
+
+commit 94548f47c96e2c70c60ef14b0c2301338c887b5a
+Author: phung <phungvpdse180699@fpt.edu.vn>
+Date:   Mon Mar 16 23:44:35 2026 +0700
+
+    feat: improve select box ui
+
+M	fe/src/pages/lecturer/LecturerDashboardView.jsx
+M	fe/src/pages/lecturer/lecturer.css
+
+commit 3c35ce954d83744387f4cfbb8c6a1ea2d907653a
+Author: phung <phungvpdse180699@fpt.edu.vn>
+Date:   Mon Mar 16 23:41:35 2026 +0700
+
+    feat: improve select box UI
+
+M	fe/src/pages/admin/adminManagement.css
+M	fe/src/pages/lecturer/MyGroupsView.jsx
+
+commit d748e8d880a7b0b98f5e382f5fe30fa3c6cc7bd8
+Author: phung <phungvpdse180699@fpt.edu.vn>
+Date:   Mon Mar 16 23:34:54 2026 +0700
+
+    feat(SideBar): improve mini profile UI
+
+M	fe/src/layouts/MainLayout/Sidebar.jsx
+M	fe/src/layouts/MainLayout/sidebar.css
+M	fe/src/pages/tasks/TasksBoardView.jsx
+M	fe/src/pages/tasks/tasksBoard.module.css
+
+commit 492a72228cf39d1c9d04aa207fb9772a3e4bafb8
+Author: phung <phungvpdse180699@fpt.edu.vn>
+Date:   Mon Mar 16 23:30:17 2026 +0700
+
+    mod: change userName text color to gray
+
+M	fe/src/layouts/MainLayout/Sidebar.jsx
+
+commit 9bf8eb8fefc8b134e250ba9649c3812d19012d7a
+Author: phung <phungvpdse180699@fpt.edu.vn>
+Date:   Mon Mar 16 23:23:09 2026 +0700
+
+    mod(TopBar): remove topbar icons
+
+M	fe/src/layouts/MainLayout/Topbar.jsx
+
+commit ec8b67722ac0dfccf75b17e4404008846c368912
+Author: longtri123199 <phanphuoclongtri@gmail.com>
+Date:   Mon Mar 16 23:19:23 2026 +0700
+
+    Update LoginPage.jsx
+
+M	fe/src/pages/auth/LoginPage.jsx
+
+commit 784e447744decabdb254e20c97b4ccc6108fd840
+Author: longtri123199 <phanphuoclongtri@gmail.com>
+Date:   Mon Mar 16 22:56:51 2026 +0700
+
+    Update index.html
+
+M	fe/index.html
