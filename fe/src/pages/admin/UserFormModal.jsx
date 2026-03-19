@@ -33,6 +33,7 @@ export function UserFormModal({
           department: initialData.department || "Software Engineering",
           github_username: initialData.github_username || "",
           class_id: initialData.class_id || "",
+          status: initialData.status || "Active",
         }
       : {
           user_id: null,
@@ -44,6 +45,7 @@ export function UserFormModal({
           department: "Software Engineering",
           github_username: "",
           class_id: "",
+          status: "Active",
         },
   );
 
@@ -180,6 +182,13 @@ export function UserFormModal({
             <select name="role" value={formData.role} onChange={handleChange} disabled={Boolean(forcedRole)}>
               <option value="STUDENT">Student</option>
               <option value="LECTURER">Lecturer</option>
+            </select>
+          </div>
+          <div className="form-group">
+            <label>Status</label>
+            <select name="status" value={formData.status} onChange={handleChange}>
+              <option value="Active">Active</option>
+              <option value="Inactive">Inactive</option>
             </select>
           </div>
         </div>

@@ -102,6 +102,8 @@ public class LecturerService {
                     user.setGithubUsername(request.githubUsername());
                 if (request.email() != null && request.email().contains("@"))
                     user.setAccount(request.email().split("@")[0]);
+                if (request.status() != null)
+                    user.setStatus(request.status());
                 userRepository.save(user);
             });
         }

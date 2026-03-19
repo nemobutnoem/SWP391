@@ -79,7 +79,7 @@ public class StudentController {
             s.setEmail(email);
             s.setMajor(req.major());
             s.setStatus(req.status() != null ? req.status() : "Active");
-            return toDto(studentRepository.save(s));
+            return toDto(studentRepository.saveAndFlush(s));
         } catch (org.springframework.dao.DataIntegrityViolationException ex) {
             throw handleConstraintViolation(ex);
         }
@@ -116,7 +116,7 @@ public class StudentController {
             s.setUserId(user.getId());
         }
         try {
-            return toDto(studentRepository.save(s));
+            return toDto(studentRepository.saveAndFlush(s));
         } catch (org.springframework.dao.DataIntegrityViolationException ex) {
             throw handleConstraintViolation(ex);
         }
@@ -242,7 +242,11 @@ public class StudentController {
         if (userId == null) return;
         if (studentRepository.findByUserId(userId).isPresent()) return;
         if (lecturerRepository.findByUserId(userId).isPresent()) return;
-        userRepository.findById(userId).ifPresent(userRepository::delete);
+        userRepository.findById(userId).ifPresent(user -> {
+            // Keep historical links (jira/issues/comments/activities) and mark user inactive.
+            user.setStatus("Inactive");
+            userRepository.save(user);
+        });
     }
 
     private String extractEmailLocalPart(String email) {

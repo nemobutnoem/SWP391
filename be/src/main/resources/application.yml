@@ -13,6 +13,10 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.SQLServerDialect
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:db/schema-fixes.sql
   flyway:
     # You already have an existing SQL Server schema (dbo.*). Keep Flyway off to avoid conflicts.
     enabled: false

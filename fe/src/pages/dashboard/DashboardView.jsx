@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { PageHeader } from "../../components/common/PageHeader.jsx";
 import { StatCard } from "../../components/common/StatCard.jsx";
 import { StatusBadge } from "../../components/common/StatusComponents.jsx";
@@ -13,6 +13,33 @@ export function DashboardView({
   tasks = [],
 }) {
   const { counts, progressPct } = stats;
+  const contributionBySp = useMemo(() => {
+    const memberSp = {};
+    for (const task of tasks) {
+      const assigneeName =
+        task?.assigneeName ||
+        task?._raw?.assigneeName ||
+        task?._raw?.assignee_name ||
+        "Unassigned";
+      if (!assigneeName || assigneeName === "Unassigned") continue;
+
+      const rawSp =
+        task?.storyPoints ??
+        task?.story_points ??
+        task?._raw?.storyPoints ??
+        task?._raw?.story_points;
+      const sp = Number(rawSp);
+      if (!Number.isFinite(sp) || sp <= 0) continue;
+
+      memberSp[assigneeName] = (memberSp[assigneeName] || 0) + sp;
+    }
+
+    const rows = Object.entries(memberSp)
+      .map(([name, sp]) => ({ name, sp }))
+      .sort((a, b) => b.sp - a.sp);
+    const totalSp = rows.reduce((sum, row) => sum + row.sp, 0);
+    return { rows, totalSp };
+  }, [tasks]);
 
   return (
     <div className="dashboard-view">
@@ -94,6 +121,34 @@ export function DashboardView({
         </div>
 
         <aside className="dashboard-view__right-col">
+          <section className="dashboard-view__section">
+            <div className="section-header">
+              <h2 className="section-title">Contribution %</h2>
+            </div>
+
+            {contributionBySp.rows.length === 0 ? (
+              <div className="contrib-empty">No story point data yet</div>
+            ) : (
+              <div className="contrib-list">
+                {contributionBySp.rows.map((row) => {
+                  const pct =
+                    contributionBySp.totalSp > 0
+                      ? (row.sp / contributionBySp.totalSp) * 100
+                      : 0;
+                  return (
+                    <div key={row.name} className="contrib-item">
+                      <div className="contrib-member">{row.name}</div>
+                      <div className="contrib-values">
+                        <div className="contrib-pct">{pct.toFixed(1)}%</div>
+                        <div className="contrib-sp">{row.sp} SP</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+
           <section className="dashboard-view__section">
             <div className="section-header">
               <h2 className="section-title">Peer Contributions</h2>

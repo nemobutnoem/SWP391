@@ -12,6 +12,8 @@ export function UserManagementView({
   onSearchChange,
   majorFilter,
   onMajorFilterChange,
+  statusFilter,
+  onStatusFilterChange,
   filteredData,
   isModalOpen,
   editingUser,
@@ -79,10 +81,10 @@ export function UserManagementView({
               <option value="GD">Graphic Design</option>
             </select>
           )}
-          <select className="filter-select">
+          <select className="filter-select" value={statusFilter} onChange={(e) => onStatusFilterChange(e.target.value)}>
             <option value="ALL">All Status</option>
             <option value="ACTIVE">Active</option>
-            <option value="SUSPENDED">Suspended</option>
+            <option value="INACTIVE">Inactive</option>
           </select>
         </div>
       </div>
@@ -143,7 +145,11 @@ export function UserManagementView({
                         <div className="group-meta">{u.project_name}</div>
                       </div>
                     </td>
-                    <td><Badge variant="success" size="sm">Active</Badge></td>
+                    <td>
+                      <Badge variant={String(u.status || "").toLowerCase() === "active" ? "success" : "warning"} size="sm">
+                        {u.status || "Unknown"}
+                      </Badge>
+                    </td>
                     <td className="action-cell">
                       <div className="action-buttons">
                         <Button variant="ghost" size="sm" onClick={() => onOpenEdit(u)}>Edit</Button>
@@ -159,7 +165,11 @@ export function UserManagementView({
                         {u.managed_group_count || 0} Group{(u.managed_group_count || 0) !== 1 ? "s" : ""}
                       </Badge>
                     </td>
-                    <td><Badge variant="success" size="sm">Active</Badge></td>
+                    <td>
+                      <Badge variant={String(u.status || "").toLowerCase() === "active" ? "success" : "warning"} size="sm">
+                        {u.status || "Unknown"}
+                      </Badge>
+                    </td>
                     <td className="action-cell">
                       <div className="action-buttons">
                         <Button variant="ghost" size="sm" onClick={() => onOpenEdit(u)}>Edit</Button>

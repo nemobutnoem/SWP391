@@ -12,6 +12,7 @@ export function UserManagementPage() {
   const [activeTab, setActiveTab] = useState("STUDENTS");
   const [searchQuery, setSearchQuery] = useState("");
   const [majorFilter, setMajorFilter] = useState("ALL");
+  const [statusFilter, setStatusFilter] = useState("ALL");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [modalRole, setModalRole] = useState("STUDENT");
@@ -37,6 +38,7 @@ export function UserManagementPage() {
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     setMajorFilter("ALL");
+    setStatusFilter("ALL");
     setSearchQuery("");
   };
 
@@ -119,16 +121,18 @@ export function UserManagementPage() {
         const nameMatch = u.full_name.toLowerCase().includes(q);
         const codeMatch = u.student_code && u.student_code.toLowerCase().includes(q);
         const majorMatch = majorFilter === "ALL" || u.major === majorFilter;
-        return (nameMatch || codeMatch) && majorMatch;
+        const statusMatch = statusFilter === "ALL" || String(u.status || "").toUpperCase() === statusFilter;
+        return (nameMatch || codeMatch) && majorMatch && statusMatch;
       });
     }
 
     return enrichedLecturers.filter((u) => {
       const nameMatch = u.full_name.toLowerCase().includes(q);
       const departmentMatch = (u.department || "").toLowerCase().includes(q);
-      return !q || nameMatch || departmentMatch;
+      const statusMatch = statusFilter === "ALL" || String(u.status || "").toUpperCase() === statusFilter;
+      return (!q || nameMatch || departmentMatch) && statusMatch;
     });
-  }, [activeTab, enrichedStudents, enrichedLecturers, searchQuery, majorFilter]);
+  }, [activeTab, enrichedStudents, enrichedLecturers, searchQuery, majorFilter, statusFilter]);
 
   const handleDelete = async (user) => {
     let warning = `Are you sure you want to delete ${user.full_name}?`;
@@ -164,6 +168,8 @@ export function UserManagementPage() {
       onSearchChange={setSearchQuery}
       majorFilter={majorFilter}
       onMajorFilterChange={setMajorFilter}
+      statusFilter={statusFilter}
+      onStatusFilterChange={setStatusFilter}
       filteredData={filteredData}
       isModalOpen={isModalOpen}
       editingUser={editingUser}

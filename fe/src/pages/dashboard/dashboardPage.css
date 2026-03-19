@@ -146,6 +146,60 @@
   color: var(--brand-700);
 }
 
+.contrib-list {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--slate-100);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.contrib-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.95rem 1rem;
+  border-bottom: 1px solid var(--slate-100);
+}
+
+.contrib-item:last-child {
+  border-bottom: none;
+}
+
+.contrib-member {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--slate-700);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.contrib-values {
+  text-align: right;
+}
+
+.contrib-pct {
+  font-size: 1.6rem;
+  line-height: 1.1;
+  color: var(--brand-600);
+  font-family: var(--font-heading);
+  font-weight: 800;
+}
+
+.contrib-sp {
+  margin-top: 0.2rem;
+  font-size: 0.86rem;
+  color: var(--slate-500);
+  font-weight: 600;
+}
+
+.contrib-empty {
+  font-size: 0.875rem;
+  color: var(--slate-400);
+}
+
 @media (max-width: 1280px) {
   .dashboard-view__main-content {
     grid-template-columns: 1fr;

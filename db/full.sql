@@ -886,9 +886,27 @@ BEGIN
     PRINT 'Added dbo.jira_issues.story_points';
 END
 GO
+
+IF COL_LENGTH('dbo.jira_issues', 'srs_category') IS NULL
+BEGIN
+    ALTER TABLE dbo.jira_issues ADD srs_category NVARCHAR(100) NULL;
+    PRINT 'Added dbo.jira_issues.srs_category';
+END
+GO
+
 -- Add assignee_display_name and reporter_display_name to jira_issues
 -- These store the Jira display names directly, so task assignment works
 -- even when jira_account_id is not mapped on the users table.
 
-ALTER TABLE dbo.jira_issues ADD assignee_display_name NVARCHAR(255) NULL;
-ALTER TABLE dbo.jira_issues ADD reporter_display_name NVARCHAR(255) NULL;
+IF COL_LENGTH('dbo.jira_issues', 'assignee_display_name') IS NULL
+BEGIN
+    ALTER TABLE dbo.jira_issues ADD assignee_display_name NVARCHAR(255) NULL;
+    PRINT 'Added dbo.jira_issues.assignee_display_name';
+END
+GO
+
+IF COL_LENGTH('dbo.jira_issues', 'reporter_display_name') IS NULL
+BEGIN
+    ALTER TABLE dbo.jira_issues ADD reporter_display_name NVARCHAR(255) NULL;
+    PRINT 'Added dbo.jira_issues.reporter_display_name';
+END
