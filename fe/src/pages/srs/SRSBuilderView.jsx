@@ -22,6 +22,9 @@ export function SRSBuilderView({
   onMoveTask,
   onGenerate,
   onDrop,
+  groups = [],
+  selectedGroupId,
+  onGroupChange,
 }) {
   const handleDragStart = (e, taskId) => {
     e.dataTransfer.setData("taskId", taskId.toString());
@@ -70,6 +73,23 @@ export function SRSBuilderView({
       />
 
       <div className="builder-container">
+        {groups.length > 0 && (
+          <div className="srs-group-filter">
+            <label className="integration-label">Group</label>
+            <select
+              className="integration-input"
+              value={selectedGroupId || ""}
+              onChange={(e) => onGroupChange(Number(e.target.value))}
+            >
+              {groups.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.group_name || `Group ${g.id}`}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         {viewMode === "builder" ? (
           <div className="matrix-board">
             {CATEGORIES.map((cat) => (

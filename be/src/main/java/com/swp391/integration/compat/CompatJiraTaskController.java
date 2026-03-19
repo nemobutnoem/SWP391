@@ -59,7 +59,8 @@ public class CompatJiraTaskController {
 			@JsonProperty("sprint_name") String sprintName,
 			@JsonProperty("story_points") Double storyPoints,
 			@JsonProperty("jira_created_at") java.time.LocalDateTime jiraCreatedAt,
-			@JsonProperty("jira_updated_at") java.time.LocalDateTime jiraUpdatedAt) {
+			@JsonProperty("jira_updated_at") java.time.LocalDateTime jiraUpdatedAt,
+			@JsonProperty("srs_category") String srsCategory) {
 	}
 
 	public record UpdateTaskRequest(
@@ -271,7 +272,8 @@ public class CompatJiraTaskController {
 				e.getSprintName(),
 				e.getStoryPoints(),
 				e.getJiraCreatedAt(),
-				e.getJiraUpdatedAt());
+				e.getJiraUpdatedAt(),
+				e.getSrsCategory());
 	}
 
 	private void ensureMember(Integer groupId, UserPrincipal principal) {
@@ -313,6 +315,21 @@ public class CompatJiraTaskController {
 	}
 
 	public record CreateCommentRequest(@NotBlank String content) {
+	}
+
+	public record UpdateSrsCategoryRequest(@JsonProperty("srs_category") String srsCategory) {
+	}
+
+	@PatchMapping("/jira-tasks/{taskId}/srs-category")
+	public JiraTaskDto updateSrsCategory(@PathVariable Integer taskId,
+			@RequestBody UpdateSrsCategoryRequest req, Authentication auth) {
+		UserPrincipal principal = (UserPrincipal) auth.getPrincipal();
+		var entity = jiraIssueRepository.findById(taskId)
+				.orElseThrow(() -> new IllegalArgumentException("Task not found"));
+		ensureMember(entity.getGroupId(), principal);
+		entity.setSrsCategory(req.srsCategory());
+		jiraIssueRepository.save(entity);
+		return toDto(entity);
 	}
 
 	@GetMapping("/jira-tasks/{taskId}/comments")

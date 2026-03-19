@@ -336,20 +336,30 @@ export function LecturerDashboardView() {
             <div key={g.id} className={`lecturer-group-card ${isExpanded ? "lecturer-group-card--expanded" : ""}`}>
               <div className="lecturer-group-header" onClick={() => setExpandedGroupId(isExpanded ? null : g.id)}>
                 <div className="lecturer-group-info">
-                  <span className="lecturer-group-icon">{isExpanded ? "Open" : "Closed"}</span>
-                  <div>
+                  <div className="lecturer-group-avatar">
+                    {g.group_name?.substring(0, 2).toUpperCase() || "G"}
+                  </div>
+                  <div className="lecturer-group-text-wrap">
                     <div className="lecturer-group-name">{g.group_name}</div>
                     <div className="lecturer-group-meta">
-                      {g.members.length} members • {g.totalTasks} tasks • {g.totalCommits} commits
+                      <span><strong>{g.members.length}</strong> members</span>
+                      <span className="meta-dot">•</span>
+                      <span><strong>{g.totalTasks}</strong> tasks</span>
+                      <span className="meta-dot">•</span>
+                      <span><strong>{g.totalCommits}</strong> commits</span>
                     </div>
                   </div>
                 </div>
                 <div className="lecturer-group-stats">
                   {g.overdueTasks > 0 && <Badge variant="danger" size="sm">{g.overdueTasks} overdue</Badge>}
-                  <Badge variant={g.totalTasks > 0 && g.doneTasks === g.totalTasks ? "success" : "info"} size="sm">
+                  <Badge variant={g.totalTasks > 0 && g.doneTasks === g.totalTasks ? "success" : "neutral"} size="sm">
                     {g.doneTasks}/{g.totalTasks} done
                   </Badge>
-                  <span className="lecturer-expand-arrow">{isExpanded ? "▲" : "▼"}</span>
+                  <span className={`lecturer-expand-arrow ${isExpanded ? "is-expanded" : ""}`}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                  </span>
                 </div>
               </div>
 

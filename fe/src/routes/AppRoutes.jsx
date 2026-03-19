@@ -46,6 +46,10 @@ export function AppRoutes() {
           {/* Lecturer - Academic Management */}
           <Route element={<RoleGuard allow={[ROLES.LECTURER]} />}>
             <Route path="/classes" element={<MyGroupsPage />} />
+          </Route>
+
+          {/* SRS Requirements - Lecturer & Team Lead */}
+          <Route element={<RoleGuard allow={[ROLES.LECTURER, ROLES.TEAM_LEAD]} />}>
             <Route path="/srs" element={<SRSBuilderPage />} />
           </Route>
 
