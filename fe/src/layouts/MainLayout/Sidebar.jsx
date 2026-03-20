@@ -87,6 +87,11 @@ export function Sidebar() {
             <NavLink to="/tasks" className={navClass}>
               Working Board
             </NavLink>
+            {role === ROLES.TEAM_LEAD && (
+              <NavLink to="/srs" className={navClass}>
+                SRS Requirements
+              </NavLink>
+            )}
             <NavLink to="/sync" className={navClass}>
               Code Activities
             </NavLink>

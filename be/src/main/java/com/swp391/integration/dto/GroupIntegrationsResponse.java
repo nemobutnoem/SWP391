@@ -5,6 +5,8 @@ public record GroupIntegrationsResponse(
 		String jiraBaseUrl,
 		String jiraEmail,
 		boolean jiraApiTokenSet,
-		boolean githubTokenSet
+		boolean githubTokenSet,
+		String jiraProjectKey,
+		String githubRepoUrl
 ) {
 }

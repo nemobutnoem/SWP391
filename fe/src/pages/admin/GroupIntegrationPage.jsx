@@ -33,6 +33,8 @@ export function GroupIntegrationPage() {
         jiraEmail: "",
         jiraApiToken: "",
         githubToken: "",
+        jiraProjectKey: "",
+        githubRepoUrl: "",
     });
     const [saving, setSaving] = useState(false);
     const [msg, setMsg] = useState(null);
@@ -103,6 +105,8 @@ export function GroupIntegrationPage() {
                 jiraEmail: res.data.jiraEmail || "",
                 jiraApiToken: "",
                 githubToken: "",
+                jiraProjectKey: res.data.jiraProjectKey || "",
+                githubRepoUrl: res.data.githubRepoUrl || "",
             });
         } catch (e) {
             setConfig(null);
@@ -129,6 +133,8 @@ export function GroupIntegrationPage() {
             if (form.jiraEmail !== (config?.jiraEmail || "")) payload.jiraEmail = form.jiraEmail;
             if (form.jiraApiToken) payload.jiraApiToken = form.jiraApiToken;
             if (form.githubToken) payload.githubToken = form.githubToken;
+            if (form.jiraProjectKey !== (config?.jiraProjectKey || "")) payload.jiraProjectKey = form.jiraProjectKey;
+            if (form.githubRepoUrl !== (config?.githubRepoUrl || "")) payload.githubRepoUrl = form.githubRepoUrl;
 
             if (Object.keys(payload).length === 0) {
                 setMsg({ type: "info", text: "No changes to save" });
@@ -138,7 +144,7 @@ export function GroupIntegrationPage() {
 
             const res = await http.put(`/groups/${selectedGroupId}/settings/integrations`, payload);
             setConfig(res.data);
-            setForm((prev) => ({ ...prev, jiraApiToken: "", githubToken: "" }));
+            setForm((prev) => ({ ...prev, jiraApiToken: "", githubToken: "", jiraProjectKey: res.data.jiraProjectKey || "", githubRepoUrl: res.data.githubRepoUrl || "" }));
             setMsg({ type: "success", text: "Group configuration saved!" });
         } catch (e) {
             setMsg({ type: "error", text: e?.data?.message || "Failed to save" });
@@ -252,6 +258,7 @@ export function GroupIntegrationPage() {
                                 onChange={handleChange("jiraBaseUrl")}
                                 readOnly={!canEdit}
                             />
+                            <span className="integration-hint">Copy from your Jira board URL (the part before /jira/...)</span>
                         </div>
 
                         <div className="integration-field">
@@ -264,6 +271,7 @@ export function GroupIntegrationPage() {
                                 onChange={handleChange("jiraEmail")}
                                 readOnly={!canEdit}
                             />
+                            <span className="integration-hint">The email you use to login Jira</span>
                         </div>
 
                         <div className="integration-field">
@@ -281,6 +289,26 @@ export function GroupIntegrationPage() {
                                 onChange={handleChange("jiraApiToken")}
                                 readOnly={!canEdit}
                             />
+                            <span className="integration-hint">
+                                <a href="https://id.atlassian.com/manage-profile/security/api-tokens" target="_blank" rel="noopener noreferrer">
+                                    → Create Jira API Token here
+                                </a>
+                            </span>
+                        </div>
+
+                        <div className="integration-field">
+                            <label className="integration-label">Jira Project Key</label>
+                            <input
+                                className="integration-input"
+                                type="text"
+                                placeholder="e.g. SWP, FPTTEAM"
+                                value={form.jiraProjectKey}
+                                onChange={handleChange("jiraProjectKey")}
+                                readOnly={!canEdit}
+                            />
+                            <span className="integration-hint">
+                                Find in your Jira board URL: yourteam.atlassian.net/jira/software/projects/<strong>KEY</strong>/board
+                            </span>
                         </div>
                     </section>
 
@@ -292,6 +320,19 @@ export function GroupIntegrationPage() {
                             <Badge variant={config.githubTokenSet ? "success" : "warning"} size="sm">
                                 {config.githubTokenSet ? "Token Set" : "Using Default"}
                             </Badge>
+                        </div>
+
+                        <div className="integration-field">
+                            <label className="integration-label">GitHub Repository URL</label>
+                            <input
+                                className="integration-input"
+                                type="url"
+                                placeholder="https://github.com/owner/repo"
+                                value={form.githubRepoUrl}
+                                onChange={handleChange("githubRepoUrl")}
+                                readOnly={!canEdit}
+                            />
+                            <span className="integration-hint">Copy the full URL from your GitHub repository page</span>
                         </div>
 
                         <div className="integration-field">
@@ -309,6 +350,12 @@ export function GroupIntegrationPage() {
                                 onChange={handleChange("githubToken")}
                                 readOnly={!canEdit}
                             />
+                            <span className="integration-hint">
+                                <a href="https://github.com/settings/tokens?type=beta" target="_blank" rel="noopener noreferrer">
+                                    → Create GitHub Token here
+                                </a>
+                                {" "}(Fine-grained token, select your repo, grant Contents read access)
+                            </span>
                         </div>
                     </section>
                 </div>

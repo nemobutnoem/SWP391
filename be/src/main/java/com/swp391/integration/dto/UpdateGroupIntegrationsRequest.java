@@ -6,6 +6,8 @@ public record UpdateGroupIntegrationsRequest(
 		@Size(max = 255) String jiraBaseUrl,
 		@Size(max = 255) String jiraEmail,
 		@Size(max = 4000) String jiraApiToken,
-		@Size(max = 4000) String githubToken
+		@Size(max = 4000) String githubToken,
+		@Size(max = 50) String jiraProjectKey,
+		@Size(max = 500) String githubRepoUrl
 ) {
 }

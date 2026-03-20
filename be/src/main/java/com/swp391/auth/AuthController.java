@@ -170,14 +170,24 @@ public class AuthController {
             return;
         }
 
-        StudentEntity student = new StudentEntity();
-        student.setUserId(user.getId());
-        student.setFullName(displayName);
-        student.setStudentCode(studentCode);
-        student.setEmail(email);
-        student.setMajor("SE");
-        student.setStatus("Active");
-        studentRepository.save(student);
+        // Check if student_code already exists — if so, link existing record instead of creating new
+        var existingByCode = (studentCode != null) ? studentRepository.findByStudentCode(studentCode).orElse(null) : null;
+        if (existingByCode != null) {
+            if (existingByCode.getUserId() == null) {
+                existingByCode.setUserId(user.getId());
+                existingByCode.setEmail(email);
+                studentRepository.save(existingByCode);
+            }
+        } else {
+            StudentEntity student = new StudentEntity();
+            student.setUserId(user.getId());
+            student.setFullName(displayName);
+            student.setStudentCode(studentCode);
+            student.setEmail(email);
+            student.setMajor("SE");
+            student.setStatus("Active");
+            studentRepository.save(student);
+        }
         user.setRole("TEAM_MEMBER");
         if (user.getAccount() == null || user.getAccount().isBlank()) {
             user.setAccount(studentCode != null ? studentCode : email.split("@")[0]);

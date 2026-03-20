@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import html2pdf from "html2pdf.js";
 import { jiraTaskService } from "../../services/jiraTasks/jiraTask.service.js";
 import { groupService } from "../../services/groups/group.service.js";
 import { SRSBuilderView } from "./SRSBuilderView.jsx";
@@ -9,6 +10,7 @@ export function SRSBuilderPage() {
   const [tasks, setTasks] = useState([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [lastSaved, setLastSaved] = useState(null);
+  const previewRef = useRef(null);
 
   // Group filter
   const [groups, setGroups] = useState([]);
@@ -47,10 +49,27 @@ export function SRSBuilderPage() {
 
   const handleGenerate = () => {
     setIsGenerating(true);
+    setViewMode("preview");
+    // Wait for preview to render, then capture as PDF
     setTimeout(() => {
-      setIsGenerating(false);
-      alert("SRS Report exported successfully!");
-    }, 2000);
+      const element = previewRef.current;
+      if (!element) {
+        setIsGenerating(false);
+        return;
+      }
+      const opt = {
+        margin: [10, 10, 10, 10],
+        filename: "SRS_Report.pdf",
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+      };
+      html2pdf().set(opt).from(element).save().then(() => {
+        setIsGenerating(false);
+      }).catch(() => {
+        setIsGenerating(false);
+      });
+    }, 600);
   };
 
   const groupedTasks = useMemo(() => {
@@ -75,6 +94,7 @@ export function SRSBuilderPage() {
       groups={groups}
       selectedGroupId={selectedGroupId}
       onGroupChange={setSelectedGroupId}
+      previewRef={previewRef}
     />
   );
 }

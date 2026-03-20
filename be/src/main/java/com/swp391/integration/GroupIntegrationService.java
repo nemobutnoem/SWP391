@@ -3,6 +3,10 @@ package com.swp391.integration;
 import com.swp391.group.GroupMemberRepository;
 import com.swp391.integration.dto.GroupIntegrationsResponse;
 import com.swp391.integration.dto.UpdateGroupIntegrationsRequest;
+import com.swp391.integration.jira.JiraProjectEntity;
+import com.swp391.integration.jira.JiraProjectRepository;
+import com.swp391.repo.GithubRepositoryEntity;
+import com.swp391.repo.GithubRepositoryRepository;
 import com.swp391.security.UserPrincipal;
 import com.swp391.student.StudentRepository;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +24,8 @@ public class GroupIntegrationService {
 	private final AdminIntegrationRepository adminRepository;
 	private final StudentRepository studentRepository;
 	private final GroupMemberRepository memberRepository;
+	private final JiraProjectRepository jiraProjectRepository;
+	private final GithubRepositoryRepository githubRepoRepository;
 
 	@Value("${jira.base-url:}")
 	private String defaultJiraBaseUrl;
@@ -48,7 +54,10 @@ public class GroupIntegrationService {
 				emptyToNull(jiraBaseUrl),
 				emptyToNull(jiraEmail),
 				hasText(jiraToken),
-				hasText(githubToken));
+				hasText(githubToken),
+				jiraProjectRepository.findByGroupId(groupId).map(JiraProjectEntity::getJiraProjectKey).orElse(null),
+				githubRepoRepository.findByGroupId(groupId).stream().findFirst().map(GithubRepositoryEntity::getRepoUrl).orElse(null)
+		);
 	}
 
 	@Transactional
@@ -78,6 +87,41 @@ public class GroupIntegrationService {
 
 		repository.saveAndFlush(entity);
 		log.info("Saved group integration entity: id={}, groupId={}", entity.getId(), entity.getGroupId());
+
+		// Save Jira project key
+		if (request.jiraProjectKey() != null) {
+			JiraProjectEntity jp = jiraProjectRepository.findByGroupId(groupId).orElseGet(() -> {
+				JiraProjectEntity e = new JiraProjectEntity();
+				e.setGroupId(groupId);
+				e.setStatus("active");
+				return e;
+			});
+			jp.setJiraProjectKey(emptyToNull(request.jiraProjectKey()));
+			jiraProjectRepository.save(jp);
+		}
+
+		// Save GitHub repo URL
+		if (request.githubRepoUrl() != null) {
+			String repoUrl = emptyToNull(request.githubRepoUrl());
+			var repos = githubRepoRepository.findByGroupId(groupId);
+			GithubRepositoryEntity gr = repos.isEmpty() ? new GithubRepositoryEntity() : repos.get(0);
+			gr.setGroupId(groupId);
+			gr.setRepoUrl(repoUrl);
+			if (repoUrl != null && repoUrl.contains("github.com/")) {
+				// Parse owner/name from URL: https://github.com/owner/name
+				String path = repoUrl.substring(repoUrl.indexOf("github.com/") + 11);
+				if (path.endsWith("/")) path = path.substring(0, path.length() - 1);
+				if (path.endsWith(".git")) path = path.substring(0, path.length() - 4);
+				String[] parts = path.split("/");
+				if (parts.length >= 2) {
+					gr.setRepoOwner(parts[0]);
+					gr.setRepoName(parts[1]);
+				}
+			}
+			if (gr.getDefaultBranch() == null) gr.setDefaultBranch("main");
+			if (gr.getIsActive() == null) gr.setIsActive(true);
+			githubRepoRepository.save(gr);
+		}
 	}
 
 	public JiraConfig resolveJiraConfig(Integer groupId) {

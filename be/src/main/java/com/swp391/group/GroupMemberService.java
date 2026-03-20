@@ -90,6 +90,7 @@ public class GroupMemberService {
                 group.setLeaderStudentId(null);
                 groupRepository.save(group);
             }
+            syncUserRole(member.getStudentId());
         }
 
         return saved;
@@ -126,10 +127,36 @@ public class GroupMemberService {
             if ("Leader".equalsIgnoreCase(m.getRoleInGroup()) && !m.getStudentId().equals(leaderStudentId)) {
                 m.setRoleInGroup("Member");
                 memberRepository.save(m);
+                // Demote old leader's user role back to TEAM_MEMBER (if not leader in another group)
+                syncUserRole(m.getStudentId());
             }
         }
 
         group.setLeaderStudentId(leaderStudentId);
         groupRepository.save(group);
+
+        // Promote new leader's user role to TEAM_LEAD
+        syncUserRole(leaderStudentId);
+    }
+
+    /**
+     * Sync users.role based on whether the student is a LEADER in any group.
+     * LEADER in any group → TEAM_LEAD, otherwise → TEAM_MEMBER.
+     */
+    private void syncUserRole(Integer studentId) {
+        var student = studentRepository.findById(studentId).orElse(null);
+        if (student == null || student.getUserId() == null) return;
+
+        var user = userRepository.findById(student.getUserId()).orElse(null);
+        if (user == null) return;
+
+        // Don't touch ADMIN or LECTURER roles
+        if ("ADMIN".equalsIgnoreCase(user.getRole()) || "LECTURER".equalsIgnoreCase(user.getRole())) return;
+
+        boolean isLeaderAnywhere = memberRepository.findByStudentId(studentId).stream()
+                .anyMatch(m -> "Leader".equalsIgnoreCase(m.getRoleInGroup()));
+
+        user.setRole(isLeaderAnywhere ? "TEAM_LEAD" : "TEAM_MEMBER");
+        userRepository.save(user);
     }
 }

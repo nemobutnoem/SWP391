@@ -54,15 +54,16 @@
 /* Matrix Board Styling */
 .matrix-board {
   display: flex;
-  gap: 1.5rem;
+  gap: 1rem;
   height: 100%;
   overflow-x: auto;
   padding-bottom: 2rem;
+  min-width: 0;
 }
 
 .matrix-col {
-  flex: 1;
-  min-width: 320px;
+  flex: 1 0 0;
+  min-width: 240px;
   background: var(--slate-50);
   border-radius: var(--radius-xl);
   display: flex;
@@ -87,11 +88,14 @@
 }
 
 .matrix-col-title {
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   font-weight: 800;
   color: var(--slate-900);
   text-transform: uppercase;
   letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .matrix-col-count {
@@ -218,18 +222,65 @@
   color: var(--slate-900);
 }
 
-.preview-section {
-  margin-bottom: 3rem;
+.paper-version {
+  font-size: 0.875rem;
+  color: var(--slate-500);
+  margin-top: 0.5rem;
 }
 
-.preview-section h3 {
-  font-size: 1.125rem;
+.preview-section h2.section-number {
+  font-size: 1.25rem;
   font-weight: 800;
   color: var(--slate-900);
   margin-bottom: 1.5rem;
-  text-transform: uppercase;
-  border-left: 4px solid var(--brand-500);
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid var(--slate-200);
+}
+
+.preview-section h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--slate-800);
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
   padding-left: 1rem;
+  border-left: 4px solid var(--brand-500);
+}
+
+.preview-section p {
+  font-size: 0.9375rem;
+  color: var(--slate-700);
+  line-height: 1.7;
+  margin-bottom: 0.75rem;
+  text-align: justify;
+}
+
+.srs-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-size: 0.9375rem;
+}
+
+.srs-table th,
+.srs-table td {
+  border: 1px solid var(--slate-300);
+  padding: 0.6rem 1rem;
+  text-align: left;
+}
+
+.srs-table th {
+  background: var(--slate-100);
+  font-weight: 700;
+  color: var(--slate-800);
+}
+
+.srs-table td {
+  color: var(--slate-700);
+}
+
+.preview-section {
+  margin-bottom: 2rem;
 }
 
 .preview-list {
@@ -246,4 +297,18 @@
 .no-tasks {
   font-style: italic;
   color: var(--slate-400);
+}
+
+/* Print styles - hide everything except the SRS document */
+@media print {
+  .sidebar, .topbar, .builder-actions, .srs-group-filter,
+  .view-toggle, .save-status, .sidebarFooter, nav, header {
+    display: none !important;
+  }
+  .shell { display: block !important; }
+  .main { margin: 0 !important; padding: 0 !important; }
+  .srs-builder { height: auto !important; }
+  .builder-container { margin: 0 !important; overflow: visible !important; }
+  .document-preview { height: auto !important; overflow: visible !important; }
+  .preview-paper { box-shadow: none !important; padding: 2rem !important; }
 }
