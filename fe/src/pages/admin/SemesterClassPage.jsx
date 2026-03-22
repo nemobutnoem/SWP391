@@ -170,6 +170,27 @@ export function SemesterClassPage() {
     }
   };
 
+  const handleAddStudent = async (classId, student) => {
+    try {
+      const email = student.email || `${(student.student_code || "").toLowerCase()}@fpt.edu.vn`;
+      await studentService.update(student.id, {
+        user_id: student.user_id || student.userId,
+        class_id: classId,
+        full_name: student.full_name,
+        student_code: student.student_code,
+        email: email,
+        major: student.major || "SE",
+        github_username: student.github_username || null,
+        status: student.status || "Active",
+      });
+      const updatedStudents = await studentService.list();
+      setStudents(updatedStudents);
+    } catch (e) {
+      alert("Failed to add student to class: " + (e?.data?.message || e?.response?.data?.message || e.message));
+      throw e;
+    }
+  };
+
   return (
     <SemesterClassView
       semesters={semesters}
@@ -196,6 +217,8 @@ export function SemesterClassPage() {
       onOpenAssign={handleOpenAssign}
       onCloseAssignModal={() => setAssignModalOpen(false)}
       onAssignLecturer={handleAssignLecturer}
+      onAddStudent={handleAddStudent}
+      allStudents={students}
     />
   );
 }

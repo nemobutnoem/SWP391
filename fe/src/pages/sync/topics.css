@@ -80,3 +80,11 @@
 .action-cell {
   text-align: right;
 }
+
+.btn-delete {
+  color: var(--danger) !important;
+}
+.btn-delete:hover {
+  background: var(--danger) !important;
+  color: white !important;
+}

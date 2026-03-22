@@ -105,12 +105,19 @@ public class AuthController {
         String studentCode = defaultStudentCode(email);
         String displayName = payload.get("name") == null ? accountName : String.valueOf(payload.get("name"));
 
-        UserEntity user = userRepository.findByAccount(accountName).orElse(null);
+        UserEntity user = null;
 
-        if (user == null && studentCode != null) {
+        // 1. Tìm theo studentCode (MSSV) trước — đây là account chính
+        if (studentCode != null) {
             user = userRepository.findByAccount(studentCode).orElse(null);
         }
 
+        // 2. Tìm theo email prefix (trường hợp account cũ dùng email prefix)
+        if (user == null) {
+            user = userRepository.findByAccount(accountName).orElse(null);
+        }
+
+        // 3. Tìm qua students table theo email
         if (user == null) {
             var studentOpt = studentRepository.findByEmailIgnoreCase(email);
             if (studentOpt.isPresent() && studentOpt.get().getUserId() != null) {
@@ -118,6 +125,15 @@ public class AuthController {
             }
         }
 
+        // 4. Tìm qua students table theo studentCode
+        if (user == null && studentCode != null) {
+            var studentOpt = studentRepository.findByStudentCode(studentCode);
+            if (studentOpt.isPresent() && studentOpt.get().getUserId() != null) {
+                user = userRepository.findById(studentOpt.get().getUserId()).orElse(null);
+            }
+        }
+
+        // 5. Tìm qua lecturers table theo email
         if (user == null) {
             var lecturerOpt = lecturerRepository.findByEmailIgnoreCase(email);
             if (lecturerOpt.isPresent() && lecturerOpt.get().getUserId() != null) {
@@ -127,17 +143,19 @@ public class AuthController {
 
         if (user == null) {
             var newUser = new UserEntity();
-            newUser.setAccount(accountName);
+            // Ưu tiên dùng studentCode (MSSV) làm account để login username/password cũng dùng MSSV
+            newUser.setAccount(studentCode != null ? studentCode : accountName);
             newUser.setRole(desiredRole);
             newUser.setStatus("active");
+            newUser.setPasswordHash(passwordEncoder.encode("123456"));
             user = userRepository.save(newUser);
         } else {
-            boolean linkedStudent = studentRepository.findByUserId(user.getId()).isPresent();
-            boolean linkedLecturer = lecturerRepository.findByUserId(user.getId()).isPresent();
-            if (!linkedStudent && !linkedLecturer && desiredRole != null && !desiredRole.equalsIgnoreCase(user.getRole())) {
-                user.setRole(desiredRole);
+            // Nếu user chưa có password, set mặc định 123456 để có thể login bằng username/password
+            if (user.getPasswordHash() == null || user.getPasswordHash().isBlank()) {
+                user.setPasswordHash(passwordEncoder.encode("123456"));
                 user = userRepository.save(user);
             }
+            // Không ghi đè role — tôn trọng role hiện tại trong DB (do Lecturer quản lý)
         }
 
         ensureProfileForGoogleLogin(user, email, displayName, desiredRole, studentCode);
@@ -188,9 +206,15 @@ public class AuthController {
             student.setStatus("Active");
             studentRepository.save(student);
         }
-        user.setRole("TEAM_MEMBER");
-        if (user.getAccount() == null || user.getAccount().isBlank()) {
-            user.setAccount(studentCode != null ? studentCode : email.split("@")[0]);
+        // Chỉ set role mặc định nếu user chưa có role
+        if (user.getRole() == null || user.getRole().isBlank()) {
+            user.setRole("TEAM_MEMBER");
+        }
+        // Đảm bảo account luôn là studentCode (MSSV) để login username/password dùng MSSV
+        if (studentCode != null && !studentCode.equals("STUDENT")) {
+            user.setAccount(studentCode);
+        } else if (user.getAccount() == null || user.getAccount().isBlank()) {
+            user.setAccount(email.split("@")[0]);
         }
         userRepository.save(user);
     }

@@ -20,4 +20,13 @@ export const topicApi = {
     const res = await http.patch(`/topics/${topicId}/archive`);
     return res.data;
   },
+
+  async checkUsage(topicId) {
+    const res = await http.get(`/topics/${topicId}/usage`);
+    return res.data;
+  },
+
+  async remove(topicId) {
+    await http.delete(`/topics/${topicId}`);
+  },
 };

@@ -1,5 +1,7 @@
 package com.swp391.project;
 
+import com.swp391.group.StudentGroupEntity;
+import com.swp391.group.StudentGroupRepository;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -11,6 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/topics")
@@ -18,6 +21,7 @@ import java.util.List;
 public class ProjectController {
 
     private final ProjectRepository projectRepository;
+    private final StudentGroupRepository groupRepository;
 
     // ================= DTO REQUEST =================
     public record UpsertProjectRequest(
@@ -87,5 +91,31 @@ public class ProjectController {
         project.setStatus("ARCHIVED");
 
         return projectRepository.save(project);
+    }
+
+    // ================= CHECK IF TOPIC IS IN USE =================
+    @GetMapping("/{id}/usage")
+    public Map<String, Object> checkUsage(@PathVariable Integer id) {
+        projectRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Project not found"));
+        List<String> groupNames = groupRepository.findByProjectId(id).stream()
+                .map(g -> g.getGroupName() != null ? g.getGroupName() : "Group " + g.getId())
+                .toList();
+        return Map.of("inUse", !groupNames.isEmpty(), "groups", groupNames);
+    }
+
+    // ================= DELETE PROJECT =================
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable Integer id) {
+        ProjectEntity project = projectRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Project not found"));
+        // Unlink groups that reference this topic
+        List<StudentGroupEntity> groups = groupRepository.findByProjectId(id);
+        for (var g : groups) {
+            g.setProjectId(null);
+            groupRepository.save(g);
+        }
+        projectRepository.delete(project);
     }
 }

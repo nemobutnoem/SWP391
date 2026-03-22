@@ -162,6 +162,87 @@ function AssignLecturerModal({ isOpen, onClose, cls, lecturers, onAssign }) {
   );
 }
 
+function AddStudentModal({ isOpen, onClose, onSubmit, allStudents, classId, enrichedClasses }) {
+  const [search, setSearch] = useState("");
+  // Exclude students already in THIS class
+  const currentClassStudentIds = new Set(
+    enrichedClasses.find((c) => c.id === classId)?.students?.map((s) => s.id) || []
+  );
+  const available = allStudents.filter((s) => !currentClassStudentIds.has(s.id));
+  const filtered = available.filter((s) => {
+    const q = search.toLowerCase();
+    return (
+      (s.full_name || "").toLowerCase().includes(q) ||
+      (s.student_code || "").toLowerCase().includes(q)
+    );
+  });
+
+  // Build a map: studentId -> className for students in other classes
+  const studentClassMap = {};
+  enrichedClasses.forEach((c) => {
+    if (c.id !== classId && c.students) {
+      c.students.forEach((s) => {
+        studentClassMap[s.id] = c.class_code || c.class_name || `Class ${c.id}`;
+      });
+    }
+  });
+
+  const handleClick = (student) => {
+    const currentClass = studentClassMap[student.id];
+    if (currentClass) {
+      const confirmed = window.confirm(
+        `This student is currently in class "${currentClass}". Do you want to move them to this class?`
+      );
+      if (!confirmed) return;
+    }
+    onSubmit(student);
+  };
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Add Student to Class">
+      <div style={{ marginBottom: "1rem" }}>
+        <input
+          className="integration-input"
+          placeholder="Search by name or student code..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={{ width: "100%" }}
+        />
+      </div>
+      <div style={{ maxHeight: "320px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+        {filtered.length === 0 ? (
+          <span style={{ color: "var(--slate-400)", textAlign: "center", padding: "1rem" }}>
+            {search ? "No matching students found." : "No students available."}
+          </span>
+        ) : (
+          filtered.map((s) => (
+            <div
+              key={s.id}
+              className="class-student-dropdown-item"
+              style={{ cursor: "pointer", padding: "0.75rem", borderRadius: "8px", border: "1px solid var(--slate-200)" }}
+              onClick={() => handleClick(s)}
+            >
+              <div className="avatar-small">{(s.full_name || "S")[0]}</div>
+              <div className="profile-info">
+                <span className="profile-name">{s.full_name}</span>
+                <span className="profile-email">{s.email || "No email"}</span>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "0.25rem" }}>
+                <code className="code-badge">{s.student_code}</code>
+                {studentClassMap[s.id] && (
+                  <span style={{ fontSize: "0.7rem", color: "var(--warning)", fontWeight: 600 }}>
+                    In {studentClassMap[s.id]}
+                  </span>
+                )}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </Modal>
+  );
+}
+
 export function SemesterClassView({
   semesters,
   selectedSemesterId,
@@ -187,8 +268,11 @@ export function SemesterClassView({
   onOpenAssign,
   onCloseAssignModal,
   onAssignLecturer,
+  onAddStudent,
+  allStudents = [],
 }) {
   const [expandedClassId, setExpandedClassId] = useState(null);
+  const [addStudentClassId, setAddStudentClassId] = useState(null);
   const selectedSemester = semesters.find((s) => s.id === selectedSemesterId);
 
   const toggleStudents = (classId) => {
@@ -295,7 +379,10 @@ export function SemesterClassView({
                       {expandedClassId === c.id && (
                         <tr>
                           <td colSpan="8" className="expanded-content-cell">
-                            <span className="expanded-row-title">Students in {c.class_code}</span>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
+                              <span className="expanded-row-title" style={{ margin: 0 }}>Students in {c.class_code}</span>
+                              <Button variant="primary" size="sm" onClick={() => setAddStudentClassId(c.id)}>+ Add Student</Button>
+                            </div>
                             {c.students && c.students.length > 0 ? (
                               <div className="class-student-dropdown-list">
                                 {c.students.map((student) => (
@@ -310,7 +397,7 @@ export function SemesterClassView({
                                 ))}
                               </div>
                             ) : (
-                              <span className="text-secondary">No students in this class yet.</span>
+                              <span className="text-secondary">No students in this class yet. Click "+ Add Student" to add one.</span>
                             )}
                           </td>
                         </tr>
@@ -334,6 +421,20 @@ export function SemesterClassView({
 
       {assignModalOpen && assigningClass && (
         <AssignLecturerModal key={assigningClass.id} isOpen={assignModalOpen} onClose={onCloseAssignModal} cls={assigningClass} lecturers={lecturers} onAssign={onAssignLecturer} />
+      )}
+
+      {addStudentClassId && (
+        <AddStudentModal
+          isOpen={!!addStudentClassId}
+          onClose={() => setAddStudentClassId(null)}
+          classId={addStudentClassId}
+          allStudents={allStudents}
+          enrichedClasses={enrichedClasses}
+          onSubmit={async (student) => {
+            await onAddStudent(addStudentClassId, student);
+            setAddStudentClassId(null);
+          }}
+        />
       )}
     </div>
   );

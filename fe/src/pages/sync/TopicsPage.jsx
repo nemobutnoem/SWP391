@@ -60,6 +60,27 @@ export function TopicsPage() {
     }
   };
 
+  const handleDelete = async (topic) => {
+    try {
+      const usage = await topicService.checkUsage(topic.id);
+      let confirmed;
+      if (usage.inUse) {
+        confirmed = window.confirm(
+          `This topic is currently assigned to: ${usage.groups.join(", ")}.\nAre you sure you want to delete it? The topic will be unlinked from these groups.`
+        );
+      } else {
+        confirmed = window.confirm(`Are you sure you want to delete topic "${topic.name}"?`);
+      }
+      if (confirmed) {
+        await topicService.remove(topic.id);
+        const updatedTopics = await topicService.list();
+        setTopics(updatedTopics);
+      }
+    } catch (e) {
+      alert("Failed to delete topic: " + (e?.data?.message || e.message));
+    }
+  };
+
   return (
     <TopicsView
       topics={topics}
@@ -70,6 +91,7 @@ export function TopicsPage() {
       onCloseModal={() => setIsModalOpen(false)}
       onSubmit={handleSubmit}
       onArchive={handleArchive}
+      onDelete={handleDelete}
     />
   );
 }

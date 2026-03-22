@@ -9,5 +9,6 @@ public interface StudentGroupRepository extends JpaRepository<StudentGroupEntity
 	List<StudentGroupEntity> findByClassId(Integer classId);
 	List<StudentGroupEntity> findByClassIdIn(java.util.Collection<Integer> classIds);
 	List<StudentGroupEntity> findByLecturerId(Integer lecturerId);
+	List<StudentGroupEntity> findByProjectId(Integer projectId);
 	Optional<StudentGroupEntity> findByIdAndClassId(Integer id, Integer classId);
 }

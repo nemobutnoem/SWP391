@@ -78,13 +78,13 @@ public class GroupMemberService {
         GroupMemberEntity member = memberRepository.findById(memberId)
                 .orElseThrow(() -> ApiException.notFound("Group member not found"));
 
+        String oldRole = member.getRoleInGroup();
         member.setRoleInGroup(newRole);
         GroupMemberEntity saved = memberRepository.save(member);
 
         if ("Leader".equalsIgnoreCase(newRole)) {
             syncLeader(member.getGroupId(), member.getStudentId());
-        } else if (member.getRoleInGroup().equalsIgnoreCase("Leader") && !"Leader".equalsIgnoreCase(newRole)) {
-            // If they WERE leader and now aren't, check if group.leaderStudentId was them
+        } else if ("Leader".equalsIgnoreCase(oldRole) && !"Leader".equalsIgnoreCase(newRole)) {
             var group = groupRepository.findById(member.getGroupId()).orElse(null);
             if (group != null && member.getStudentId().equals(group.getLeaderStudentId())) {
                 group.setLeaderStudentId(null);
