@@ -4,13 +4,18 @@
   justify-content: space-between;
   margin-bottom: 2.5rem;
   gap: 2rem;
+  animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .page-header__title {
-  font-size: 2.25rem;
+  font-size: 2rem;
   color: var(--slate-900);
   letter-spacing: -0.025em;
   margin-bottom: 0.25rem;
+  background: linear-gradient(135deg, var(--slate-900), var(--brand-800));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .page-header__desc {

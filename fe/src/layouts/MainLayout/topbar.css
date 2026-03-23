@@ -1,9 +1,11 @@
+/* ===== Topbar - Frosted glass ===== */
+
 .topbar {
   height: var(--topbar-height);
-  background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--slate-200);
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.6);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -11,6 +13,7 @@
   position: sticky;
   top: 0;
   z-index: 90;
+  transition: box-shadow 0.3s;
 }
 
 .topbar__left {
@@ -25,9 +28,8 @@
   gap: 0.5rem;
   font-size: 0.875rem;
   font-weight: 500;
-  color: var(--slate-500);
+  color: var(--slate-400);
 }
-
 .breadcrumb__item {
   color: var(--slate-900);
   font-weight: 700;
@@ -41,48 +43,29 @@
   gap: 1rem;
 }
 
-.btn-icon {
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius-md);
-  color: var(--slate-600);
-  background: transparent;
-  border: 1px solid transparent;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-icon:hover {
-  background: var(--slate-100);
-  color: var(--slate-900);
-  border-color: var(--slate-200);
-}
-
 .topbar__user-btn {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.625rem;
   background: white;
   border: 1px solid var(--slate-200);
-  padding: 0.4rem 0.75rem;
+  padding: 0.35rem 0.75rem;
   border-radius: var(--radius-lg);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: var(--shadow-sm);
 }
-
 .topbar__user-btn:hover {
   border-color: var(--brand-300);
   background: var(--brand-50);
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.1);
+  transform: translateY(-1px);
 }
 
 .topbar__avatar {
   width: 30px;
   height: 30px;
-  background: var(--brand-600);
+  background: linear-gradient(135deg, var(--brand-500), var(--brand-700));
   color: white;
   border-radius: 50%;
   display: flex;
@@ -100,47 +83,43 @@
 
 .topbar__chev {
   color: var(--slate-400);
-  font-size: 0.75rem;
+  font-size: 0.625rem;
+  transition: transform 0.2s;
 }
 
+/* Dropdown */
 .dropdown {
   position: absolute;
-  top: calc(100% + 12px);
+  top: calc(100% + 10px);
   right: 0;
-  width: 220px;
-  background: white;
+  width: 230px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--slate-200);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
-  padding: 0.6rem;
-  animation: dropdownIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: var(--shadow-xl);
+  padding: 0.5rem;
+  animation: dropdownIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   overflow: hidden;
 }
 
 @keyframes dropdownIn {
-  from {
-    opacity: 0;
-    transform: translateY(8px) scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+  from { opacity: 0; transform: translateY(8px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .dropdown__header {
   padding: 0.75rem 0.875rem;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.35rem;
   border-bottom: 1px solid var(--slate-100);
 }
-
 .dropdown__name {
   font-weight: 700;
   font-size: 0.9375rem;
   color: var(--slate-900);
   display: block;
 }
-
 .dropdown__role {
   font-size: 0.75rem;
   font-weight: 600;
@@ -152,7 +131,7 @@
 .dropdown__item {
   width: 100%;
   text-align: left;
-  padding: 0.625rem 0.875rem;
+  padding: 0.6rem 0.875rem;
   background: none;
   border: none;
   border-radius: var(--radius-md);
@@ -163,17 +142,14 @@
   align-items: center;
   gap: 0.75rem;
   transition: all 0.2s;
+  cursor: pointer;
 }
-
 .dropdown__item:hover {
-  background: var(--slate-50);
+  background: var(--brand-50);
   color: var(--brand-600);
+  transform: translateX(2px);
 }
-
-.dropdown__item--danger {
-  color: var(--danger);
-}
-
+.dropdown__item--danger { color: var(--danger); }
 .dropdown__item--danger:hover {
   background: var(--danger-light);
   color: var(--danger);

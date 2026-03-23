@@ -7,13 +7,13 @@
   --brand-200: #bae0fd;
   --brand-300: #7cc8fb;
   --brand-400: #38abf8;
-  --brand-500: #0ea5e9; /* Vibrant Cyan-Blue */
+  --brand-500: #0ea5e9;
   --brand-600: #0284c7;
   --brand-700: #0369a1;
   --brand-800: #075985;
   --brand-900: #0c4a6e;
 
-  /* --- Fresh Neutrals (Lighter, Cleaner) --- */
+  /* --- Fresh Neutrals --- */
   --slate-50: #fbfcfe;
   --slate-100: #f1f5f9;
   --slate-200: #e2e8f0;
@@ -25,7 +25,7 @@
   --slate-800: #1e293b;
   --slate-900: #0f172a;
 
-  /* --- Semantic Colors (More Vibrant) --- */
+  /* --- Semantic Colors --- */
   --success: #059669;
   --success-light: #ecfdf5;
   --warning: #f59e0b;
@@ -41,8 +41,8 @@
 
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  --shadow-lg:
-    0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
 
   --radius-sm: 6px;
   --radius-md: 10px;
@@ -52,11 +52,12 @@
   --sidebar-width: 280px;
   --topbar-height: 72px;
 
-  /* General Resets */
   box-sizing: border-box;
 }
 
-* {
+*,
+*::before,
+*::after {
   box-sizing: inherit;
   margin: 0;
   padding: 0;
@@ -69,14 +70,10 @@ body {
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
 }
 
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
+h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-heading);
   font-weight: 700;
   color: var(--slate-900);
@@ -85,9 +82,8 @@ h6 {
 a {
   text-decoration: none;
   color: var(--brand-600);
-  transition: all 0.2s;
+  transition: color 0.2s;
 }
-
 a:hover {
   color: var(--brand-700);
 }
@@ -96,52 +92,58 @@ button {
   font-family: inherit;
 }
 
-/* UI Utility Classes */
-.text-xs {
-  font-size: 0.75rem;
-}
-.text-sm {
-  font-size: 0.875rem;
-}
-.text-base {
-  font-size: 1rem;
-}
-.text-lg {
-  font-size: 1.125rem;
-}
-.text-xl {
-  font-size: 1.25rem;
-}
+/* Utility */
+.text-xs { font-size: 0.75rem; }
+.text-sm { font-size: 0.875rem; }
+.text-base { font-size: 1rem; }
+.text-lg { font-size: 1.125rem; }
+.text-xl { font-size: 1.25rem; }
+.font-medium { font-weight: 500; }
+.font-semibold { font-weight: 600; }
+.font-bold { font-weight: 700; }
+.text-slate-500 { color: var(--slate-500); }
+.text-slate-600 { color: var(--slate-600); }
 
-.font-medium {
-  font-weight: 500;
-}
-.font-semibold {
-  font-weight: 600;
-}
-.font-bold {
-  font-weight: 700;
-}
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--slate-300); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: var(--slate-400); }
 
-.text-slate-500 {
-  color: var(--slate-500);
+/* ===== GLOBAL ANIMATIONS ===== */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
-.text-slate-600 {
-  color: var(--slate-600);
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
 }
-
-/* Custom Scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
 }
-::-webkit-scrollbar-track {
-  background: var(--slate-100);
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-20px); }
+  to { opacity: 1; transform: translateX(0); }
 }
-::-webkit-scrollbar-thumb {
-  background: var(--slate-300);
-  border-radius: 99px;
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
 }
-::-webkit-scrollbar-thumb:hover {
-  background: var(--slate-400);
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+@keyframes pulse-ring {
+  0% { transform: scale(0.8); opacity: 1; }
+  100% { transform: scale(2); opacity: 0; }
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
