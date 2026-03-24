@@ -25,14 +25,32 @@ export function UserManagementPage() {
   const [semesters, setSemesters] = useState([]);
   const [members, setMembers] = useState([]);
 
+  const toNum = (v) => Number(v);
+  const isSameId = (a, b) => Number.isFinite(toNum(a)) && Number.isFinite(toNum(b)) && toNum(a) === toNum(b);
+
+  const loadAllData = async () => {
+    const [studentsData, lecturersData, groupsData, membersData, projectsData, classesData, semestersData] = await Promise.all([
+      studentService.list(),
+      lecturerService.list(),
+      groupService.list(),
+      groupService.listMembers(),
+      projectService.list(),
+      classService.list(),
+      semesterService.list(),
+    ]);
+    setLocalStudents(Array.isArray(studentsData) ? studentsData : []);
+    setLocalLecturers(Array.isArray(lecturersData) ? lecturersData : []);
+    setGroups(Array.isArray(groupsData) ? groupsData : []);
+    setMembers(Array.isArray(membersData) ? membersData : []);
+    setProjects(Array.isArray(projectsData) ? projectsData : []);
+    setClasses(Array.isArray(classesData) ? classesData : []);
+    setSemesters(Array.isArray(semestersData) ? semestersData : []);
+  };
+
   useEffect(() => {
-    studentService.list().then(setLocalStudents);
-    lecturerService.list().then(setLocalLecturers);
-    groupService.list().then(setGroups);
-    groupService.listMembers().then(setMembers);
-    projectService.list().then(setProjects);
-    classService.list().then(setClasses);
-    semesterService.list().then(setSemesters);
+    loadAllData().catch((err) => {
+      console.error("Failed to load admin data:", err);
+    });
   }, []);
 
   const handleTabChange = (tab) => {
@@ -65,17 +83,14 @@ export function UserManagementPage() {
         } else {
           await studentService.create(payload);
         }
-        const updatedStudents = await studentService.list();
-        setLocalStudents(updatedStudents);
       } else {
         if (editingUser) {
           await lecturerService.update(editingUser.id, payload);
         } else {
           await lecturerService.create(payload);
         }
-        const updatedLecturers = await lecturerService.list();
-        setLocalLecturers(updatedLecturers);
       }
+      await loadAllData();
       setIsModalOpen(false);
       setEditingUser(null);
     } catch (e) {
@@ -86,14 +101,14 @@ export function UserManagementPage() {
 
   const enrichedStudents = useMemo(() => {
     return localStudents.map((s) => {
-      const membership = members.find((m) => m.student_id === s.id);
+      const membership = members.find((m) => isSameId(m.student_id ?? m.studentId, s.id));
       const group = membership
-        ? groups.find((g) => g.id === membership.group_id)
-        : groups.find((g) => g.leader_student_id === s.id);
-      const project = group ? projects.find((p) => p.id === group.project_id) : null;
-      const clazz = classes.find((c) => c.id === s.class_id);
-      const semester = semesters.find((sem) => sem.id === s.semester_id) ||
-        (clazz ? semesters.find((sem) => sem.id === clazz.semester_id) : null);
+        ? groups.find((g) => isSameId(g.id, membership.group_id ?? membership.groupId))
+        : groups.find((g) => isSameId(g.leader_student_id ?? g.leaderStudentId, s.id));
+      const project = group ? projects.find((p) => isSameId(p.id, group.project_id ?? group.projectId)) : null;
+      const clazz = classes.find((c) => isSameId(c.id, s.class_id ?? s.classId));
+      const semester = semesters.find((sem) => isSameId(sem.id, s.semester_id ?? s.semesterId)) ||
+        (clazz ? semesters.find((sem) => isSameId(sem.id, clazz.semester_id ?? clazz.semesterId)) : null);
 
       return {
         ...s,
@@ -146,13 +161,10 @@ export function UserManagementPage() {
       try {
         if (activeTab === "STUDENTS") {
           await studentService.remove(user.id);
-          const updated = await studentService.list();
-          setLocalStudents(updated);
         } else {
           await lecturerService.remove(user.id);
-          const updated = await lecturerService.list();
-          setLocalLecturers(updated);
         }
+        await loadAllData();
         alert("User deleted successfully.");
       } catch (e) {
         alert("Failed to delete user: " + (e.response?.data?.message || e.message));

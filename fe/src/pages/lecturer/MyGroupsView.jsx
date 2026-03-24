@@ -340,7 +340,7 @@ export function MyGroupsView({
                                 </td>
                               )}
                               <td>
-                                <span className="text-secondary">@{m.github_username}</span>
+                                <span className="text-secondary">{m.github_username ? `@${m.github_username}` : "-"}</span>
                               </td>
                               <td>
                                 <button

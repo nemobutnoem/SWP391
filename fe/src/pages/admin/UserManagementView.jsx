@@ -125,7 +125,7 @@ export function UserManagementView({
                     <div className="avatar-small">{(u.full_name || u.account || "U")[0]}</div>
                     <div className="profile-info">
                       <span className="profile-name">{u.full_name || u.account}</span>
-                      <span className="profile-email">{u.email || `@${u.github_username}`}</span>
+                      <span className="profile-email">{u.email || (u.github_username ? `@${u.github_username}` : "No email")}</span>
                     </div>
                   </div>
                 </td>

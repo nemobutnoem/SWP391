@@ -197,6 +197,14 @@ public class JiraService {
 								log.warn("[syncIssues] Unable to resolve assignee by email for accountId={}: {}", assigneeAccountId, ex.getMessage());
 							}
 						}
+
+						// Fallback: map by assignee display name inside this group (handles Jira privacy where email is hidden).
+						if (assigneeUserId == null) {
+							assigneeUserId = resolveAssigneeUserIdByDisplayName(groupId, assigneeDisplayName);
+							if (assigneeUserId != null) {
+								userRepository.findById(assigneeUserId).ifPresent(u -> persistJiraAccountIdIfAvailable(u, assigneeAccountId));
+							}
+						}
 					}
 					entity.setAssigneeUserId(assigneeUserId);
 					entity.setAssigneeDisplayName(assigneeDisplayName);
@@ -462,8 +470,40 @@ public class JiraService {
 		String normalized = normalizeLookup(value);
 		if (normalized == null) return null;
 		String decomposed = Normalizer.normalize(normalized, Normalizer.Form.NFD);
-		return decomposed.replaceAll("\\p{M}+", "").replace('d', 'd');
+		return decomposed.replaceAll("\\p{M}+", "").replace('đ', 'd').replace('Đ', 'D');
 	}
+
+	private Integer resolveAssigneeUserIdByDisplayName(Integer groupId, String assigneeDisplayName) {
+		String jiraName = stripAccents(assigneeDisplayName);
+		if (jiraName == null || jiraName.isBlank()) return null;
+
+		Integer partialMatch = null;
+		for (var member : memberRepository.findByGroupId(groupId)) {
+			var studentOpt = studentRepository.findById(member.getStudentId());
+			if (studentOpt.isEmpty()) continue;
+			var student = studentOpt.get();
+			Integer userId = student.getUserId();
+			if (userId == null) continue;
+
+			String studentName = stripAccents(student.getFullName());
+			if (studentName != null && studentName.equals(jiraName)) {
+				return userId;
+			}
+
+			var user = userRepository.findById(userId).orElse(null);
+			String account = stripAccents(user == null ? null : user.getAccount());
+			if (account != null && account.equals(jiraName)) {
+				return userId;
+			}
+
+			// Keep a loose fallback if Jira shortens display names.
+			if (studentName != null && (studentName.contains(jiraName) || jiraName.contains(studentName))) {
+				partialMatch = userId;
+			}
+		}
+		return partialMatch;
+	}
+
 private String pickBestAccountId(JsonNode users, String email, String emailLocal, String fullName, String account) {
 		if (users == null || !users.isArray() || users.isEmpty()) return null;
 
