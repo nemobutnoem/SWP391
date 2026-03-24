@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
+import { calculateContribution } from "../../utils/ContributionUtils";
 import { groupService } from "../../services/groups/group.service.js";
 import { studentService } from "../../services/students/student.service.js";
 import { gradeService } from "../../services/grades/grade.service.js";
@@ -85,42 +86,30 @@ export function MyGroupsPage() {
   const enrichedGroups = useMemo(() => {
     return myGroups.map((g) => {
       const groupTasks = jiraTasks.filter((task) => Number(task.group_id ?? task.groupId) === Number(g.id));
-
-      const scoredTasks = groupTasks.filter((task) => {
-        const storyPoints = Number(task.story_points ?? task.storyPoints);
-        const assigneeUserId = task.assigneeUserId ?? task.assignee_user_id;
-        return Number.isFinite(storyPoints) && storyPoints > 0 && assigneeUserId;
-      });
-
-      const totalStoryPoints = scoredTasks.reduce(
-        (sum, task) => sum + Number(task.story_points ?? task.storyPoints ?? 0),
-        0,
+      // Chuẩn hóa: dùng calculateContribution để lấy contribution % từng thành viên
+      const memberContrib = calculateContribution(
+        groupTasks,
+        (task) => String(task.assigneeUserId ?? task.assignee_user_id),
+        (task) => task.story_points ?? task.storyPoints
       );
+      const totalStoryPoints = memberContrib.reduce((sum, m) => sum + m.sp, 0);
 
       const members = allMembers
         .filter((m) => m.group_id === g.id)
         .map((m) => {
           const student = students.find((s) => s.id === m.student_id);
-          const memberUserId = student?.user_id ?? student?.userId;
-          const memberStoryPoints = scoredTasks
-            .filter((task) => Number(task.assigneeUserId ?? task.assignee_user_id) === Number(memberUserId))
-            .reduce((sum, task) => sum + Number(task.story_points ?? task.storyPoints ?? 0), 0);
-
+          const memberUserId = String(student?.user_id ?? student?.userId);
+          const found = memberContrib.find((mc) => mc.assignee === memberUserId);
           return {
             ...student,
             ...m,
             member_id: m.id,
-            member_story_points: memberStoryPoints,
-            contribution_pct:
-              totalStoryPoints > 0 && memberStoryPoints > 0
-                ? Number(((memberStoryPoints / totalStoryPoints) * 100).toFixed(1))
-                : null,
+            member_story_points: found?.sp || 0,
+            contribution_pct: found?.pct ?? null,
           };
         });
 
-      const groupGrades = grades.filter(
-        (gr) => gr.group_id === g.id,
-      );
+      const groupGrades = grades.filter((gr) => gr.group_id === g.id);
       const topic = topics.find((t) => t.id === (g.project_id ?? g.projectId));
       const gradedGrades = groupGrades.filter((gr) => gr.score !== null);
       const avgScore =
