@@ -139,22 +139,34 @@ export function MyGroupsPage() {
           if (account) memberKeys.add(`name:${account}`);
           const fullName = normalizeText(student?.full_name ?? student?.fullName ?? m.full_name ?? m.fullName);
           if (fullName) memberKeys.add(`name:${fullName}`);
+          const studentCode = normalizeText(student?.student_code ?? student?.studentCode ?? m.student_code);
+          if (studentCode) memberKeys.add(`name:${studentCode}`);
+          const email = normalizeText(student?.email ?? m.email);
+          const emailPrefix = email ? email.split('@')[0] : "";
+          if (emailPrefix) memberKeys.add(`name:${emailPrefix}`);
 
           const memberStoryPoints = scoredTasks
             .filter(({ assigneeKeys }) => {
               for (const key of memberKeys) {
                 if (assigneeKeys.has(key)) return true;
               }
+              for (const aKey of assigneeKeys) {
+                if (studentCode && aKey.includes(studentCode)) return true;
+                if (emailPrefix && aKey.includes(emailPrefix)) return true;
+                if (account && aKey.includes(account)) return true;
+              }
               return false;
             })
             .reduce((sum, item) => sum + item.storyPoints, 0);
+
+          const pct = totalStoryPoints > 0 ? (memberStoryPoints / totalStoryPoints) * 100 : 0;
 
           return {
             ...student,
             ...m,
             member_id: m.id,
-            member_story_points: found?.sp || 0,
-            contribution_pct: found?.pct ?? null,
+            member_story_points: memberStoryPoints,
+            contribution_pct: pct.toFixed(1),
           };
         });
 

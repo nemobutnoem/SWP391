@@ -167,7 +167,75 @@ export function LecturerDashboardView() {
   const enrichedGroups = useMemo(() => {
     return myGroups.map((g) => {
       const members = allMembers.filter((m) => m.group_id === g.id);
-      const tasks = jiraTasks.filter((t) => t.group_id === g.id);
+      const tasks = jiraTasks.filter((task) => Number(task.group_id ?? task.groupId) === Number(g.id));
+      
+      const toNumberOrNull = (v) => {
+        const n = Number(v);
+        return Number.isFinite(n) ? n : null;
+      };
+      
+      const normalizeText = (v) =>
+        v == null ? "" : String(v).normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D").trim().toLowerCase();
+        
+      const getStoryPoints = (task) => Number(task.story_points ?? task.storyPoints ?? 0);
+      
+      const getTaskAssigneeKeys = (task) => {
+        const keys = new Set();
+        const assigneeUserId = toNumberOrNull(task.assigneeUserId ?? task.assignee_user_id);
+        if (assigneeUserId != null && assigneeUserId > 0) keys.add(`uid:${assigneeUserId}`);
+        const assigneeName = normalizeText(task.assigneeName ?? task.assignee_name);
+        if (assigneeName) keys.add(`name:${assigneeName}`);
+        return keys;
+      };
+
+      const scoredTasks = tasks
+        .map((task) => ({
+          task,
+          storyPoints: getStoryPoints(task),
+          assigneeKeys: getTaskAssigneeKeys(task),
+        }))
+        .filter(({ storyPoints, assigneeKeys }) => Number.isFinite(storyPoints) && storyPoints > 0 && assigneeKeys.size > 0);
+
+      const totalStoryPoints = scoredTasks.reduce((sum, item) => sum + item.storyPoints, 0);
+
+      const membersContributes = members.map(m => {
+        const student = students.find((s) => Number(s.id) === Number(m.student_id ?? m.studentId));
+        
+        let name = student?.student_code || student?.studentCode || m.student_code;
+        if (!name) name = student?.full_name || student?.fullName || m.full_name || m.fullName;
+        if (!name) name = `User ${m.student_id}`;
+
+        const memberUserId = toNumberOrNull(student?.user_id ?? student?.userId ?? m.user_id ?? m.userId);
+        const memberKeys = new Set();
+        if (memberUserId != null) memberKeys.add(`uid:${memberUserId}`);
+        const account = normalizeText(student?.account ?? m.account);
+        if (account) memberKeys.add(`name:${account}`);
+        const fullName = normalizeText(student?.full_name ?? student?.fullName ?? m.full_name ?? m.fullName);
+        if (fullName) memberKeys.add(`name:${fullName}`);
+        const studentCode = normalizeText(student?.student_code ?? student?.studentCode ?? m.student_code);
+        if (studentCode) memberKeys.add(`name:${studentCode}`);
+        const email = normalizeText(student?.email ?? m.email);
+        const emailPrefix = email ? email.split('@')[0] : "";
+        if (emailPrefix) memberKeys.add(`name:${emailPrefix}`);
+
+        const memberStoryPoints = scoredTasks
+          .filter(({ assigneeKeys }) => {
+            for (const key of memberKeys) {
+              if (assigneeKeys.has(key)) return true;
+            }
+            for (const aKey of assigneeKeys) {
+              if (studentCode && aKey.includes(studentCode)) return true;
+              if (emailPrefix && aKey.includes(emailPrefix)) return true;
+              if (account && aKey.includes(account)) return true;
+            }
+            return false;
+          })
+          .reduce((sum, item) => sum + item.storyPoints, 0);
+
+        const pct = totalStoryPoints > 0 ? (memberStoryPoints / totalStoryPoints) * 100 : 0;
+        return { ...m, displayName: name, pct: pct.toFixed(1), sp: memberStoryPoints };
+      }).sort((a,b) => parseFloat(b.pct) - parseFloat(a.pct));
+
       const rawActivities = githubActivities
         .filter((a) => a.group_id === g.id)
         .sort((a, b) => new Date(b.occurred_at) - new Date(a.occurred_at));
