@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
+import { calculateContribution } from "../../utils/ContributionUtils";
 import { groupService } from "../../services/groups/group.service.js";
 import { studentService } from "../../services/students/student.service.js";
 import { gradeService } from "../../services/grades/grade.service.js";
@@ -152,11 +153,8 @@ export function MyGroupsPage() {
             ...student,
             ...m,
             member_id: m.id,
-            member_story_points: memberStoryPoints,
-            contribution_pct:
-              totalStoryPoints > 0 && memberStoryPoints > 0
-                ? Number(((memberStoryPoints / totalStoryPoints) * 100).toFixed(1))
-                : null,
+            member_story_points: found?.sp || 0,
+            contribution_pct: found?.pct ?? null,
           };
         });
 
