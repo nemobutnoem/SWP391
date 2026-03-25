@@ -108,13 +108,13 @@ public class CompatJiraTaskController {
 	}
 
 	@GetMapping("/groups/{groupId}/jira-tasks")
-	public List<JiraTaskDto> listByGroup(@PathVariable Integer groupId, Authentication auth) {
+	public List<JiraTaskDto> listByGroup(@PathVariable("groupId") Integer groupId, Authentication auth) {
 		ensureMember(groupId, (UserPrincipal) auth.getPrincipal());
 		return jiraIssueRepository.findByGroupId(groupId).stream().map(this::toDto).toList();
 	}
 
 	@PatchMapping("/jira-tasks/{taskId}")
-	public JiraTaskDto updateTask(@PathVariable Integer taskId, @Valid @RequestBody UpdateTaskRequest req,
+	public JiraTaskDto updateTask(@PathVariable("taskId") Integer taskId, @Valid @RequestBody UpdateTaskRequest req,
 			Authentication auth) {
 		var issue = jiraIssueRepository.findById(taskId)
 				.orElseThrow(() -> new IllegalArgumentException("Jira task not found"));
@@ -338,7 +338,7 @@ public class CompatJiraTaskController {
 	}
 
 	@PatchMapping("/jira-tasks/{taskId}/srs-category")
-	public JiraTaskDto updateSrsCategory(@PathVariable Integer taskId,
+	public JiraTaskDto updateSrsCategory(@PathVariable("taskId") Integer taskId,
 			@RequestBody UpdateSrsCategoryRequest req, Authentication auth) {
 		UserPrincipal principal = (UserPrincipal) auth.getPrincipal();
 		var entity = jiraIssueRepository.findById(taskId)
@@ -350,7 +350,7 @@ public class CompatJiraTaskController {
 	}
 
 	@GetMapping("/jira-tasks/{taskId}/comments")
-	public List<TaskCommentDto> listComments(@PathVariable Integer taskId, Authentication auth) {
+	public List<TaskCommentDto> listComments(@PathVariable("taskId") Integer taskId, Authentication auth) {
 		jiraIssueRepository.findById(taskId)
 				.orElseThrow(() -> new IllegalArgumentException("Task not found"));
 		return taskCommentRepository.findByTaskIdOrderByCreatedAtDesc(taskId).stream()
@@ -359,7 +359,7 @@ public class CompatJiraTaskController {
 	}
 
 	@PostMapping("/jira-tasks/{taskId}/comments")
-	public TaskCommentDto addComment(@PathVariable Integer taskId,
+	public TaskCommentDto addComment(@PathVariable("taskId") Integer taskId,
 			@Valid @RequestBody CreateCommentRequest req, Authentication auth) {
 		var issue = jiraIssueRepository.findById(taskId)
 				.orElseThrow(() -> new IllegalArgumentException("Task not found"));

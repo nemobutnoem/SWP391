@@ -17,16 +17,16 @@ public class GithubController {
 
 	@GetMapping("/stats")
 	public GithubStatsResponse stats(
-			@PathVariable Integer groupId,
-			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant from,
-			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant to,
+			@PathVariable("groupId") Integer groupId,
+			@RequestParam(name = "from", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant from,
+			@RequestParam(name = "to", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant to,
 			Authentication auth
 	) {
 		return githubService.stats(groupId, from, to, (UserPrincipal) auth.getPrincipal());
 	}
 
 	@PostMapping("/sync")
-	public int sync(@PathVariable Integer groupId, Authentication auth) {
+	public int sync(@PathVariable("groupId") Integer groupId, Authentication auth) {
 		return githubService.syncCommits(groupId, (UserPrincipal) auth.getPrincipal());
 	}
 }

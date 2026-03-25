@@ -20,7 +20,7 @@ public class GroupMemberController {
 	private final StudentRepository studentRepository;
 
 	@GetMapping("/groups/{groupId}/members")
-	public List<GroupMemberDto> listGroupMembers(@PathVariable Integer groupId, Authentication auth) {
+	public List<GroupMemberDto> listGroupMembers(@PathVariable("groupId") Integer groupId, Authentication auth) {
 		// Ensure caller is a member of the group.
 		UserPrincipal principal = (UserPrincipal) auth.getPrincipal();
 		studentRepository.findByUserId(principal.getUserId())
@@ -33,7 +33,7 @@ public class GroupMemberController {
 	public record UpdateRoleRequest(@JsonProperty("role_in_group") String roleInGroup) {}
 
 	@PutMapping("/group-members/{memberId}/role")
-	public GroupMemberEntity updateRole(@PathVariable Integer memberId, @RequestBody UpdateRoleRequest req, Authentication auth) {
+	public GroupMemberEntity updateRole(@PathVariable("memberId") Integer memberId, @RequestBody UpdateRoleRequest req, Authentication auth) {
 		UserPrincipal principal = (UserPrincipal) auth.getPrincipal();
 		String role = principal.getRole();
 		if (!"LECTURER".equalsIgnoreCase(role) && !"ADMIN".equalsIgnoreCase(role)) {
@@ -49,7 +49,7 @@ public class GroupMemberController {
 
 	@PostMapping("/groups/{groupId}/members")
 	@ResponseStatus(HttpStatus.CREATED)
-	public GroupMemberEntity addMember(@PathVariable Integer groupId, @RequestBody AddMemberRequest req, Authentication auth) {
+	public GroupMemberEntity addMember(@PathVariable("groupId") Integer groupId, @RequestBody AddMemberRequest req, Authentication auth) {
 		UserPrincipal principal = (UserPrincipal) auth.getPrincipal();
 		String role = principal.getRole();
 		if (!"LECTURER".equalsIgnoreCase(role) && !"ADMIN".equalsIgnoreCase(role)) {
@@ -60,7 +60,7 @@ public class GroupMemberController {
 
 	@DeleteMapping("/groups/{groupId}/members/{memberId}")
 	@ResponseStatus(HttpStatus.NO_CONTENT)
-	public void removeMember(@PathVariable Integer groupId, @PathVariable Integer memberId, Authentication auth) {
+	public void removeMember(@PathVariable("groupId") Integer groupId, @PathVariable("memberId") Integer memberId, Authentication auth) {
 		UserPrincipal principal = (UserPrincipal) auth.getPrincipal();
 		String role = principal.getRole();
 		if (!"LECTURER".equalsIgnoreCase(role) && !"ADMIN".equalsIgnoreCase(role)) {

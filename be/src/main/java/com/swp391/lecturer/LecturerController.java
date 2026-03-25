@@ -23,7 +23,7 @@ public class LecturerController {
     }
 
     @GetMapping("/{id}")
-    public LecturerEntity getById(@PathVariable Integer id) {
+    public LecturerEntity getById(@PathVariable("id") Integer id) {
         return lecturerService.getById(id);
     }
 
@@ -34,14 +34,14 @@ public class LecturerController {
     }
 
     @PutMapping("/{id}")
-    public LecturerEntity update(@PathVariable Integer id, @Valid @RequestBody UpdateLecturerRequest request,
+    public LecturerEntity update(@PathVariable("id") Integer id, @Valid @RequestBody UpdateLecturerRequest request,
             Authentication auth) {
         return lecturerService.update(id, request, (UserPrincipal) auth.getPrincipal());
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Integer id, Authentication auth) {
+    public void delete(@PathVariable("id") Integer id, Authentication auth) {
         lecturerService.delete(id, (UserPrincipal) auth.getPrincipal());
     }
 }

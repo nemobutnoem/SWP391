@@ -64,7 +64,7 @@ public class ProjectController {
     // ================= UPDATE PROJECT =================
     @PutMapping("/{id}")
     public ProjectEntity update(
-            @PathVariable Integer id,
+            @PathVariable("id") Integer id,
             @Valid @RequestBody UpsertProjectRequest req) {
 
         ProjectEntity project = projectRepository.findById(id)
@@ -83,7 +83,7 @@ public class ProjectController {
 
     // ================= ARCHIVE PROJECT =================
     @PatchMapping("/{id}/archive")
-    public ProjectEntity archive(@PathVariable Integer id) {
+    public ProjectEntity archive(@PathVariable("id") Integer id) {
 
         ProjectEntity project = projectRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Project not found"));
@@ -95,7 +95,7 @@ public class ProjectController {
 
     // ================= CHECK IF TOPIC IS IN USE =================
     @GetMapping("/{id}/usage")
-    public Map<String, Object> checkUsage(@PathVariable Integer id) {
+    public Map<String, Object> checkUsage(@PathVariable("id") Integer id) {
         projectRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Project not found"));
         List<String> groupNames = groupRepository.findByProjectId(id).stream()
@@ -107,7 +107,7 @@ public class ProjectController {
     // ================= DELETE PROJECT =================
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Integer id) {
+    public void delete(@PathVariable("id") Integer id) {
         ProjectEntity project = projectRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Project not found"));
         // Unlink groups that reference this topic

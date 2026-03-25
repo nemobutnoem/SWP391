@@ -164,6 +164,7 @@ function AssignLecturerModal({ isOpen, onClose, cls, lecturers, onAssign }) {
 
 function AddStudentModal({ isOpen, onClose, onSubmit, allStudents, classId, enrichedClasses }) {
   const [search, setSearch] = useState("");
+
   // Exclude students already in THIS class
   const currentClassStudentIds = new Set(
     enrichedClasses.find((c) => c.id === classId)?.students?.map((s) => s.id) || []
@@ -173,7 +174,8 @@ function AddStudentModal({ isOpen, onClose, onSubmit, allStudents, classId, enri
     const q = search.toLowerCase();
     return (
       (s.full_name || "").toLowerCase().includes(q) ||
-      (s.student_code || "").toLowerCase().includes(q)
+      (s.student_code || "").toLowerCase().includes(q) ||
+      (s.email || "").toLowerCase().includes(q)
     );
   });
 
@@ -203,7 +205,7 @@ function AddStudentModal({ isOpen, onClose, onSubmit, allStudents, classId, enri
       <div style={{ marginBottom: "1rem" }}>
         <input
           className="integration-input"
-          placeholder="Search by name or student code..."
+          placeholder="Search by name, student code, or email..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           style={{ width: "100%" }}

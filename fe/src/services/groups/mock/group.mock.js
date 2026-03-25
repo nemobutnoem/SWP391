@@ -78,4 +78,10 @@ export const groupMock = {
     group.project_id = Number(projectId);
     return { ...group };
   },
+
+  async deleteGroup(groupId) {
+    await sleep(200);
+    const idx = mockDb.groups.findIndex((g) => g.id === Number(groupId));
+    if (idx >= 0) mockDb.groups.splice(idx, 1);
+  },
 };

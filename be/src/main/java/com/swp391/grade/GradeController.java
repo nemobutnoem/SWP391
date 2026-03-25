@@ -19,8 +19,8 @@ public class GradeController {
 
     @GetMapping
     public List<GradeEntity> list(
-            @RequestParam(required = false) Integer groupId,
-            @RequestParam(required = false) Integer lecturerId,
+            @RequestParam(name = "groupId", required = false) Integer groupId,
+            @RequestParam(name = "lecturerId", required = false) Integer lecturerId,
             Authentication auth) {
         UserPrincipal principal = (UserPrincipal) auth.getPrincipal();
         String role = principal.getRole();
@@ -89,7 +89,7 @@ public class GradeController {
     }
 
     @PutMapping("/{gradeId}")
-    public GradeEntity update(@PathVariable Integer gradeId, @RequestBody UpdateGradeRequest req, Authentication auth) {
+    public GradeEntity update(@PathVariable("gradeId") Integer gradeId, @RequestBody UpdateGradeRequest req, Authentication auth) {
         UserPrincipal principal = (UserPrincipal) auth.getPrincipal();
         ensureLecturerOrAdmin(principal);
 

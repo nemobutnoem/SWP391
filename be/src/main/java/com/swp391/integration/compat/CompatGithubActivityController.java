@@ -80,7 +80,7 @@ public class CompatGithubActivityController {
 	}
 
 	@GetMapping("/groups/{groupId}/github-activities")
-	public List<GithubActivityDto> listByGroup(@PathVariable Integer groupId, Authentication auth) {
+	public List<GithubActivityDto> listByGroup(@PathVariable("groupId") Integer groupId, Authentication auth) {
 		ensureMember(groupId, (UserPrincipal) auth.getPrincipal());
 		return activityRepository.findByGroupId(groupId).stream().map(this::toDto).toList();
 	}

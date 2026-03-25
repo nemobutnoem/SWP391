@@ -34,7 +34,7 @@ public class SemesterController {
     }
 
     @GetMapping("/{id}")
-    public SemesterEntity getById(@PathVariable Integer id) {
+    public SemesterEntity getById(@PathVariable("id") Integer id) {
         return semesterService.getById(id);
     }
 
@@ -44,12 +44,12 @@ public class SemesterController {
     }
 
     @PutMapping("/{id}")
-    public SemesterEntity update(@PathVariable Integer id, @Valid @RequestBody UpsertSemesterRequest req) {
+    public SemesterEntity update(@PathVariable("id") Integer id, @Valid @RequestBody UpsertSemesterRequest req) {
         return semesterService.update(id, req);
     }
 
     @DeleteMapping("/{id}")
-    public void delete(@PathVariable Integer id) {
+    public void delete(@PathVariable("id") Integer id) {
         semesterService.delete(id);
     }
 }

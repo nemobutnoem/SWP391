@@ -169,13 +169,14 @@ public class JiraService {
 				entity.setDescription(description);
 				entity.setStatus(status);
 					entity.setPriority(priority);
-					Integer assigneeUserId = null;
+				Integer assigneeUserId = null;
 					if (assigneeAccountId != null && !assigneeAccountId.isBlank()) {
+						// Step 1: Direct lookup by jira_account_id
 						assigneeUserId = userRepository.findByJiraAccountId(assigneeAccountId)
 								.map(u -> u.getId())
 								.orElse(null);
 
-						// Fallback: fetch Jira user to get email, map to student, and persist jira_account_id
+						// Step 2: Fallback - fetch Jira user email, match to student
 						if (assigneeUserId == null) {
 							try {
 								var jiraUser = jiraClient.getUser(cfg.baseUrl(), cfg.email(), cfg.apiToken(), assigneeAccountId);
@@ -188,8 +189,8 @@ public class JiraService {
 										if (userOpt.isPresent()) {
 											var u = userOpt.get();
 											if (persistJiraAccountIdIfAvailable(u, assigneeAccountId)) {
-											assigneeUserId = u.getId();
-										}
+												assigneeUserId = u.getId();
+											}
 										}
 									}
 								}
@@ -205,8 +206,17 @@ public class JiraService {
 								userRepository.findById(assigneeUserId).ifPresent(u -> persistJiraAccountIdIfAvailable(u, assigneeAccountId));
 							}
 						}
+
+						// Fallback: reverse lookup - search Jira for each unlinked group member
+						if (assigneeUserId == null) {
+							assigneeUserId = reverseMatchGroupMembers(groupId, assigneeAccountId, cfg, jiraIssueKey);
+						}
 					}
 					entity.setAssigneeUserId(assigneeUserId);
+					if (assigneeUserId == null && assigneeAccountId != null) {
+						log.warn("[syncIssues] Could not resolve assignee for issue={}, accountId={}, displayName='{}'",
+								jiraIssueKey, assigneeAccountId, assigneeDisplayName);
+					}
 					entity.setAssigneeDisplayName(assigneeDisplayName);
 				// Reporter
 				Integer reporterUserId = null;
@@ -382,6 +392,75 @@ public class JiraService {
 			outboundSyncLogRepository.save(syncLog);
 			throw ex;
 		}
+	}
+
+	/**
+	 * Match Jira assignee display name against student full names in the group.
+	 * Uses normalized comparison (lowercase, accent-stripped) for fuzzy matching.
+	 */
+	private Integer matchAssigneeByDisplayName(Integer groupId, String displayName, String jiraAccountId) {
+		String normalizedDisplay = stripAccents(normalizeLookup(displayName));
+		if (normalizedDisplay == null) return null;
+
+		var members = memberRepository.findByGroupId(groupId);
+		for (var member : members) {
+			var studentOpt = studentRepository.findById(member.getStudentId());
+			if (studentOpt.isEmpty()) continue;
+			var student = studentOpt.get();
+			if (student.getUserId() == null) continue;
+
+			// Check if user already has a jira_account_id
+			var userOpt = userRepository.findById(student.getUserId());
+			if (userOpt.isEmpty()) continue;
+			var user = userOpt.get();
+			if (user.getJiraAccountId() != null && !user.getJiraAccountId().isBlank()) continue;
+
+			String normalizedStudentName = stripAccents(normalizeLookup(student.getFullName()));
+			if (normalizedStudentName == null) continue;
+
+			// Match: exact or contains
+			if (normalizedDisplay.equals(normalizedStudentName)
+					|| normalizedDisplay.contains(normalizedStudentName)
+					|| normalizedStudentName.contains(normalizedDisplay)) {
+				if (persistJiraAccountIdIfAvailable(user, jiraAccountId)) {
+					log.info("[syncIssues] Matched assignee '{}' to student '{}' (userId={}) by display name",
+							displayName, student.getFullName(), user.getId());
+					return user.getId();
+				}
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * Reverse lookup: for each unlinked group member, search Jira to find their account ID
+	 * and check if it matches the given assigneeAccountId.
+	 */
+	private Integer reverseMatchGroupMembers(Integer groupId, String assigneeAccountId,
+			GroupIntegrationService.JiraConfig cfg, String issueKey) {
+		var members = memberRepository.findByGroupId(groupId);
+		for (var member : members) {
+			var studentOpt = studentRepository.findById(member.getStudentId());
+			if (studentOpt.isEmpty()) continue;
+			var student = studentOpt.get();
+			if (student.getUserId() == null) continue;
+
+			var userOpt = userRepository.findById(student.getUserId());
+			if (userOpt.isEmpty()) continue;
+			var user = userOpt.get();
+
+			// Skip if already linked
+			if (user.getJiraAccountId() != null && !user.getJiraAccountId().isBlank()) continue;
+
+			// Try to resolve this student's Jira account ID
+			String resolved = resolveAndPersistAccountId(cfg, issueKey, user);
+			if (resolved != null && resolved.equals(assigneeAccountId)) {
+				log.info("[syncIssues] Reverse-matched assignee accountId={} to student '{}' (userId={})",
+						assigneeAccountId, student.getFullName(), user.getId());
+				return user.getId();
+			}
+		}
+		return null;
 	}
 
 	private boolean persistJiraAccountIdIfAvailable(com.swp391.user.UserEntity user, String jiraAccountId) {

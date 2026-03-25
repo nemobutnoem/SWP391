@@ -34,7 +34,7 @@ public class ClassController {
     }
 
     @GetMapping("/{id}")
-    public ClassEntity getById(@PathVariable Integer id) {
+    public ClassEntity getById(@PathVariable("id") Integer id) {
         return classService.getById(id);
     }
 
@@ -44,12 +44,12 @@ public class ClassController {
     }
 
     @PutMapping("/{id}")
-    public ClassEntity update(@PathVariable Integer id, @Valid @RequestBody UpsertClassRequest req) {
+    public ClassEntity update(@PathVariable("id") Integer id, @Valid @RequestBody UpsertClassRequest req) {
         return classService.update(id, req);
     }
 
     @DeleteMapping("/{id}")
-    public void delete(@PathVariable Integer id) {
+    public void delete(@PathVariable("id") Integer id) {
         classService.delete(id);
     }
 }

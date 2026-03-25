@@ -17,13 +17,13 @@ public class GroupIntegrationController {
     private final GroupIntegrationService service;
 
     @GetMapping
-    public GroupIntegrationsResponse get(@PathVariable Integer groupId, Authentication auth) {
+    public GroupIntegrationsResponse get(@PathVariable("groupId") Integer groupId, Authentication auth) {
         log.info("GET /groups/{}/settings/integrations", groupId);
         return service.get(groupId, (UserPrincipal) auth.getPrincipal());
     }
 
     @PutMapping
-    public GroupIntegrationsResponse update(@PathVariable Integer groupId,
+    public GroupIntegrationsResponse update(@PathVariable("groupId") Integer groupId,
                                             @RequestBody UpdateGroupIntegrationsRequest request,
                                             Authentication auth) {
         UserPrincipal principal = (UserPrincipal) auth.getPrincipal();

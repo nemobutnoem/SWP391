@@ -17,14 +17,14 @@ public class JiraController {
 	private final JiraService jiraService;
 
 	@GetMapping("/issues")
-	public List<JiraIssueEntity> listIssues(@PathVariable Integer groupId, Authentication auth) {
+	public List<JiraIssueEntity> listIssues(@PathVariable("groupId") Integer groupId, Authentication auth) {
 		return jiraService.listIssues(groupId, (UserPrincipal) auth.getPrincipal());
 	}
 
 	@PatchMapping("/issues/{issueKey}/status")
 	public void pushStatus(
-			@PathVariable Integer groupId,
-			@PathVariable String issueKey,
+			@PathVariable("groupId") Integer groupId,
+			@PathVariable("issueKey") String issueKey,
 			@Valid @RequestBody UpdateJiraStatusRequest req,
 			Authentication auth
 	) {
@@ -32,7 +32,7 @@ public class JiraController {
 	}
 
 	@PostMapping("/sync/issues")
-	public int syncIssues(@PathVariable Integer groupId, @Valid @RequestBody SyncJiraIssuesRequest req, Authentication auth) {
+	public int syncIssues(@PathVariable("groupId") Integer groupId, @Valid @RequestBody SyncJiraIssuesRequest req, Authentication auth) {
 		return jiraService.syncIssues(groupId, req.projectKey(), (UserPrincipal) auth.getPrincipal());
 	}
 }

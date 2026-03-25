@@ -49,4 +49,9 @@ export const groupApi = {
     const res = await http.delete(`/groups/${groupId}/members/${memberId}`);
     return res.data;
   },
+
+  async deleteGroup(groupId) {
+    const res = await http.delete(`/groups/${groupId}`);
+    return res.data;
+  },
 };

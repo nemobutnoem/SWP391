@@ -56,7 +56,7 @@ public class StudentController {
     }
 
     @GetMapping("/{studentId}")
-    public StudentDto getById(@PathVariable Integer studentId) {
+    public StudentDto getById(@PathVariable("studentId") Integer studentId) {
         return studentRepository.findById(studentId).map(this::toDto)
                 .orElseThrow(() -> new IllegalArgumentException("Student not found"));
     }
@@ -87,7 +87,7 @@ public class StudentController {
 
     @PutMapping("/{studentId}")
     @org.springframework.transaction.annotation.Transactional
-    public StudentDto update(@PathVariable Integer studentId, @Valid @RequestBody UpsertStudentRequest req, org.springframework.security.core.Authentication auth) {
+    public StudentDto update(@PathVariable("studentId") Integer studentId, @Valid @RequestBody UpsertStudentRequest req, org.springframework.security.core.Authentication auth) {
         ensureAdminOrLecturer(auth);
         StudentEntity s = studentRepository.findById(studentId)
                 .orElseThrow(() -> new IllegalArgumentException("Student not found"));
@@ -132,7 +132,7 @@ public class StudentController {
 
     @DeleteMapping("/{studentId}")
     @org.springframework.transaction.annotation.Transactional
-    public void remove(@PathVariable Integer studentId) {
+    public void remove(@PathVariable("studentId") Integer studentId) {
         StudentEntity student = studentRepository.findById(studentId)
                 .orElseThrow(() -> com.swp391.common.ApiException.notFound("Student not found"));
         Integer userId = student.getUserId();

@@ -34,31 +34,31 @@ public class GroupController {
 	}
 
 	@PutMapping("/groups/{groupId}")
-	public GroupSummary updateGroup(@PathVariable Integer groupId, @Valid @RequestBody UpdateGroupRequest request,
+	public GroupSummary updateGroup(@PathVariable("groupId") Integer groupId, @Valid @RequestBody UpdateGroupRequest request,
 			Authentication auth) {
 		return groupService.updateGroup(groupId, request, (UserPrincipal) auth.getPrincipal());
 	}
 
 	@DeleteMapping("/groups/{groupId}")
 	@ResponseStatus(HttpStatus.NO_CONTENT)
-	public void deleteGroup(@PathVariable Integer groupId, Authentication auth) {
+	public void deleteGroup(@PathVariable("groupId") Integer groupId, Authentication auth) {
 		groupService.deleteGroup(groupId, (UserPrincipal) auth.getPrincipal());
 	}
 
 	@PutMapping("/groups/{groupId}/lecturer")
-	public GroupSummary assignLecturer(@PathVariable Integer groupId, @Valid @RequestBody AssignLecturerRequest request,
+	public GroupSummary assignLecturer(@PathVariable("groupId") Integer groupId, @Valid @RequestBody AssignLecturerRequest request,
 			Authentication auth) {
 		return groupService.assignLecturer(groupId, request.lecturerId(), (UserPrincipal) auth.getPrincipal());
 	}
 
 	@PostMapping("/groups/{groupId}/topic")
-	public void selectTopic(@PathVariable Integer groupId, @Valid @RequestBody SelectTopicRequest req,
+	public void selectTopic(@PathVariable("groupId") Integer groupId, @Valid @RequestBody SelectTopicRequest req,
 			Authentication auth) {
 		groupService.selectTopic(groupId, req.projectId(), auth);
 	}
 
 	@PutMapping("/groups/{groupId}/topic/admin")
-	public GroupSummary assignTopicByAdmin(@PathVariable Integer groupId,
+	public GroupSummary assignTopicByAdmin(@PathVariable("groupId") Integer groupId,
 			@Valid @RequestBody AssignTopicRequest request,
 			Authentication auth) {
 		return groupService.assignTopic(groupId, request.projectId(), (UserPrincipal) auth.getPrincipal());
