@@ -24,6 +24,9 @@ function SemesterFormModal({ isOpen, onClose, onSubmit, initialData }) {
     <Modal isOpen={isOpen} onClose={onClose} title={initialData ? "Edit Semester" : "Create Semester"}>
       <form className="task-form" onSubmit={(e) => {
         e.preventDefault();
+        if (!form.start_date) return alert("Start date is required.");
+        if (!form.end_date) return alert("End date is required.");
+        if (form.end_date <= form.start_date) return alert("End date must be after start date.");
         onSubmit(form);
       }}>
         <div className="form-row">
@@ -39,11 +42,11 @@ function SemesterFormModal({ isOpen, onClose, onSubmit, initialData }) {
         <div className="form-row">
           <div className="form-group">
             <label>Start Date</label>
-            <input name="start_date" type="date" value={form.start_date} onChange={handle} />
+            <input name="start_date" type="date" value={form.start_date} onChange={handle} required />
           </div>
           <div className="form-group">
             <label>End Date</label>
-            <input name="end_date" type="date" value={form.end_date} onChange={handle} />
+            <input name="end_date" type="date" value={form.end_date} onChange={handle} required />
           </div>
         </div>
         <div className="form-group">
@@ -84,6 +87,10 @@ function ClassFormModal({ isOpen, onClose, onSubmit, initialData, lecturers }) {
     <Modal isOpen={isOpen} onClose={onClose} title={initialData ? "Edit Class" : "Create Class"}>
       <form className="task-form" onSubmit={(e) => {
         e.preventDefault();
+        if (!form.class_name || !form.class_name.trim()) return alert("Class name is required.");
+        const year = Number(form.intake_year);
+        const currentYear = new Date().getFullYear();
+        if (form.intake_year && (year < 2000 || year > currentYear + 1)) return alert(`Intake year must be between 2000 and ${currentYear + 1}.`);
         onSubmit(form);
       }}>
         <div className="form-row">
@@ -93,7 +100,7 @@ function ClassFormModal({ isOpen, onClose, onSubmit, initialData, lecturers }) {
           </div>
           <div className="form-group">
             <label>Class Name</label>
-            <input name="class_name" value={form.class_name} onChange={handle} placeholder="Software Engineering 1701" />
+            <input name="class_name" value={form.class_name} onChange={handle} placeholder="Software Engineering 1701" required />
           </div>
         </div>
         <div className="form-row">

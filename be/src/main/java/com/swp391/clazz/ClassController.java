@@ -16,7 +16,7 @@ public class ClassController {
 
     public record UpsertClassRequest(
             @JsonProperty("class_code") @NotBlank String classCode,
-            @JsonProperty("class_name") String className,
+            @JsonProperty("class_name") @NotBlank(message = "Class name is required") String className,
             @JsonProperty("semester_id") Integer semesterId,
             String major,
             @JsonProperty("intake_year") Integer intakeYear,
