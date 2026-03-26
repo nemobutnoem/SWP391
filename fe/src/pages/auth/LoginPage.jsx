@@ -15,8 +15,8 @@ export function LoginPage() {
   const [googleAccountType, setGoogleAccountType] = useState("STUDENT");
   const [name, setName] = useState("");
 
-  const [account, setAccount] = useState("lead1");
-  const [password, setPassword] = useState("Lead@123");
+  const [account, setAccount] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -101,11 +101,7 @@ export function LoginPage() {
               onChange={(e) =>
                 env.useMock ? setName(e.target.value) : setAccount(e.target.value)
               }
-              placeholder={
-                env.useMock
-                  ? "Enter your username"
-                  : "lead1 | mem1 | admin1 | lec1"
-              }
+              placeholder="Enter your username"
               autoComplete="username"
               autoFocus
             />
