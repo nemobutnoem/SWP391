@@ -54,7 +54,7 @@ public class GroupMemberService {
         if (student.getClassId() != null && !student.getClassId().equals(group.getClassId())) {
             throw ApiException.badRequest("Student " + student.getFullName() + " does not belong to the class of this group");
         }
-
+  
         GroupMemberEntity member = new GroupMemberEntity();
         member.setGroupId(groupId);
         member.setStudentId(studentId);
