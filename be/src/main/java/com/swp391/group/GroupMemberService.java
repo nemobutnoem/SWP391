@@ -54,7 +54,10 @@ public class GroupMemberService {
         if (student.getClassId() != null && !student.getClassId().equals(group.getClassId())) {
             throw ApiException.badRequest("Student " + student.getFullName() + " does not belong to the class of this group");
         }
-  
+    if (memberRepository.existsByStudentId(studentId)) {
+        throw ApiException.badRequest("Student already belongs to another group");
+    }
+
         GroupMemberEntity member = new GroupMemberEntity();
         member.setGroupId(groupId);
         member.setStudentId(studentId);
