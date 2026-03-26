@@ -10,6 +10,7 @@ import { githubActivityService } from "../../services/githubActivities/githubAct
 import { syncService } from "../../services/sync/sync.service.js";
 import { semesterService } from "../../services/semesters/semester.service.js";
 import { groupService } from "../../services/groups/group.service.js";
+import { studentService } from "../../services/students/student.service.js";
 import { lecturerService } from "../../services/lecturers/lecturer.service.js";
 import { syncLogService } from "../../services/syncLogs/syncLog.service.js";
 
@@ -70,13 +71,126 @@ export function DashboardPage() {
   const stats = useMemo(() => computeTaskStats(tasks), [tasks]);
 
   const loadStudentDashboard = async () => {
-    const [taskData, activityData] = await Promise.all([
-      jiraTaskService.list(),
-      githubActivityService.list(),
+    const [taskData, activityData, memberData, studentData] = await Promise.all([
+      jiraTaskService.list().catch(() => []),
+      githubActivityService.list().catch(() => []),
+      groupService.listMembers().catch(() => []),
+      studentService.list().catch(() => []),
     ]);
 
-    setTasks((Array.isArray(taskData) ? taskData : []).map(normalizeJiraTask));
-    setActivities(Array.isArray(activityData) ? activityData : []);
+    const members = Array.isArray(memberData) ? memberData : [];
+    const students = Array.isArray(studentData) ? studentData : [];
+
+    const toNumberOrNull = (v) => {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : null;
+    };
+
+    const normalizeText = (v) =>
+      v == null
+        ? ""
+        : String(v)
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/đ/g, "d")
+            .replace(/Đ/g, "D")
+            .trim()
+            .toLowerCase();
+
+    const mappedMembers = members.map((m) => {
+      const student = students.find((s) => Number(s.id) === Number(m.student_id ?? m.studentId));
+      let name = student?.student_code || student?.studentCode || m.student_code;
+      if (!name) name = student?.full_name || student?.fullName || m.full_name || m.fullName;
+      if (!name) name = `User ${m.student_id}`;
+
+      const memberUserId = toNumberOrNull(student?.user_id ?? student?.userId ?? m.user_id ?? m.userId);
+      const memberKeys = new Set();
+      if (memberUserId != null) memberKeys.add(`uid:${memberUserId}`);
+      
+      const account = normalizeText(student?.account ?? m.account);
+      if (account) memberKeys.add(`name:${account}`);
+      
+      const fullName = normalizeText(student?.full_name ?? student?.fullName ?? m.full_name ?? m.fullName);
+      if (fullName) memberKeys.add(`name:${fullName}`);
+      
+      const studentCode = normalizeText(student?.student_code ?? student?.studentCode ?? m.student_code);
+      if (studentCode) memberKeys.add(`name:${studentCode}`);
+      
+      const email = normalizeText(student?.email ?? m.email);
+      const emailPrefix = email ? email.split("@")[0] : "";
+      if (emailPrefix) memberKeys.add(`name:${emailPrefix}`);
+
+      return {
+        displayName: name,
+        keys: memberKeys,
+        studentCode,
+        emailPrefix,
+        account,
+        githubUsername: student?.github_username || m.github_username,
+      };
+    });
+
+    const tasks = (Array.isArray(taskData) ? taskData : []).map((t) => {
+      const norm = normalizeJiraTask(t);
+      const getTaskAssigneeKeys = (task) => {
+        const keys = new Set();
+        const assigneeUserId = toNumberOrNull(task.assigneeUserId ?? task.assignee_user_id ?? task._raw?.assignee_user_id);
+        if (assigneeUserId != null && assigneeUserId > 0) keys.add(`uid:${assigneeUserId}`);
+        const assigneeName = normalizeText(task.assigneeName ?? task.assignee_name ?? task._raw?.assignee_name ?? task._raw?.assigneeName);
+        if (assigneeName) keys.add(`name:${assigneeName}`);
+        return keys;
+      };
+
+      const taskKeys = getTaskAssigneeKeys(norm);
+
+      let matchedName = norm.assigneeName;
+      if (mappedMembers.length > 0 && taskKeys.size > 0 && norm.assigneeName !== "Unassigned") {
+        let found = null;
+        for (const mm of mappedMembers) {
+          let isMatch = false;
+          for (const mk of mm.keys) {
+            if (taskKeys.has(mk)) {
+              isMatch = true;
+              break;
+            }
+          }
+          if (!isMatch) {
+            for (const tk of taskKeys) {
+              if (mm.studentCode && tk.includes(mm.studentCode)) isMatch = true;
+              else if (mm.emailPrefix && tk.includes(mm.emailPrefix)) isMatch = true;
+              else if (mm.account && tk.includes(mm.account)) isMatch = true;
+            }
+          }
+
+          if (isMatch) {
+            found = mm.displayName;
+            break;
+          }
+        }
+        if (found) {
+          matchedName = found;
+        }
+      }
+
+      norm.assigneeName = matchedName;
+      return norm;
+    });
+
+    const acts = (Array.isArray(activityData) ? activityData : []).map(a => {
+      let displayName = a.github_username;
+      if (a.github_username) {
+        const found = mappedMembers.find(m => m.githubUsername === a.github_username);
+        if (found) displayName = found.displayName;
+      }
+      return {
+        ...a,
+        displayName,
+        github_username: displayName || a.github_username
+      };
+    });
+
+    setTasks(tasks);
+    setActivities(acts);
   };
 
   const loadAdminDashboard = async () => {

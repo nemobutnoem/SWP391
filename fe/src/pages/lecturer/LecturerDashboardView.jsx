@@ -236,6 +236,29 @@ export function LecturerDashboardView() {
         return { ...m, displayName: name, pct: pct.toFixed(1), sp: memberStoryPoints };
       }).sort((a,b) => parseFloat(b.pct) - parseFloat(a.pct));
 
+      const mappedMembers = members.map((m) => {
+        const student = students.find((s) => Number(s.id) === Number(m.student_id ?? m.studentId));
+        let name = student?.student_code || student?.studentCode || m.student_code;
+        if (!name) name = student?.full_name || student?.fullName || m.full_name || m.fullName;
+        if (!name) name = `User ${m.student_id}`;
+
+        const memberUserId = toNumberOrNull(student?.user_id ?? student?.userId ?? m.user_id ?? m.userId);
+        const memberKeys = new Set();
+        if (memberUserId != null) memberKeys.add(`uid:${memberUserId}`);
+        const account = normalizeText(student?.account ?? m.account);
+        if (account) memberKeys.add(`name:${account}`);
+        const fullName = normalizeText(student?.full_name ?? student?.fullName ?? m.full_name ?? m.fullName);
+        if (fullName) memberKeys.add(`name:${fullName}`);
+        const studentCode = normalizeText(student?.student_code ?? student?.studentCode ?? m.student_code);
+        if (studentCode) memberKeys.add(`name:${studentCode}`);
+        const email = normalizeText(student?.email ?? m.email);
+        const emailPrefix = email ? email.split('@')[0] : "";
+        if (emailPrefix) memberKeys.add(`name:${emailPrefix}`);
+
+        const githubUsername = student?.github_username || m.github_username;
+        return { displayName: name, keys: memberKeys, studentCode, emailPrefix, account, githubUsername };
+      });
+
       const rawActivities = githubActivities
         .filter((a) => a.group_id === g.id)
         .sort((a, b) => new Date(b.occurred_at) - new Date(a.occurred_at));
@@ -245,10 +268,22 @@ export function LecturerDashboardView() {
         if (!a.commit_sha || seenSha.has(a.commit_sha)) return false;
         seenSha.add(a.commit_sha);
         return true;
-      }).map((activity) => ({
-        ...activity,
-        displayName: loginLabelByGithub.get(activity.github_username) || activity.github_username,
-      }));
+      }).map((activity) => {
+        let displayName = activity.github_username || "";
+        if (displayName) {
+          const found = mappedMembers.find(m => m.githubUsername === displayName);
+          if (found) {
+            displayName = found.displayName;
+          } else {
+            displayName = loginLabelByGithub.get(displayName) || displayName;
+          }
+        }
+        return {
+          ...activity,
+          displayName,
+          github_username: displayName || activity.github_username,
+        };
+      });
 
       const activitiesByBranch = Object.entries(
         activities.reduce((acc, activity) => {
@@ -271,13 +306,39 @@ export function LecturerDashboardView() {
         }));
 
       const groupGrades = myGrades.filter((gr) => gr.group_id === g.id);
-      const normalizedTasks = tasks.map((task) => ({
-        ...task,
-        displayAssignee:
-          loginLabelByUserId.get(task.assigneeUserId ?? task.assignee_user_id) ||
-          task.assigneeName ||
-          "Unassigned",
-      }));
+
+      const normalizedTasks = tasks.map((task) => {
+        let displayAssignee = task.assigneeName || task.assignee_name || "Unassigned";
+        const taskKeys = getTaskAssigneeKeys(task);
+        
+        if (mappedMembers.length > 0 && taskKeys.size > 0 && displayAssignee !== "Unassigned") {
+          let found = null;
+          for (const mm of mappedMembers) {
+            let isMatch = false;
+            for (const mk of mm.keys) {
+              if (taskKeys.has(mk)) { isMatch = true; break; }
+            }
+            if (!isMatch) {
+              for (const tk of taskKeys) {
+                if (mm.studentCode && tk.includes(mm.studentCode)) isMatch = true;
+                else if (mm.emailPrefix && tk.includes(mm.emailPrefix)) isMatch = true;
+                else if (mm.account && tk.includes(mm.account)) isMatch = true;
+              }
+            }
+            if (isMatch) { found = mm.displayName; break; }
+          }
+          if (found) {
+            displayAssignee = found;
+          } else {
+            displayAssignee = loginLabelByUserId.get(task.assigneeUserId ?? task.assignee_user_id) || displayAssignee;
+          }
+        }
+        
+        return {
+          ...task,
+          displayAssignee,
+        };
+      });
 
       const doneTasks = normalizedTasks.filter((t) => normalizeTaskStatus(t.status) === "DONE").length;
       const inProgressTasks = normalizedTasks.filter(

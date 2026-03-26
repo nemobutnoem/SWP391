@@ -104,11 +104,36 @@
 
 /* ── Grid templates ── */
 .mwp-grid--jira {
-  grid-template-columns: 2fr 2.5fr 2fr 1fr;
+  grid-template-columns: 2fr 2fr 1.5fr 1fr 1fr;
 }
 
 .mwp-grid--git {
   grid-template-columns: 2fr 3fr 1.2fr;
+}
+
+/* ── Contribution column ── */
+.mwp-contrib-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.2;
+}
+
+.mwp-contrib-pct {
+  font-family: var(--font-heading);
+  font-size: 0.8125rem;
+  font-weight: 800;
+  color: var(--brand-600);
+}
+
+.mwp-contrib-sp {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--slate-400);
+}
+
+.mwp-col-header--contrib {
+  text-align: right;
 }
 
 /* ── Member column ── */
@@ -305,7 +330,7 @@
 
 @media (max-width: 640px) {
   .mwp-grid--jira {
-    grid-template-columns: 2fr 2fr 1fr;
+    grid-template-columns: 2fr 2fr 1.5fr 1fr;
   }
   .mwp-col--status {
     display: none;

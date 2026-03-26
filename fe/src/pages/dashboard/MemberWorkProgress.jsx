@@ -1,4 +1,5 @@
 import React, { useMemo } from "react";
+import { calculateContribution } from "../../utils/ContributionUtils";
 import "./memberWorkProgress.css";
 
 export function MemberWorkProgress({
@@ -31,6 +32,14 @@ export function MemberWorkProgress({
       .sort((a, b) => b.commits - a.commits);
   }, [activities]);
 
+  const contribRows = useMemo(() => {
+    return calculateContribution(
+      tasks,
+      (t) => t.assigneeName || t._raw?.assigneeName || t._raw?.assignee_name || "Unassigned",
+      (t) => t.storyPoints ?? t.story_points ?? t._raw?.storyPoints ?? t._raw?.story_points
+    );
+  }, [tasks]);
+
   const jiraMembers = useMemo(() => {
     const map = {};
     for (const t of tasks) {
@@ -59,9 +68,12 @@ export function MemberWorkProgress({
     }
 
     return Object.entries(map)
-      .map(([name, stats]) => ({ name, ...stats }))
+      .map(([name, stats]) => {
+        const contrib = contribRows.find(c => c.assignee === name) || { sp: 0, pct: 0 };
+        return { name, ...stats, sp: contrib.sp, pct: contrib.pct };
+      })
       .sort((a, b) => b.done - a.done);
-  }, [tasks]);
+  }, [tasks, contribRows]);
 
   const totalCommits = gitMembers.reduce((s, m) => s + m.commits, 0);
   const totalTasks = jiraMembers.reduce((s, m) => s + m.total, 0);
@@ -71,11 +83,13 @@ export function MemberWorkProgress({
     return null;
   }
 
+  const isSinglePanel = (showJiraPanel && !showGitPanel) || (!showJiraPanel && showGitPanel);
+
   return (
     <div className="mwp">
       <h2 className="section-title">{title}</h2>
 
-      <div className="mwp-split">
+      <div className="mwp-split" style={isSinglePanel ? { gridTemplateColumns: "1fr" } : undefined}>
         {showJiraPanel && (
         <div className="mwp-panel">
           <div className="mwp-panel-header">
@@ -92,6 +106,7 @@ export function MemberWorkProgress({
                 <span className="mwp-col">Member</span>
                 <span className="mwp-col">Completion</span>
                 <span className="mwp-col">Breakdown</span>
+                <span className="mwp-col mwp-col-header--contrib">Contribution</span>
                 <span className="mwp-col">Status</span>
               </div>
 
@@ -147,6 +162,13 @@ export function MemberWorkProgress({
                         {hasOverdue && (
                           <span className="mwp-bd-item mwp-bd--overdue" title="Overdue">OD {m.overdue}</span>
                         )}
+                      </div>
+                    </div>
+
+                    <div className="mwp-col">
+                      <div className="mwp-contrib-wrap">
+                        <span className="mwp-contrib-pct">{m.pct}%</span>
+                        <span className="mwp-contrib-sp">{m.sp} SP</span>
                       </div>
                     </div>
 
