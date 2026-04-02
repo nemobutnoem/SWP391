@@ -1,7 +1,11 @@
 .shell {
   display: flex;
   min-height: 100vh;
-  background-color: var(--slate-50);
+  background:
+    radial-gradient(circle at 12% 18%, rgba(20, 184, 166, 0.10), transparent 22%),
+    radial-gradient(circle at 88% 12%, rgba(37, 99, 235, 0.10), transparent 20%),
+    radial-gradient(circle at 75% 78%, rgba(225, 29, 72, 0.08), transparent 18%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(248, 250, 252, 0.96));
 }
 
 .main {

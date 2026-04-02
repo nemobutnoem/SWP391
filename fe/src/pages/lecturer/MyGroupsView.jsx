@@ -318,7 +318,7 @@ export function MyGroupsView({
                                 <select
                                   className="form-select"
                                   value={m.role_in_group}
-                                  onChange={(e) => onRoleChange(m.member_id, e.target.value)}
+                                  onChange={(e) => onRoleChange(g.id, m.member_id, e.target.value)}
                                   style={{ padding: "0.25rem 0.5rem", fontSize: "0.8125rem", width: "auto" }}
                                 >
                                   <option value="Leader">LEADER</option>

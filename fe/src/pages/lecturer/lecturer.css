@@ -48,6 +48,51 @@
   background-color: var(--slate-100, #f1f5f9);
 }
 
+.lecturer-dashboard__layout {
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.lecturer-dashboard__sidebar {
+  position: sticky;
+  top: 1.5rem;
+}
+
+.lecturer-dashboard__stats-grid {
+  grid-template-columns: 1fr;
+  margin-bottom: 0;
+}
+
+.lecturer-dashboard__content {
+  min-width: 0;
+}
+
+.lecturer-dashboard__content .lecturer-groups-section {
+  margin-top: 0;
+}
+
+@media (max-width: 1100px) {
+  .lecturer-dashboard__layout {
+    grid-template-columns: 1fr;
+  }
+
+  .lecturer-dashboard__sidebar {
+    position: static;
+  }
+
+  .lecturer-dashboard__stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .lecturer-dashboard__stats-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ===== Group Card Layout ===== */
 .lecturer-groups-section {
   margin-top: 1.5rem;

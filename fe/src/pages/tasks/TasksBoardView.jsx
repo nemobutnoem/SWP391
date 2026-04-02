@@ -258,6 +258,10 @@ function Column({
 export function TasksBoardView({
   query,
   onQueryChange,
+  showAssigneeFilter,
+  assigneeFilterOptions,
+  selectedAssigneeUserId,
+  onSelectedAssigneeChange,
   showOnlyMine,
   onToggleShowOnlyMine,
   isSyncing,
@@ -284,6 +288,22 @@ export function TasksBoardView({
         </div>
 
         <div className={styles.topbarActions}>
+          {showAssigneeFilter && (
+            <select
+              className={styles.filterSelect}
+              value={selectedAssigneeUserId}
+              onChange={(e) => onSelectedAssigneeChange?.(e.target.value)}
+              aria-label="Filter tasks by assignee"
+            >
+              <option value="">All members</option>
+              {(assigneeFilterOptions || []).map((member) => (
+                <option key={member.userId} value={member.userId}>
+                  {member.name}
+                </option>
+              ))}
+            </select>
+          )}
+
           <button
             type="button"
             className={`${styles.mineBtn} ${showOnlyMine ? styles.mineBtnActive : ""}`}

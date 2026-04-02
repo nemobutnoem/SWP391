@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { calculateContribution } from "../../utils/ContributionUtils";
 import { groupService } from "../../services/groups/group.service.js";
 import { studentService } from "../../services/students/student.service.js";
 import { gradeService } from "../../services/grades/grade.service.js";
@@ -166,7 +165,7 @@ export function MyGroupsPage() {
             ...m,
             member_id: m.id,
             member_story_points: memberStoryPoints,
-            contribution_pct: pct.toFixed(1),
+            contribution_pct: totalStoryPoints > 0 ? Number(pct.toFixed(1)) : null,
           };
         });
 
@@ -195,11 +194,33 @@ export function MyGroupsPage() {
   const toggleExpand = (id) =>
     setExpandedGroupId(expandedGroupId === id ? null : id);
 
-  const handleRoleChange = async (memberId, newRole) => {
+  const isLeaderRole = (role) => String(role || "").trim().toLowerCase() === "leader";
+
+  const handleRoleChange = async (groupId, memberId, newRole) => {
+    const targetMembers = allMembers.filter(
+      (m) => Number(m.group_id ?? m.groupId) === Number(groupId),
+    );
+    const previousLeader = isLeaderRole(newRole)
+      ? targetMembers.find(
+          (m) => Number(m.id) !== Number(memberId) && isLeaderRole(m.role_in_group ?? m.roleInGroup),
+        )
+      : null;
+
     try {
+      if (previousLeader) {
+        await groupService.updateMemberRole(previousLeader.id, "Member");
+      }
       await groupService.updateMemberRole(memberId, newRole);
       setAllMembers((prev) =>
-        prev.map((m) => (m.id === memberId ? { ...m, role_in_group: newRole } : m)),
+        prev.map((m) => {
+          if (previousLeader && Number(m.id) === Number(previousLeader.id)) {
+            return { ...m, role_in_group: "Member" };
+          }
+          if (Number(m.id) === Number(memberId)) {
+            return { ...m, role_in_group: newRole };
+          }
+          return m;
+        }),
       );
     } catch (err) {
       alert("Failed to update role: " + (err.message || err));
@@ -208,6 +229,16 @@ export function MyGroupsPage() {
 
   const handleAddMember = async (groupId, studentId, role) => {
     try {
+      if (isLeaderRole(role)) {
+        const previousLeader = allMembers.find(
+          (m) =>
+            Number(m.group_id ?? m.groupId) === Number(groupId) &&
+            isLeaderRole(m.role_in_group ?? m.roleInGroup),
+        );
+        if (previousLeader) {
+          await groupService.updateMemberRole(previousLeader.id, "Member");
+        }
+      }
       await groupService.addMember(groupId, studentId, role);
       loadData();
     } catch (err) {

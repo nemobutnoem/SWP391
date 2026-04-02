@@ -2,10 +2,12 @@
 
 .topbar {
   height: var(--topbar-height);
-  background: rgba(255, 255, 255, 0.75);
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.82), rgba(249, 250, 255, 0.82)),
+    linear-gradient(90deg, rgba(20, 184, 166, 0.07), rgba(37, 99, 235, 0.07), rgba(124, 58, 237, 0.06));
   backdrop-filter: blur(16px) saturate(180%);
   -webkit-backdrop-filter: blur(16px) saturate(180%);
-  border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.72);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -31,7 +33,7 @@
   color: var(--slate-400);
 }
 .breadcrumb__item {
-  color: var(--slate-900);
+  color: var(--brand-900);
   font-weight: 700;
   font-family: var(--font-heading);
   font-size: 1rem;
@@ -47,7 +49,7 @@
   display: flex;
   align-items: center;
   gap: 0.625rem;
-  background: white;
+  background: rgba(255, 255, 255, 0.9);
   border: 1px solid var(--slate-200);
   padding: 0.35rem 0.75rem;
   border-radius: var(--radius-lg);
@@ -56,16 +58,16 @@
   box-shadow: var(--shadow-sm);
 }
 .topbar__user-btn:hover {
-  border-color: var(--brand-300);
-  background: var(--brand-50);
-  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.1);
+  border-color: rgba(37, 99, 235, 0.22);
+  background: linear-gradient(135deg, rgba(20, 184, 166, 0.08), rgba(124, 58, 237, 0.06), rgba(255, 255, 255, 0.96));
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.1);
   transform: translateY(-1px);
 }
 
 .topbar__avatar {
   width: 30px;
   height: 30px;
-  background: linear-gradient(135deg, var(--brand-500), var(--brand-700));
+  background: linear-gradient(135deg, var(--accent-teal), var(--accent-blue), var(--accent-violet));
   color: white;
   border-radius: 50%;
   display: flex;
@@ -93,7 +95,9 @@
   top: calc(100% + 10px);
   right: 0;
   width: 230px;
-  background: rgba(255, 255, 255, 0.95);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(250, 250, 255, 0.96)),
+    linear-gradient(135deg, rgba(20, 184, 166, 0.04), rgba(124, 58, 237, 0.04));
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--slate-200);
@@ -145,8 +149,8 @@
   cursor: pointer;
 }
 .dropdown__item:hover {
-  background: var(--brand-50);
-  color: var(--brand-600);
+  background: linear-gradient(135deg, rgba(20, 184, 166, 0.10), rgba(37, 99, 235, 0.08));
+  color: var(--brand-700);
   transform: translateX(2px);
 }
 .dropdown__item--danger { color: var(--danger); }

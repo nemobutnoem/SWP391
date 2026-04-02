@@ -56,6 +56,9 @@ function normalizeMemberOption(m) {
   const account = m.account ?? student?.account ?? null;
   const studentCode = m.studentCode ?? m.student_code ?? student?.student_code ?? student?.studentCode ?? null;
   const emailLocal = email && String(email).includes("@") ? String(email).split("@")[0].trim() : null;
+  const lookupKeys = [name, account, emailLocal, studentCode]
+    .map((value) => String(value || "").trim().toLowerCase())
+    .filter(Boolean);
 
   return {
     userId: userId == null ? null : Number(userId),
@@ -66,6 +69,7 @@ function normalizeMemberOption(m) {
     emailLocal,
     account: account ? String(account).trim() : null,
     studentCode: studentCode ? String(studentCode).trim() : null,
+    lookupKeys: Array.from(new Set(lookupKeys)),
   };
 }
 
@@ -73,12 +77,14 @@ export function TasksBoardPage() {
   const { user } = useAuth();
   const [query, setQuery] = useState("");
   const [showOnlyMine, setShowOnlyMine] = useState(false);
+  const [selectedAssigneeUserId, setSelectedAssigneeUserId] = useState("");
   const [isSyncing, setIsSyncing] = useState(false);
   const [tasks, setTasks] = useState([]);
   const [membersByGroupId, setMembersByGroupId] = useState({});
   const [selectedTask, setSelectedTask] = useState(null);
   const [comments, setComments] = useState([]);
   const [isLoadingComments, setIsLoadingComments] = useState(false);
+  const isTeamLead = user?.role === ROLES.TEAM_LEAD;
 
   const canEditTaskFields = useMemo(() => {
     if (user?.role !== ROLES.TEAM_MEMBER) return true;
@@ -214,6 +220,20 @@ export function TasksBoardPage() {
     }
   };
 
+  const assigneeFilterOptions = useMemo(() => {
+    const deduped = new Map();
+
+    Object.values(membersByGroupId).forEach((groupMembers) => {
+      (groupMembers || []).forEach((member) => {
+        if (member?.userId == null || !member?.name) return;
+        const key = String(member.userId);
+        if (!deduped.has(key)) deduped.set(key, member);
+      });
+    });
+
+    return Array.from(deduped.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [membersByGroupId]);
+
   const filteredTasks = useMemo(() => {
     const q = query.trim().toLowerCase();
     const normalizedUserId =
@@ -221,10 +241,28 @@ export function TasksBoardPage() {
     const normalizedUserName = String(user?.name || "")
       .trim()
       .toLowerCase();
+    const selectedAssignee =
+      selectedAssigneeUserId === "" || Number.isNaN(Number(selectedAssigneeUserId))
+        ? null
+        : assigneeFilterOptions.find((member) => Number(member.userId) === Number(selectedAssigneeUserId)) || null;
 
     return tasks.filter((t) => {
       const matchesQuery = !q || (t.title || "").toLowerCase().includes(q);
       if (!matchesQuery) return false;
+      if (selectedAssignee) {
+        const taskAssigneeId =
+          t.assigneeUserId == null || t.assigneeUserId === "" || Number.isNaN(Number(t.assigneeUserId))
+            ? null
+            : Number(t.assigneeUserId);
+        const taskAssigneeName = String(t.assigneeName || "")
+          .trim()
+          .toLowerCase();
+
+        const matchesSelectedAssignee =
+          (taskAssigneeId != null && taskAssigneeId === Number(selectedAssignee.userId)) ||
+          selectedAssignee.lookupKeys.includes(taskAssigneeName);
+        if (!matchesSelectedAssignee) return false;
+      }
       if (!showOnlyMine) return true;
 
       const taskAssigneeId =
@@ -240,7 +278,7 @@ export function TasksBoardPage() {
       }
       return Boolean(normalizedUserName) && taskAssigneeName === normalizedUserName;
     });
-  }, [query, showOnlyMine, tasks, user]);
+  }, [assigneeFilterOptions, query, selectedAssigneeUserId, showOnlyMine, tasks, user]);
 
   const columns = useMemo(() => {
     const base = {
@@ -303,6 +341,10 @@ export function TasksBoardPage() {
       <TasksBoardView
         query={query}
         onQueryChange={setQuery}
+        showAssigneeFilter={isTeamLead}
+        assigneeFilterOptions={assigneeFilterOptions}
+        selectedAssigneeUserId={selectedAssigneeUserId}
+        onSelectedAssigneeChange={setSelectedAssigneeUserId}
         showOnlyMine={showOnlyMine}
         onToggleShowOnlyMine={() => setShowOnlyMine((prev) => !prev)}
         isSyncing={isSyncing}

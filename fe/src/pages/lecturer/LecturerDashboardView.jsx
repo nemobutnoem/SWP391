@@ -428,25 +428,29 @@ export function LecturerDashboardView() {
         }
       />
 
-      <div className="dashboard-view__grid">
-        <StatCard title="Groups" value={myGroups.length} subtext="Supervised" icon="Groups" />
-        <StatCard title="Students" value={totalStudents} subtext="Under guidance" icon="Students" />
-        <StatCard
-          title="Pending Grades"
-          value={pendingCount}
-          subtext={pendingCount > 0 ? "Action needed" : "All clear"}
-          trend={pendingCount > 0 ? "warning" : "success"}
-          icon="Grades"
-        />
-        <StatCard
-          title="Total Tasks"
-          value={tasksForSelectedGroups.length}
-          subtext={`${tasksForSelectedGroups.filter((t) => normalizeTaskStatus(t.status) === "DONE").length} completed`}
-          icon="Tasks"
-        />
-      </div>
+      <div className="lecturer-dashboard__layout">
+        <aside className="lecturer-dashboard__sidebar">
+          <div className="dashboard-view__grid lecturer-dashboard__stats-grid">
+            <StatCard title="Groups" value={myGroups.length} subtext="Supervised" icon="Groups" />
+            <StatCard title="Students" value={totalStudents} subtext="Under guidance" icon="Students" />
+            <StatCard
+              title="Pending Grades"
+              value={pendingCount}
+              subtext={pendingCount > 0 ? "Action needed" : "All clear"}
+              trend={pendingCount > 0 ? "warning" : "success"}
+              icon="Grades"
+            />
+            <StatCard
+              title="Total Tasks"
+              value={tasksForSelectedGroups.length}
+              subtext={`${tasksForSelectedGroups.filter((t) => normalizeTaskStatus(t.status) === "DONE").length} completed`}
+              icon="Tasks"
+            />
+          </div>
+        </aside>
 
-      <div className="lecturer-groups-section">
+        <div className="lecturer-dashboard__content">
+          <div className="lecturer-groups-section">
         <h2 className="section-title" style={{ marginBottom: "1rem" }}>
           My Groups ({enrichedGroups.length})
         </h2>
@@ -711,6 +715,8 @@ export function LecturerDashboardView() {
             </div>
           );
         })}
+          </div>
+        </div>
       </div>
     </div>
   );

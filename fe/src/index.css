@@ -1,17 +1,17 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap");
 
 :root {
-  /* --- Fresh & Vibrant Brand (Electric Blue to Violet) --- */
-  --brand-50: #f0f7ff;
-  --brand-100: #e0effe;
-  --brand-200: #bae0fd;
-  --brand-300: #7cc8fb;
-  --brand-400: #38abf8;
-  --brand-500: #0ea5e9;
-  --brand-600: #0284c7;
-  --brand-700: #0369a1;
-  --brand-800: #075985;
-  --brand-900: #0c4a6e;
+  /* --- Multi-color Brand (Teal to Indigo) --- */
+  --brand-50: #eefcfb;
+  --brand-100: #d5f7f3;
+  --brand-200: #aceee8;
+  --brand-300: #74ddd7;
+  --brand-400: #3cc7c4;
+  --brand-500: #14b8a6;
+  --brand-600: #0f9f98;
+  --brand-700: #137d8b;
+  --brand-800: #1d5f79;
+  --brand-900: #21465d;
 
   /* --- Fresh Neutrals --- */
   --slate-50: #fbfcfe;
@@ -26,14 +26,21 @@
   --slate-900: #0f172a;
 
   /* --- Semantic Colors --- */
-  --success: #059669;
-  --success-light: #ecfdf5;
+  --success: #16a34a;
+  --success-light: #effcf3;
   --warning: #f59e0b;
-  --warning-light: #fffbeb;
-  --danger: #f43f5e;
-  --danger-light: #fff1f2;
-  --info: #06b6d4;
-  --info-light: #ecfeff;
+  --warning-light: #fff8e8;
+  --danger: #e11d48;
+  --danger-light: #fff0f4;
+  --info: #2563eb;
+  --info-light: #edf4ff;
+
+  --accent-teal: #14b8a6;
+  --accent-blue: #2563eb;
+  --accent-violet: #7c3aed;
+  --accent-amber: #f59e0b;
+  --accent-rose: #e11d48;
+  --accent-cyan: #06b6d4;
 
   /* --- Design Tokens --- */
   --font-body: "Inter", system-ui, -apple-system, sans-serif;
@@ -65,7 +72,11 @@
 
 body {
   font-family: var(--font-body);
-  background-color: var(--slate-50);
+  background:
+    radial-gradient(circle at top left, rgba(20, 184, 166, 0.14), transparent 28%),
+    radial-gradient(circle at top right, rgba(124, 58, 237, 0.12), transparent 24%),
+    radial-gradient(circle at bottom left, rgba(245, 158, 11, 0.10), transparent 26%),
+    linear-gradient(180deg, #fdfefe 0%, #f7fafc 45%, #fdf7ff 100%);
   color: var(--slate-900);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
