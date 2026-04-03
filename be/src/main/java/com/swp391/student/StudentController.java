@@ -25,6 +25,7 @@ public class StudentController {
     private final LecturerRepository lecturerRepository;
     private final GroupMemberRepository groupMemberRepository;
     private final StudentGroupRepository groupRepository;
+    private final com.swp391.clazz.ClassService classService;
 
     public record StudentDto(
             Integer id,
@@ -65,6 +66,10 @@ public class StudentController {
     @org.springframework.transaction.annotation.Transactional
     public StudentDto create(@Valid @RequestBody UpsertStudentRequest req, org.springframework.security.core.Authentication auth) {
         ensureAdminOrLecturer(auth);
+        // Block adding students when semester is not active
+        if (req.classId() != null) {
+            classService.ensureSemesterActive(req.classId());
+        }
         try {
             String email = emptyToNull(req.email());
             String studentCode = normalizeStudentCode(req.studentCode(), email);
@@ -91,6 +96,11 @@ public class StudentController {
         ensureAdminOrLecturer(auth);
         StudentEntity s = studentRepository.findById(studentId)
                 .orElseThrow(() -> new IllegalArgumentException("Student not found"));
+
+        // Block moving students to a class in a non-active semester
+        if (req.classId() != null && !req.classId().equals(s.getClassId())) {
+            classService.ensureSemesterActive(req.classId());
+        }
 
         String email = emptyToNull(req.email());
         String studentCode = normalizeStudentCode(req.studentCode(), email);

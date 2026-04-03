@@ -117,6 +117,10 @@ export function SemesterClassPage() {
         semester_id: selectedSemesterId,
         intake_year: formData.intake_year ? Number(formData.intake_year) : null,
         lecturer_id: formData.lecturer_id ? Number(formData.lecturer_id) : null,
+        class_type: formData.class_type || "MAIN",
+        prerequisite_class_id: formData.prerequisite_class_id ? Number(formData.prerequisite_class_id) : null,
+        start_date: formData.start_date || null,
+        end_date: formData.end_date || null,
       };
       if (editingClass) {
         await classService.update(editingClass.id, payload);
@@ -161,6 +165,10 @@ export function SemesterClassPage() {
         department: cls.department,
         lecturer_id: lecturerId || null,
         status: cls.status,
+        class_type: cls.class_type || "MAIN",
+        prerequisite_class_id: cls.prerequisite_class_id || null,
+        start_date: cls.start_date || null,
+        end_date: cls.end_date || null,
       });
       const updated = await classService.list(selectedSemesterId);
       setClasses(updated);

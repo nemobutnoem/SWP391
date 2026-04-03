@@ -16,6 +16,13 @@ public class SemesterService {
 
     private static final Set<String> VALID_STATUSES = Set.of("Active", "Upcoming", "Completed");
 
+    // Allowed transitions: Upcoming -> Active -> Completed
+    private static final java.util.Map<String, Set<String>> ALLOWED_TRANSITIONS = java.util.Map.of(
+            "Upcoming", Set.of("Active", "Upcoming"),
+            "Active", Set.of("Completed", "Active"),
+            "Completed", Set.of("Completed")
+    );
+
     public List<SemesterEntity> listAll() {
         return semesterRepository.findAll();
     }
@@ -38,7 +45,8 @@ public class SemesterService {
         entity.setName(req.name());
         entity.setStartDate(req.startDate());
         entity.setEndDate(req.endDate());
-        entity.setStatus(req.status() != null ? req.status() : "Active");
+        // New semesters default to Upcoming so admin can set up classes first
+        entity.setStatus(req.status() != null ? req.status() : "Upcoming");
         return semesterRepository.save(entity);
     }
 
@@ -46,11 +54,21 @@ public class SemesterService {
         SemesterEntity entity = getById(id);
         validateSemester(req, id);
 
+        // Enforce lifecycle transitions
+        String currentStatus = entity.getStatus() != null ? entity.getStatus() : "Upcoming";
+        String newStatus = req.status() != null ? req.status() : currentStatus;
+        Set<String> allowed = ALLOWED_TRANSITIONS.getOrDefault(currentStatus, Set.of());
+        if (!allowed.contains(newStatus)) {
+            throw ApiException.badRequest(
+                    "Cannot change semester status from '" + currentStatus + "' to '" + newStatus
+                            + "'. Allowed transitions: " + currentStatus + " → " + String.join(", ", allowed) + ".");
+        }
+
         entity.setCode(req.code());
         entity.setName(req.name());
         entity.setStartDate(req.startDate());
         entity.setEndDate(req.endDate());
-        if (req.status() != null) entity.setStatus(req.status());
+        entity.setStatus(newStatus);
         return semesterRepository.save(entity);
     }
 
@@ -78,21 +96,24 @@ public class SemesterService {
             throw ApiException.badRequest("End date must be after start date.");
         }
 
+        // Validate start date not in the past for new semesters
+        if (existingId == null && req.startDate().isBefore(java.time.LocalDate.now())) {
+            throw ApiException.badRequest("Start date cannot be in the past for a new semester.");
+        }
+
         // Validate unique code
         if (existingId == null) {
-            // Create
             if (semesterRepository.existsByCode(req.code())) {
                 throw ApiException.badRequest("Semester code '" + req.code() + "' already exists. Please use a different code.");
             }
         } else {
-            // Update
             if (semesterRepository.existsByCodeAndIdNot(req.code(), existingId)) {
                 throw ApiException.badRequest("Semester code '" + req.code() + "' already exists. Please use a different code.");
             }
         }
 
         // Validate status value
-        String status = req.status() != null ? req.status() : "Active";
+        String status = req.status() != null ? req.status() : "Upcoming";
         if (!VALID_STATUSES.contains(status)) {
             throw ApiException.badRequest("Invalid status '" + status + "'. Allowed values: Active, Upcoming, Completed.");
         }
@@ -103,13 +124,28 @@ public class SemesterService {
                 List<SemesterEntity> otherActives = semesterRepository.findByStatusIgnoreCaseAndIdNot("Active", existingId);
                 if (!otherActives.isEmpty()) {
                     throw ApiException.badRequest("There is already an active semester ('" + otherActives.get(0).getCode()
-                            + "'). Please set it to Completed or Upcoming before activating a new one.");
+                            + "'). Please complete it before activating a new one.");
                 }
             } else {
                 semesterRepository.findByStatusIgnoreCase("Active").ifPresent(existing -> {
                     throw ApiException.badRequest("There is already an active semester ('" + existing.getCode()
-                            + "'). Please set it to Completed or Upcoming before activating a new one.");
+                            + "'). Please complete it before activating a new one.");
                 });
+            }
+        }
+
+        // Validate date overlap with other semesters
+        List<SemesterEntity> allSemesters = semesterRepository.findAll();
+        for (SemesterEntity other : allSemesters) {
+            if (existingId != null && other.getId().equals(existingId)) continue;
+            if (other.getStartDate() != null && other.getEndDate() != null) {
+                boolean overlaps = !req.endDate().isBefore(other.getStartDate())
+                        && !req.startDate().isAfter(other.getEndDate());
+                if (overlaps) {
+                    throw ApiException.badRequest(
+                            "Semester dates overlap with existing semester '" + other.getCode()
+                                    + "' (" + other.getStartDate() + " to " + other.getEndDate() + ").");
+                }
             }
         }
     }

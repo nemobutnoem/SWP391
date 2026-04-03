@@ -22,6 +22,10 @@ public class ClassController {
             @JsonProperty("intake_year") Integer intakeYear,
             String department,
             @JsonProperty("lecturer_id") Integer lecturerId,
+            @JsonProperty("class_type") String classType,
+            @JsonProperty("prerequisite_class_id") Integer prerequisiteClassId,
+            @JsonProperty("start_date") java.time.LocalDate startDate,
+            @JsonProperty("end_date") java.time.LocalDate endDate,
             String status) {
     }
 

@@ -26,6 +26,7 @@ public class GroupService {
 	private final ProjectRepository projectRepository;
 	private final LecturerRepository lecturerRepository;
 	private final ClassRepository classRepository;
+	private final com.swp391.clazz.ClassService classService;
 
 	// ─── READ ────────────────────────────────────────────────────────────
 
@@ -73,6 +74,11 @@ public class GroupService {
 	@Transactional
 	public GroupSummary createGroup(CreateGroupRequest request, UserPrincipal principal) {
 		ensureLecturerOrAdmin(principal);
+
+		// Block creating groups when semester is not active
+		if (request.classId() != null) {
+			classService.ensureSemesterActive(request.classId());
+		}
 
 		StudentGroupEntity entity = new StudentGroupEntity();
 		entity.setSemesterId(request.semesterId());

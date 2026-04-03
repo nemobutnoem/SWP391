@@ -50,9 +50,16 @@ public class GroupMemberService {
         var student = studentRepository.findById(studentId)
                 .orElseThrow(() -> ApiException.notFound("Student not found with id: " + studentId));
 
-        // Business Rule: Member must belong to the same class as the group
-        if (student.getClassId() != null && !student.getClassId().equals(group.getClassId())) {
-            throw ApiException.badRequest("Student " + student.getFullName() + " does not belong to the class of this group");
+        // Business Rule: Student MUST belong to the same class as the group
+        if (student.getClassId() == null) {
+            throw ApiException.badRequest(
+                    "Student '" + student.getFullName() + "' has not been assigned to any class yet. "
+                            + "Admin must add the student to this class first.");
+        }
+        if (!student.getClassId().equals(group.getClassId())) {
+            throw ApiException.badRequest(
+                    "Student '" + student.getFullName() + "' belongs to a different class (ID: " + student.getClassId()
+                            + "). They must be in the same class as this group to join.");
         }
     if (memberRepository.existsByStudentId(studentId)) {
         throw ApiException.badRequest("Student already belongs to another group");

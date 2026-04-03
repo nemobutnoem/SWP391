@@ -329,16 +329,26 @@ export function MyGroupsPage() {
     }
   };
 
-  // Students available to add (not already in the target group)
+  // Students available to add (not already in the target group AND must belong to the same class)
   const availableStudents = useMemo(() => {
     if (!addMemberGroupId) return [];
+    const targetGroup = enrichedGroups.find((g) => g.id === addMemberGroupId);
+    const groupClassId = targetGroup ? Number(targetGroup.class_id ?? targetGroup.classId) : null;
     const memberStudentIds = new Set(
       allMembers
         .filter((m) => Number(m.group_id ?? m.groupId) === Number(addMemberGroupId))
         .map((m) => Number(m.student_id ?? m.studentId)),
     );
-    return students.filter((s) => !memberStudentIds.has(Number(s.id)));
-  }, [addMemberGroupId, allMembers, students]);
+    return students.filter((s) => {
+      if (memberStudentIds.has(Number(s.id))) return false;
+      // Only show students that belong to the same class as the group
+      if (groupClassId != null) {
+        const studentClassId = Number(s.class_id ?? s.classId);
+        if (!studentClassId || studentClassId !== groupClassId) return false;
+      }
+      return true;
+    });
+  }, [addMemberGroupId, allMembers, students, enrichedGroups]);
 
   const availableTopics = useMemo(
     () => topics.filter((t) => String(t.status || "").toUpperCase() !== "ARCHIVED"),

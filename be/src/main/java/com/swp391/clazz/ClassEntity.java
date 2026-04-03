@@ -41,6 +41,22 @@ public class ClassEntity {
 	@Column(name = "status")
 	private String status;
 
+	@JsonProperty("class_type")
+	@Column(name = "class_type")
+	private String classType;
+
+	@JsonProperty("prerequisite_class_id")
+	@Column(name = "prerequisite_class_id")
+	private Integer prerequisiteClassId;
+
+	@JsonProperty("start_date")
+	@Column(name = "start_date")
+	private java.time.LocalDate startDate;
+
+	@JsonProperty("end_date")
+	@Column(name = "end_date")
+	private java.time.LocalDate endDate;
+
 	@JsonProperty("lecturer_id")
 	@Column(name = "lecturer_id")
 	private Integer lecturerId;
