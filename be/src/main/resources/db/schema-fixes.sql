@@ -5,3 +5,6 @@ EXEC(N'IF COL_LENGTH(''dbo.classes'',''class_type'') IS NULL ALTER TABLE dbo.cla
 EXEC(N'IF COL_LENGTH(''dbo.classes'',''prerequisite_class_id'') IS NULL ALTER TABLE dbo.classes ADD prerequisite_class_id INT NULL')
 EXEC(N'IF COL_LENGTH(''dbo.classes'',''start_date'') IS NULL ALTER TABLE dbo.classes ADD start_date DATE NULL')
 EXEC(N'IF COL_LENGTH(''dbo.classes'',''end_date'') IS NULL ALTER TABLE dbo.classes ADD end_date DATE NULL')
+
+-- Topics (projects): block_type (MAIN=10w, CAPSTONE=3w)
+EXEC(N'IF COL_LENGTH(''dbo.projects'',''block_type'') IS NULL ALTER TABLE dbo.projects ADD block_type NVARCHAR(20) NOT NULL DEFAULT ''MAIN''')

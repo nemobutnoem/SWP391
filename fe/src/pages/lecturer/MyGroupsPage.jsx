@@ -35,22 +35,47 @@ export function MyGroupsPage() {
   const [refreshingGroupId, setRefreshingGroupId] = useState(null);
   const [refreshStatusByGroupId, setRefreshStatusByGroupId] = useState({});
 
-  const DROPPED_MEMBERS_STORAGE_KEY = "swp391:lecturer:droppedMembersByGroup";
-  const loadDroppedMembersByGroup = () => {
+  const LEGACY_DROPPED_MEMBERS_STORAGE_KEY = "swp391:lecturer:droppedMembersByGroup";
+  const SCOPED_DROPPED_MEMBERS_STORAGE_KEY = "swp391:lecturer:droppedMembersBySemesterBlock";
+
+  const loadJsonObject = (key) => {
     try {
-      const raw = localStorage.getItem(DROPPED_MEMBERS_STORAGE_KEY);
+      const raw = localStorage.getItem(key);
       const parsed = raw ? JSON.parse(raw) : {};
       return parsed && typeof parsed === "object" ? parsed : {};
     } catch {
       return {};
     }
   };
-  const saveDroppedMembersByGroup = (value) => {
+
+  const saveJsonObject = (key, value) => {
     try {
-      localStorage.setItem(DROPPED_MEMBERS_STORAGE_KEY, JSON.stringify(value || {}));
+      localStorage.setItem(key, JSON.stringify(value || {}));
     } catch {
       // ignore
     }
+  };
+
+  const getGroupScopeKey = (group, classes) => {
+    const semesterId = group?.semester_id ?? group?.semesterId ?? "unknown";
+    const classId = group?.class_id ?? group?.classId;
+    const clazz = (Array.isArray(classes) ? classes : []).find((c) => Number(c.id) === Number(classId));
+    const classType = String(clazz?.class_type ?? clazz?.classType ?? "MAIN").toUpperCase();
+    return `${semesterId}|${classType === "CAPSTONE" ? "CAPSTONE" : "MAIN"}`;
+  };
+
+  const migrateLegacyDropped = (legacyByGroup, groups, classes) => {
+    const scoped = {};
+    const legacy = legacyByGroup && typeof legacyByGroup === "object" ? legacyByGroup : {};
+
+    Object.entries(legacy).forEach(([gid, memberIds]) => {
+      const group = (Array.isArray(groups) ? groups : []).find((g) => Number(g.id) === Number(gid));
+      const scopeKey = group ? getGroupScopeKey(group, classes) : `unknown|MAIN`;
+      if (!scoped[scopeKey]) scoped[scopeKey] = {};
+      scoped[scopeKey][String(gid)] = Array.isArray(memberIds) ? memberIds.map(Number) : [];
+    });
+
+    return scoped;
   };
 
   const loadJiraTasks = async () => {
@@ -62,29 +87,55 @@ export function MyGroupsPage() {
     }
   };
 
-  const loadData = () => {
-    groupService.list().then(setAllGroups);
-    groupService.listMembers().then((members) => {
-      const droppedByGroup = loadDroppedMembersByGroup();
-      const next = (Array.isArray(members) ? members : []).map((m) => {
-        const gid = Number(m.group_id ?? m.groupId);
-        const mid = Number(m.id ?? m.member_id ?? m.memberId);
-        const droppedList = droppedByGroup?.[String(gid)];
-        const isDropped = Array.isArray(droppedList) && droppedList.map(Number).includes(mid);
-        return isDropped ? { ...m, isDropped: true } : m;
-      });
-      setAllMembers(next);
+  const loadData = async () => {
+    const [groupsData, membersData, studentsData, gradesData, topicsData, semestersData, classesData, jiraData] = await Promise.all([
+      groupService.list().catch(() => []),
+      groupService.listMembers().catch(() => []),
+      studentService.list().catch(() => []),
+      gradeService.list().catch(() => []),
+      topicService.list().catch(() => []),
+      semesterService.list().catch(() => []),
+      classService.list().catch(() => []),
+      jiraTaskService.list().catch(() => []),
+    ]);
+
+    const groupsList = Array.isArray(groupsData) ? groupsData : [];
+    const classesList = Array.isArray(classesData) ? classesData : [];
+
+    // Load scoped drop map; migrate legacy (by group) when needed.
+    const scopedDropped = loadJsonObject(SCOPED_DROPPED_MEMBERS_STORAGE_KEY);
+    const legacyDropped = loadJsonObject(LEGACY_DROPPED_MEMBERS_STORAGE_KEY);
+    const hasScoped = scopedDropped && Object.keys(scopedDropped).length > 0;
+    const migrated = !hasScoped && legacyDropped && Object.keys(legacyDropped).length > 0
+      ? migrateLegacyDropped(legacyDropped, groupsList, classesList)
+      : null;
+    const effectiveScopedDropped = migrated || scopedDropped;
+    if (migrated) {
+      saveJsonObject(SCOPED_DROPPED_MEMBERS_STORAGE_KEY, migrated);
+    }
+
+    const nextMembers = (Array.isArray(membersData) ? membersData : []).map((m) => {
+      const gid = Number(m.group_id ?? m.groupId);
+      const mid = Number(m.id ?? m.member_id ?? m.memberId);
+      const group = groupsList.find((g) => Number(g.id) === gid);
+      const scopeKey = group ? getGroupScopeKey(group, classesList) : `unknown|MAIN`;
+      const droppedList = effectiveScopedDropped?.[scopeKey]?.[String(gid)];
+      const isDropped = Array.isArray(droppedList) && droppedList.map(Number).includes(mid);
+      return isDropped ? { ...m, isDropped: true } : m;
     });
-    studentService.list().then(setStudents);
-    gradeService.list().then(setGrades);
-    topicService.list().then(setTopics);
-    loadJiraTasks();
-    semesterService.list().then((data) => {
-      setSemesters(data);
-      const active = data.find((s) => s.status?.toLowerCase() === "active");
-      if (active) setSelectedSemesterId(active.id);
-    });
-    classService.list().then(setAllClasses);
+
+    setAllGroups(groupsList);
+    setAllClasses(classesList);
+    setAllMembers(nextMembers);
+    setStudents(Array.isArray(studentsData) ? studentsData : []);
+    setGrades(Array.isArray(gradesData) ? gradesData : []);
+    setTopics(Array.isArray(topicsData) ? topicsData : []);
+    setJiraTasks(Array.isArray(jiraData) ? jiraData : []);
+
+    const semesterList = Array.isArray(semestersData) ? semestersData : [];
+    setSemesters(semesterList);
+    const active = semesterList.find((s) => String(s.status || "").toLowerCase() === "active");
+    if (active) setSelectedSemesterId(active.id);
   };
 
   useEffect(() => {
@@ -278,14 +329,25 @@ export function MyGroupsPage() {
   const handleDropMember = async (groupId, memberId) => {
     if (!window.confirm("Bạn có chắc muốn đánh rớt sinh viên này không?")) return;
     try {
-      // Persist to localStorage so reload vẫn giữ trạng thái.
+      // Persist to localStorage by Semester + Block scope so retake/kì khác không bị dính.
       const gid = Number(groupId);
       const mid = Number(memberId);
-      const droppedByGroup = loadDroppedMembersByGroup();
-      const key = String(gid);
-      const prevList = Array.isArray(droppedByGroup[key]) ? droppedByGroup[key] : [];
+      const group = allGroups.find((g) => Number(g.id) === gid);
+      const scopeKey = group ? getGroupScopeKey(group, allClasses) : `unknown|MAIN`;
+
+      const scopedDropped = loadJsonObject(SCOPED_DROPPED_MEMBERS_STORAGE_KEY);
+      const prevScope = scopedDropped?.[scopeKey] && typeof scopedDropped[scopeKey] === "object" ? scopedDropped[scopeKey] : {};
+      const prevList = Array.isArray(prevScope[String(gid)]) ? prevScope[String(gid)] : [];
       const nextList = Array.from(new Set([...prevList.map(Number), mid]));
-      saveDroppedMembersByGroup({ ...droppedByGroup, [key]: nextList });
+
+      const nextScoped = {
+        ...scopedDropped,
+        [scopeKey]: {
+          ...prevScope,
+          [String(gid)]: nextList,
+        },
+      };
+      saveJsonObject(SCOPED_DROPPED_MEMBERS_STORAGE_KEY, nextScoped);
 
       setAllMembers((prev) => prev.map((m) =>
         Number(m.group_id ?? m.groupId) === Number(groupId) && Number(m.id ?? m.member_id ?? m.memberId) === Number(memberId)

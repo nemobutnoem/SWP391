@@ -82,6 +82,25 @@ export function MyGroupsView({
     setIsCreateGroupOpen(false);
   };
 
+  const getClassTypeForGroup = (group) => {
+    const classId = group?.class_id ?? group?.classId;
+    const clazz = (Array.isArray(classOptions) ? classOptions : []).find((c) => Number(c.id) === Number(classId));
+    const type = String(clazz?.class_type ?? clazz?.classType ?? "MAIN").toUpperCase();
+    return type === "CAPSTONE" ? "CAPSTONE" : "MAIN";
+  };
+
+  const getSemesterIdForGroup = (group) => String(group?.semester_id ?? group?.semesterId ?? "");
+
+  const getScopedTopicsForGroup = (group) => {
+    const semId = getSemesterIdForGroup(group);
+    const classType = getClassTypeForGroup(group);
+    return (Array.isArray(topics) ? topics : []).filter((t) => {
+      const tSem = String(t?.semester_id ?? t?.semesterId ?? "");
+      const tBlock = String(t?.block_type ?? t?.blockType ?? "MAIN").toUpperCase();
+      return (!semId || tSem === semId) && (tBlock === classType);
+    });
+  };
+
   return (
     <div className="user-mgmt-page">
       <PageHeader
@@ -100,7 +119,6 @@ export function MyGroupsView({
           value={selectedSemesterId ?? ""}
           onChange={(e) => onSemesterChange?.(e.target.value ? Number(e.target.value) : null)}
         >
-          <option value="">All Semesters</option>
           {semesterOptions.map((s) => (
             <option key={s.id} value={s.id}>
               {s.code || s.name || `Semester #${s.id}`}
@@ -200,7 +218,7 @@ export function MyGroupsView({
                               style={{ minWidth: "260px" }}
                             >
                               <option value="">Select topic...</option>
-                              {topics.map((topic) => (
+                              {getScopedTopicsForGroup(g).map((topic) => (
                                 <option key={topic.id} value={topic.id}>
                                   {topic.name} ({topic.code})
                                 </option>

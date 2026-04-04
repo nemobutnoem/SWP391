@@ -11,6 +11,15 @@ import "./topics.css";
  */
 export function TopicsView({
   topics,
+  semesters,
+  selectedSemesterId,
+  onSelectedSemesterIdChange,
+  blockFilter,
+  onBlockFilterChange,
+  isCrudLocked,
+  isCreateLocked,
+  lockBlockTypeTo,
+  defaultBlockType,
   isModalOpen,
   editingTopic,
   onOpenCreate,
@@ -20,24 +29,60 @@ export function TopicsView({
   onArchive,
   onDelete,
 }) {
+  const semesterOptions = Array.isArray(semesters) ? [...semesters] : [];
+  semesterOptions.sort((a, b) => Number(b?.id ?? 0) - Number(a?.id ?? 0));
+
   return (
     <div className="topics-page">
       <PageHeader
         title="Project Topics"
         description="Administrative management of project topics. Assign, activate, or archive topics for upcoming semesters."
         actions={
-          <Button variant="primary" size="sm" onClick={onOpenCreate}>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={onOpenCreate}
+            disabled={Boolean(isCrudLocked) || Boolean(isCreateLocked)}
+            title={
+              Boolean(isCrudLocked)
+                ? "Completed semester is view-only"
+                : Boolean(isCreateLocked)
+                  ? "You can only create topics for UPCOMING semesters"
+                  : undefined
+            }
+          >
             Create Topic
           </Button>
         }
       />
 
+      <div className="filter-bar" style={{ marginBottom: "1rem" }}>
+        <div className="filter-controls">
+          <select className="filter-select" value={selectedSemesterId} onChange={(e) => onSelectedSemesterIdChange(e.target.value)}>
+            {semesterOptions.map((sem) => (
+              <option key={sem.id} value={String(sem.id)}>
+                {sem.name || `Semester ${sem.id}`}
+              </option>
+            ))}
+          </select>
+
+          <select className="filter-select" value={blockFilter} onChange={(e) => onBlockFilterChange(e.target.value)}>
+            <option value="ALL">All Blocks</option>
+            <option value="MAIN">10 weeks (Main)</option>
+            <option value="CAPSTONE">3 weeks (Capstone)</option>
+          </select>
+        </div>
+      </div>
+
       <TopicFormModal
-        key={editingTopic ? `edit-${editingTopic.id}` : "create"}
+        key={editingTopic ? `edit-${editingTopic.id}` : `create-${selectedSemesterId}-${defaultBlockType}`}
         isOpen={isModalOpen}
         onClose={onCloseModal}
         onSubmit={onSubmit}
         initialData={editingTopic}
+        defaultBlockType={defaultBlockType}
+        lockBlockTypeTo={lockBlockTypeTo}
+        disabled={Boolean(isCrudLocked)}
       />
 
       <div className="table-container">
@@ -87,6 +132,8 @@ export function TopicsView({
                       variant="ghost"
                       size="sm"
                       onClick={() => onOpenEdit(topic)}
+                      disabled={Boolean(isCrudLocked)}
+                      title={Boolean(isCrudLocked) ? "Completed semester is view-only" : undefined}
                     >
                       Edit
                     </Button>
@@ -95,6 +142,8 @@ export function TopicsView({
                         variant="ghost"
                         size="sm"
                         onClick={() => onArchive(topic.id)}
+                        disabled={Boolean(isCrudLocked)}
+                        title={Boolean(isCrudLocked) ? "Completed semester is view-only" : undefined}
                       >
                         Archive
                       </Button>
@@ -104,6 +153,8 @@ export function TopicsView({
                       size="sm"
                       className="btn-delete"
                       onClick={() => onDelete(topic)}
+                      disabled={Boolean(isCrudLocked)}
+                      title={Boolean(isCrudLocked) ? "Completed semester is view-only" : undefined}
                     >
                       Delete
                     </Button>

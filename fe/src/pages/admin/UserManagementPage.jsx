@@ -13,6 +13,8 @@ export function UserManagementPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [majorFilter, setMajorFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [semesterFilter, setSemesterFilter] = useState("ALL");
+  const [blockFilter, setBlockFilter] = useState("ALL");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [modalRole, setModalRole] = useState("STUDENT");
@@ -53,20 +55,58 @@ export function UserManagementPage() {
     });
   }, []);
 
+  // Default semester selection (prefer Active) since we don't expose "All Semesters" in UI.
+  useEffect(() => {
+    if (!Array.isArray(semesters) || semesters.length === 0) return;
+    if (semesterFilter !== "ALL") return;
+
+    const active = semesters.find((s) => String(s.status || "").toUpperCase() === "ACTIVE");
+    const fallback = active || [...semesters].sort((a, b) => Number(b?.id ?? 0) - Number(a?.id ?? 0))[0];
+    if (fallback?.id != null) setSemesterFilter(String(fallback.id));
+  }, [semesters, semesterFilter]);
+
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     setMajorFilter("ALL");
     setStatusFilter("ALL");
+    if (Array.isArray(semesters) && semesters.length > 0) {
+      const active = semesters.find((s) => String(s.status || "").toUpperCase() === "ACTIVE");
+      const fallback = active || [...semesters].sort((a, b) => Number(b?.id ?? 0) - Number(a?.id ?? 0))[0];
+      setSemesterFilter(fallback?.id != null ? String(fallback.id) : "ALL");
+    } else {
+      setSemesterFilter("ALL");
+    }
+    setBlockFilter("ALL");
     setSearchQuery("");
   };
 
+  const selectedSemester = useMemo(() => {
+    if (semesterFilter === "ALL") return null;
+    return semesters.find((s) => isSameId(s.id, semesterFilter)) || null;
+  }, [semesterFilter, semesters]);
+
+  const isCrudLockedByCompletedSemester = useMemo(() => {
+    if (activeTab !== "STUDENTS") return false;
+    if (!selectedSemester) return false;
+    const status = String(selectedSemester.status ?? "").toUpperCase();
+    return status === "COMPLETED";
+  }, [activeTab, selectedSemester]);
+
   const handleOpenCreate = () => {
+    if (isCrudLockedByCompletedSemester) {
+      alert("This semester is completed. You can only view students in completed semesters.");
+      return;
+    }
     setEditingUser(null);
     setModalRole(activeTab === "LECTURERS" ? "LECTURER" : "STUDENT");
     setIsModalOpen(true);
   };
 
   const handleOpenEdit = (user) => {
+    if (isCrudLockedByCompletedSemester) {
+      alert("This semester is completed. You can only view students in completed semesters.");
+      return;
+    }
     setEditingUser(user);
     setModalRole(activeTab === "LECTURERS" ? "LECTURER" : "STUDENT");
     setIsModalOpen(true);
@@ -74,6 +114,10 @@ export function UserManagementPage() {
 
   const handleSubmit = async (formData) => {
     try {
+      if (isCrudLockedByCompletedSemester && formData.role === "STUDENT") {
+        alert("This semester is completed. You can only view students in completed semesters.");
+        return;
+      }
       const payload = { ...formData };
       if (payload.class_id === "") payload.class_id = null;
 
@@ -107,8 +151,14 @@ export function UserManagementPage() {
         : groups.find((g) => isSameId(g.leader_student_id ?? g.leaderStudentId, s.id));
       const project = group ? projects.find((p) => isSameId(p.id, group.project_id ?? group.projectId)) : null;
       const clazz = classes.find((c) => isSameId(c.id, s.class_id ?? s.classId));
-      const semester = semesters.find((sem) => isSameId(sem.id, s.semester_id ?? s.semesterId)) ||
+      const resolvedSemesterId =
+        (s.semester_id ?? s.semesterId) ?? (clazz?.semester_id ?? clazz?.semesterId) ?? null;
+      const semester =
+        semesters.find((sem) => isSameId(sem.id, resolvedSemesterId)) ||
         (clazz ? semesters.find((sem) => isSameId(sem.id, clazz.semester_id ?? clazz.semesterId)) : null);
+
+      const classTypeRaw = clazz ? (clazz.class_type ?? clazz.classType ?? "MAIN") : null;
+      const classType = classTypeRaw == null ? null : String(classTypeRaw || "MAIN").toUpperCase();
 
       return {
         ...s,
@@ -116,6 +166,8 @@ export function UserManagementPage() {
         project_name: project?.project_name || project?.name || "No Project",
         class_name: clazz?.class_code || "No Class",
         semester_name: semester?.name || "No Semester",
+        _semesterId: resolvedSemesterId == null ? null : Number(resolvedSemesterId),
+        _classType: classType == null ? null : classType === "CAPSTONE" ? "CAPSTONE" : "MAIN",
       };
     });
   }, [localStudents, groups, members, projects, classes, semesters]);
@@ -137,7 +189,11 @@ export function UserManagementPage() {
         const codeMatch = u.student_code && u.student_code.toLowerCase().includes(q);
         const majorMatch = majorFilter === "ALL" || u.major === majorFilter;
         const statusMatch = statusFilter === "ALL" || String(u.status || "").toUpperCase() === statusFilter;
-        return (nameMatch || codeMatch) && majorMatch && statusMatch;
+        const semesterMatch =
+          semesterFilter === "ALL" ||
+          (u._semesterId != null && Number(u._semesterId) === Number(semesterFilter));
+        const blockMatch = blockFilter === "ALL" || (u._classType != null && String(u._classType) === blockFilter);
+        return (nameMatch || codeMatch) && majorMatch && statusMatch && semesterMatch && blockMatch;
       });
     }
 
@@ -147,9 +203,25 @@ export function UserManagementPage() {
       const statusMatch = statusFilter === "ALL" || String(u.status || "").toUpperCase() === statusFilter;
       return (!q || nameMatch || departmentMatch) && statusMatch;
     });
-  }, [activeTab, enrichedStudents, enrichedLecturers, searchQuery, majorFilter, statusFilter]);
+  }, [activeTab, enrichedStudents, enrichedLecturers, searchQuery, majorFilter, statusFilter, semesterFilter, blockFilter]);
+
+  const scopedStudentCount = useMemo(() => {
+    // Count students in the currently selected semester/block scope (ignore search/major/status)
+    if (semesterFilter === "ALL" && blockFilter === "ALL") return localStudents.length;
+    return enrichedStudents.filter((u) => {
+      const semesterMatch =
+        semesterFilter === "ALL" ||
+        (u._semesterId != null && Number(u._semesterId) === Number(semesterFilter));
+      const blockMatch = blockFilter === "ALL" || (u._classType != null && String(u._classType) === blockFilter);
+      return semesterMatch && blockMatch;
+    }).length;
+  }, [enrichedStudents, localStudents.length, semesterFilter, blockFilter]);
 
   const handleDelete = async (user) => {
+    if (isCrudLockedByCompletedSemester && activeTab === "STUDENTS") {
+      alert("This semester is completed. You can only view students in completed semesters.");
+      return;
+    }
     let warning = `Are you sure you want to delete ${user.full_name}?`;
     if (activeTab === "LECTURERS") {
       const classCount = classes.filter((c) => c.lecturer_id === user.id).length;
@@ -182,6 +254,10 @@ export function UserManagementPage() {
       onMajorFilterChange={setMajorFilter}
       statusFilter={statusFilter}
       onStatusFilterChange={setStatusFilter}
+      semesterFilter={semesterFilter}
+      onSemesterFilterChange={setSemesterFilter}
+      blockFilter={blockFilter}
+      onBlockFilterChange={setBlockFilter}
       filteredData={filteredData}
       isModalOpen={isModalOpen}
       editingUser={editingUser}
@@ -194,9 +270,11 @@ export function UserManagementPage() {
       }}
       onSubmit={handleSubmit}
       onDelete={handleDelete}
-      studentCount={localStudents.length}
+      studentCount={scopedStudentCount}
       lecturerCount={localLecturers.length}
       classes={classes}
+      semesters={semesters}
+      isCrudLocked={isCrudLockedByCompletedSemester}
     />
   );
 }

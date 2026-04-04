@@ -18,6 +18,10 @@ public class ProjectEntity {
 	@Column(name = "semester_id")
 	private Integer semesterId;
 
+	@JsonProperty("block_type")
+	@Column(name = "block_type")
+	private String blockType;
+
 	@JsonProperty("project_code")
 	@Column(name = "project_code")
 	private String projectCode;

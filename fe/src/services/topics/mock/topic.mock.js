@@ -11,18 +11,36 @@ export const topicMock = {
 
   async create(data) {
     await sleep(300);
-    return { ...data, id: Date.now() };
+    const created = { ...data, id: Date.now() };
+    _localTopics.push(created);
+    return { ...created };
   },
 
   async update(topicId, data) {
     await sleep(250);
     const existing = _localTopics.find((t) => t.id === Number(topicId));
     if (!existing) throw new Error("Topic not found");
-    return { ...existing, ...data };
+    Object.assign(existing, data);
+    return { ...existing };
   },
 
   async archive(topicId) {
     await sleep(200);
-    return { id: Number(topicId), status: "ARCHIVED" };
+    const existing = _localTopics.find((t) => t.id === Number(topicId));
+    if (!existing) throw new Error("Topic not found");
+    existing.status = "ARCHIVED";
+    return { ...existing };
+  },
+
+  async checkUsage() {
+    await sleep(150);
+    return { inUse: false, groups: [] };
+  },
+
+  async remove(topicId) {
+    await sleep(200);
+    const idx = _localTopics.findIndex((t) => t.id === Number(topicId));
+    if (idx < 0) throw new Error("Topic not found");
+    _localTopics.splice(idx, 1);
   },
 };

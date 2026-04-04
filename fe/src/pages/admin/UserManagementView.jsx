@@ -14,6 +14,10 @@ export function UserManagementView({
   onMajorFilterChange,
   statusFilter,
   onStatusFilterChange,
+  semesterFilter,
+  onSemesterFilterChange,
+  blockFilter,
+  onBlockFilterChange,
   filteredData,
   isModalOpen,
   editingUser,
@@ -26,14 +30,42 @@ export function UserManagementView({
   studentCount,
   lecturerCount,
   classes,
+  semesters,
+  isCrudLocked,
 }) {
+  const semesterOptions = Array.isArray(semesters) ? [...semesters] : [];
+  semesterOptions.sort((a, b) => Number(b?.id ?? 0) - Number(a?.id ?? 0));
+
+  const classesForModal = (() => {
+    const allClasses = Array.isArray(classes) ? classes : [];
+    if (activeTab !== "STUDENTS") return allClasses;
+
+    let next = allClasses;
+
+    if (semesterFilter !== "ALL") {
+      next = next.filter((c) => String(c?.semester_id ?? c?.semesterId ?? "") === String(semesterFilter));
+    }
+
+    if (blockFilter !== "ALL") {
+      next = next.filter((c) => String(c?.class_type ?? c?.classType ?? "MAIN").toUpperCase() === String(blockFilter));
+    }
+
+    return next;
+  })();
+
   return (
     <div className="user-mgmt-page">
       <PageHeader
         title="User Management"
         description="Comprehensive management of students and lecturers in the system."
         actions={
-          <Button variant="primary" size="sm" onClick={onOpenCreate}>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={onOpenCreate}
+            disabled={Boolean(isCrudLocked) && activeTab === "STUDENTS"}
+            title={Boolean(isCrudLocked) && activeTab === "STUDENTS" ? "Completed semester is view-only" : undefined}
+          >
             Add {activeTab === "STUDENTS" ? "Student" : "Lecturer"}
           </Button>
         }
@@ -46,7 +78,7 @@ export function UserManagementView({
         onSubmit={onSubmit}
         initialData={editingUser}
         defaultRole={modalRole}
-        classes={classes || []}
+        classes={classesForModal}
       />
 
       <div className="admin-tabs">
@@ -74,12 +106,28 @@ export function UserManagementView({
         </div>
         <div className="filter-controls">
           {activeTab === "STUDENTS" && (
-            <select className="filter-select" value={majorFilter} onChange={(e) => onMajorFilterChange(e.target.value)}>
-              <option value="ALL">All Majors</option>
-              <option value="SE">Software Engineering</option>
-              <option value="AI">Artificial Intelligence</option>
-              <option value="GD">Graphic Design</option>
-            </select>
+            <>
+              <select className="filter-select" value={majorFilter} onChange={(e) => onMajorFilterChange(e.target.value)}>
+                <option value="ALL">All Majors</option>
+                <option value="SE">Software Engineering</option>
+                <option value="AI">Artificial Intelligence</option>
+                <option value="GD">Graphic Design</option>
+              </select>
+
+              <select className="filter-select" value={semesterFilter} onChange={(e) => onSemesterFilterChange(e.target.value)}>
+                {semesterOptions.map((sem) => (
+                  <option key={sem.id} value={String(sem.id)}>
+                    {sem.name || `Semester ${sem.id}`}
+                  </option>
+                ))}
+              </select>
+
+              <select className="filter-select" value={blockFilter} onChange={(e) => onBlockFilterChange(e.target.value)}>
+                <option value="ALL">All Blocks</option>
+                <option value="MAIN">10 weeks (Main)</option>
+                <option value="CAPSTONE">3 weeks (Capstone)</option>
+              </select>
+            </>
           )}
           <select className="filter-select" value={statusFilter} onChange={(e) => onStatusFilterChange(e.target.value)}>
             <option value="ALL">All Status</option>
@@ -114,7 +162,7 @@ export function UserManagementView({
           <tbody>
             {filteredData.length === 0 ? (
               <tr>
-                <td colSpan={6} className="text-secondary" style={{ padding: "1.25rem" }}>
+                <td colSpan={activeTab === "STUDENTS" ? 6 : 5} className="text-secondary" style={{ padding: "1.25rem" }}>
                   No records found.
                 </td>
               </tr>
@@ -152,8 +200,25 @@ export function UserManagementView({
                     </td>
                     <td className="action-cell">
                       <div className="action-buttons">
-                        <Button variant="ghost" size="sm" onClick={() => onOpenEdit(u)}>Edit</Button>
-                        <Button variant="ghost" size="sm" onClick={() => onDelete(u)} className="btn--danger-ghost">Delete</Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onOpenEdit(u)}
+                          disabled={Boolean(isCrudLocked)}
+                          title={Boolean(isCrudLocked) ? "Completed semester is view-only" : undefined}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onDelete(u)}
+                          className="btn--danger-ghost"
+                          disabled={Boolean(isCrudLocked)}
+                          title={Boolean(isCrudLocked) ? "Completed semester is view-only" : undefined}
+                        >
+                          Delete
+                        </Button>
                       </div>
                     </td>
                   </>
