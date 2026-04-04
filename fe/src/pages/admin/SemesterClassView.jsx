@@ -9,25 +9,23 @@ function SemesterFormModal({ isOpen, onClose, onSubmit, initialData, semesters }
   const isEdit = !!initialData;
   const currentStatus = initialData?.status || null;
 
-  // Determine allowed status options based on lifecycle
-  const getStatusOptions = () => {
-    if (!isEdit) return [{ value: "Upcoming", label: "Upcoming" }];
-    switch (currentStatus) {
-      case "Upcoming": return [{ value: "Upcoming", label: "Upcoming" }, { value: "Active", label: "Active" }];
-      case "Active": return [{ value: "Active", label: "Active" }, { value: "Completed", label: "Completed" }];
-      case "Completed": return [{ value: "Completed", label: "Completed" }];
-      default: return [{ value: "Upcoming", label: "Upcoming" }];
-    }
-  };
+  const baseStatusOptions = [
+    { value: "Upcoming", label: "Upcoming" },
+    { value: "Active", label: "Active" },
+    { value: "Completed", label: "Completed" },
+  ];
 
   // Check if another semester is already active
   const hasOtherActive = semesters?.some(
     (s) => s.status?.toLowerCase() === "active" && s.id !== initialData?.id
   );
 
-  const statusOptions = getStatusOptions().filter((opt) => {
-    if (opt.value === "Active" && hasOtherActive) return false;
-    return true;
+  const statusOptions = baseStatusOptions.map((opt) => {
+    // If another semester is active, block selecting Active (but keep it visible)
+    const isActiveOption = opt.value === "Active";
+    const isEditingActive = String(currentStatus || "").toLowerCase() === "active";
+    const disabled = isActiveOption && hasOtherActive && !isEditingActive;
+    return { ...opt, disabled };
   });
 
   const [form, setForm] = useState(() =>
@@ -51,6 +49,13 @@ function SemesterFormModal({ isOpen, onClose, onSubmit, initialData, semesters }
         if (!form.start_date) return alert("Start date is required.");
         if (!form.end_date) return alert("End date is required.");
         if (form.end_date <= form.start_date) return alert("End date must be after start date.");
+        if (
+          String(form.status || "").toLowerCase() === "active" &&
+          hasOtherActive &&
+          String(currentStatus || "").toLowerCase() !== "active"
+        ) {
+          return alert("Another semester is currently active. Complete it first to activate this one.");
+        }
         onSubmit(form);
       }}>
         <div className="form-row">
@@ -77,10 +82,12 @@ function SemesterFormModal({ isOpen, onClose, onSubmit, initialData, semesters }
           <label>Status</label>
           <select name="status" value={form.status} onChange={handle}>
             {statusOptions.map((opt) => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
+              <option key={opt.value} value={opt.value} disabled={opt.disabled}>
+                {opt.label}
+              </option>
             ))}
           </select>
-          {hasOtherActive && currentStatus === "Upcoming" && (
+          {hasOtherActive && String(currentStatus || "").toLowerCase() !== "active" && (
             <span style={{ fontSize: "0.75rem", color: "var(--warning)", marginTop: "0.25rem", display: "block" }}>
               Another semester is currently active. Complete it first to activate this one.
             </span>
@@ -95,7 +102,15 @@ function SemesterFormModal({ isOpen, onClose, onSubmit, initialData, semesters }
   );
 }
 
-function ClassFormModal({ isOpen, onClose, onSubmit, initialData, lecturers, mainClasses }) {
+function ClassFormModal({
+  isOpen,
+  onClose,
+  onSubmit,
+  initialData,
+  lecturers,
+  restrictCreateToCapstone = false,
+  restrictCreateToMain = false,
+}) {
   const [form, setForm] = useState(() =>
     initialData
       ? {
@@ -111,12 +126,24 @@ function ClassFormModal({ isOpen, onClose, onSubmit, initialData, lecturers, mai
           start_date: initialData.start_date || "",
           end_date: initialData.end_date || "",
         }
-      : { class_code: "", class_name: "", major: "SE", intake_year: new Date().getFullYear(), department: "", status: "Active", lecturer_id: "", class_type: "MAIN", prerequisite_class_id: "", start_date: "", end_date: "" }
+      : {
+          class_code: "",
+          class_name: "",
+          major: "SE",
+          intake_year: new Date().getFullYear(),
+          department: "",
+          status: "Active",
+          lecturer_id: "",
+          class_type: restrictCreateToCapstone ? "CAPSTONE" : restrictCreateToMain ? "MAIN" : "MAIN",
+          prerequisite_class_id: "",
+          start_date: "",
+          end_date: "",
+        }
   );
 
   const handle = (e) => setForm((p) => ({ ...p, [e.target.name]: e.target.value }));
 
-  // When switching to MAIN, clear prerequisite
+  // When switching to MAIN, clear prerequisite (kept for backward-compat, prerequisite is optional)
   const handleTypeChange = (e) => {
     const val = e.target.value;
     setForm((p) => ({ ...p, class_type: val, prerequisite_class_id: val === "MAIN" ? "" : p.prerequisite_class_id }));
@@ -127,10 +154,15 @@ function ClassFormModal({ isOpen, onClose, onSubmit, initialData, lecturers, mai
       <form className="task-form" onSubmit={(e) => {
         e.preventDefault();
         if (!form.class_name || !form.class_name.trim()) return alert("Class name is required.");
+        if (!initialData && restrictCreateToCapstone && form.class_type !== "CAPSTONE") {
+          return alert("This semester is Active. Only Capstone (3 weeks) classes can be created.");
+        }
+        if (!initialData && restrictCreateToMain && form.class_type !== "MAIN") {
+          return alert("This semester is Upcoming. Only Main (10 weeks) classes can be created.");
+        }
         const year = Number(form.intake_year);
         const currentYear = new Date().getFullYear();
         if (form.intake_year && (year < 2000 || year > currentYear + 1)) return alert(`Intake year must be between 2000 and ${currentYear + 1}.`);
-        if (form.class_type === "CAPSTONE" && !form.prerequisite_class_id) return alert("Capstone class (3w) requires a prerequisite main class (10w).");
         if (form.start_date && form.end_date && form.end_date <= form.start_date) return alert("End date must be after start date.");
         onSubmit(form);
       }}>
@@ -148,21 +180,38 @@ function ClassFormModal({ isOpen, onClose, onSubmit, initialData, lecturers, mai
           <div className="form-group">
             <label>Class Type</label>
             <select name="class_type" value={form.class_type} onChange={handleTypeChange}>
-              <option value="MAIN">Main (10 weeks)</option>
-              <option value="CAPSTONE">Capstone (3 weeks)</option>
+              <option value="MAIN" disabled={!initialData && restrictCreateToCapstone}>
+                Main (10 weeks)
+              </option>
+              <option value="CAPSTONE" disabled={!initialData && restrictCreateToMain}>
+                Capstone (3 weeks)
+              </option>
             </select>
+            {!initialData && restrictCreateToCapstone && (
+              <span
+                style={{
+                  fontSize: "0.75rem",
+                  color: "var(--slate-500)",
+                  marginTop: "0.25rem",
+                  display: "block",
+                }}
+              >
+                Semester is Active: only Capstone (3 weeks) can be created.
+              </span>
+            )}
+            {!initialData && restrictCreateToMain && (
+              <span
+                style={{
+                  fontSize: "0.75rem",
+                  color: "var(--slate-500)",
+                  marginTop: "0.25rem",
+                  display: "block",
+                }}
+              >
+                Semester is Upcoming: only Main (10 weeks) can be created.
+              </span>
+            )}
           </div>
-          {form.class_type === "CAPSTONE" && (
-            <div className="form-group">
-              <label>Prerequisite Class (10w)</label>
-              <select name="prerequisite_class_id" value={form.prerequisite_class_id} onChange={handle} required>
-                <option value="">-- Select Main Class --</option>
-                {(mainClasses || []).map((c) => (
-                  <option key={c.id} value={c.id}>{c.class_code} - {c.class_name} ({c.status})</option>
-                ))}
-              </select>
-            </div>
-          )}
         </div>
         <div className="form-row">
           <div className="form-group">
@@ -356,12 +405,19 @@ export function SemesterClassView({
   const [addStudentClassId, setAddStudentClassId] = useState(null);
   const selectedSemester = semesters.find((s) => s.id === selectedSemesterId);
   const isSemesterActive = selectedSemester?.status?.toLowerCase() === "active";
-
-  // Filter MAIN classes in this semester for prerequisite dropdown
-  const mainClasses = enrichedClasses.filter((c) => (c.class_type || "MAIN") === "MAIN");
+  const isSemesterCompleted = selectedSemester?.status?.toLowerCase() === "completed";
+  const isSemesterUpcoming = selectedSemester?.status?.toLowerCase() === "upcoming";
 
   const toggleStudents = (classId) => {
     setExpandedClassId((prev) => (prev === classId ? null : classId));
+  };
+
+  const guardCompleted = (actionLabel, fn) => {
+    if (isSemesterCompleted) {
+      window.alert("Semester is Completed — operations are locked");
+      return;
+    }
+    fn?.();
   };
 
   return (
@@ -394,12 +450,19 @@ export function SemesterClassView({
           <div className="section-header mt-2">
             <h2 className="section-title">Classes in <strong>{selectedSemester.name}</strong></h2>
             <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-              {!isSemesterActive && (
+              {isSemesterCompleted && (
                 <span style={{ fontSize: "0.8rem", color: "var(--warning)", fontWeight: 500 }}>
-                  Semester is {selectedSemester.status} — student/group operations are locked
+                  Semester is Completed — operations are locked
                 </span>
               )}
-              <Button variant="primary" size="sm" onClick={onCreateClass}>+ New Class</Button>
+              <Button
+                variant="primary"
+                size="sm"
+                disabled={isSemesterCompleted}
+                onClick={() => guardCompleted("Create class", onCreateClass)}
+              >
+                + New Class
+              </Button>
             </div>
           </div>
 
@@ -438,7 +501,12 @@ export function SemesterClassView({
                         </td>
                         <td>{c.major || "-"}</td>
                         <td>
-                          <span className={`lecturer-link ${c.lecturer_id ? "" : "lecturer-link--unassigned"}`} onClick={() => onOpenAssign(c)} title="Click to assign/change lecturer">
+                          <span
+                            className={`lecturer-link ${c.lecturer_id ? "" : "lecturer-link--unassigned"}`}
+                            onClick={() => guardCompleted("Assign lecturer", () => onOpenAssign(c))}
+                            title={isSemesterCompleted ? "Semester completed" : "Click to assign/change lecturer"}
+                            style={isSemesterCompleted ? { cursor: "not-allowed", opacity: 0.6 } : undefined}
+                          >
                             {c.lecturer_name}
                           </span>
                         </td>
@@ -468,8 +536,22 @@ export function SemesterClassView({
                         </td>
                         <td className="action-cell">
                           <div className="action-buttons">
-                            <Button variant="ghost" size="sm" onClick={() => onEditClass(c)}>Edit</Button>
-                            <Button variant="ghost" size="sm" onClick={() => onDeleteClass(c.id)}>Delete</Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              disabled={isSemesterCompleted}
+                              onClick={() => guardCompleted("Edit class", () => onEditClass(c))}
+                            >
+                              Edit
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              disabled={isSemesterCompleted}
+                              onClick={() => guardCompleted("Delete class", () => onDeleteClass(c.id))}
+                            >
+                              Delete
+                            </Button>
                           </div>
                         </td>
                       </tr>
@@ -520,7 +602,16 @@ export function SemesterClassView({
       )}
 
       {classModalOpen && (
-        <ClassFormModal key={editingClass?.id || "new-cls"} isOpen={classModalOpen} onClose={onCloseClassModal} onSubmit={onSubmitClass} initialData={editingClass} lecturers={lecturers} mainClasses={mainClasses} />
+        <ClassFormModal
+          key={editingClass?.id || "new-cls"}
+          isOpen={classModalOpen}
+          onClose={onCloseClassModal}
+          onSubmit={onSubmitClass}
+          initialData={editingClass}
+          lecturers={lecturers}
+          restrictCreateToCapstone={isSemesterActive}
+          restrictCreateToMain={isSemesterUpcoming}
+        />
       )}
 
       {assignModalOpen && assigningClass && (
