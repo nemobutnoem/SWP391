@@ -9,6 +9,18 @@
  * @returns {Array} Array of { assignee, sp, pct }
  */
 export function calculateContribution(tasks, getAssignee, getStoryPoints) {
+  const normalizeAssignee = (value) => {
+    if (value == null) return null;
+    if (typeof value === "number") {
+      return Number.isFinite(value) ? String(value) : null;
+    }
+    const s = String(value).trim();
+    if (!s) return null;
+    const lower = s.toLowerCase();
+    if (lower === "unassigned" || lower === "(unassigned)" || lower === "none" || lower === "null") return null;
+    return s;
+  };
+
   // Xây dựng map: parentKey -> [subtasks]
   const parentToSubtasks = {};
   const taskKeyToTask = {};
@@ -35,7 +47,7 @@ export function calculateContribution(tasks, getAssignee, getStoryPoints) {
   for (const task of tasks) {
     const key = task.key || task.issueKey || task.id;
     const parentKey = task.parent_issue_key || task.parentIssueKey || task.parentKey;
-    const assignee = getAssignee(task);
+    const assignee = normalizeAssignee(getAssignee(task));
     const sp = Number(getStoryPoints(task));
     if (!assignee || !Number.isFinite(sp) || sp <= 0) continue;
 
