@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { githubActivityService } from "../../services/githubActivities/githubActivity.service.js";
 import { studentService } from "../../services/students/student.service.js";
 import { ActivityView } from "./ActivityView.jsx";
+import { useTeamContext } from "../../store/teamContext/teamContext.js";
 import "./activity.css";
 
 /**
@@ -9,13 +10,18 @@ import "./activity.css";
  * Khong chua JSX UI truc tiep.
  */
 export function ActivityPage() {
+  const teamCtx = useTeamContext();
   const [allActivities, setAllActivities] = useState([]);
   const [allStudents, setAllStudents] = useState([]);
 
   useEffect(() => {
-    githubActivityService.list().then(setAllActivities);
+    const gid = teamCtx?.selectedGroupId == null ? null : Number(teamCtx.selectedGroupId);
+    const hasGroup = Number.isFinite(gid) && gid > 0;
+    (hasGroup ? githubActivityService.listByGroup(gid) : githubActivityService.list())
+      .then(setAllActivities)
+      .catch(() => setAllActivities([]));
     studentService.list().then(setAllStudents);
-  }, []);
+  }, [teamCtx?.selectedGroupId]);
 
   const [branchFilter, setBranchFilter] = useState("all");
   const [actorFilter, setActorFilter] = useState("all");

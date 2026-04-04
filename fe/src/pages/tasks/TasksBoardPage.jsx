@@ -8,6 +8,7 @@ import { syncService } from "../../services/sync/sync.service.js";
 import { groupService } from "../../services/groups/group.service.js";
 import { useAuth } from "../../store/auth/useAuth.jsx";
 import { ROLES } from "../../routes/access/roles.js";
+import { useTeamContext } from "../../store/teamContext/teamContext.js";
 
 function normalizeStatus(s) {
   const v = String(s ?? "").trim().toUpperCase();
@@ -75,6 +76,7 @@ function normalizeMemberOption(m) {
 
 export function TasksBoardPage() {
   const { user } = useAuth();
+  const teamCtx = useTeamContext();
   const [query, setQuery] = useState("");
   const [showOnlyMine, setShowOnlyMine] = useState(false);
   const [selectedAssigneeUserId, setSelectedAssigneeUserId] = useState("");
@@ -106,7 +108,9 @@ export function TasksBoardPage() {
   }, [membersByGroupId, tasks, user?.id, user?.role]);
 
   const load = async () => {
-    const data = await jiraTaskService.list();
+    const gid = teamCtx?.selectedGroupId == null ? null : Number(teamCtx.selectedGroupId);
+    const hasGroup = Number.isFinite(gid) && gid > 0;
+    const data = await (hasGroup ? jiraTaskService.listByGroup(gid) : jiraTaskService.list());
     const list = Array.isArray(data) ? data : [];
 
     const normalized = list.map(normalizeJiraTask);
@@ -149,7 +153,7 @@ export function TasksBoardPage() {
 
   useEffect(() => {
     load().catch((e) => console.error("[TasksBoard] load failed:", e));
-  }, []);
+  }, [teamCtx?.selectedGroupId]);
 
   const handleStatusChange = async (taskId, newStatus) => {
     setTasks((prev) =>

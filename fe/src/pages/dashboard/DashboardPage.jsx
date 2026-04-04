@@ -13,6 +13,7 @@ import { groupService } from "../../services/groups/group.service.js";
 import { studentService } from "../../services/students/student.service.js";
 import { lecturerService } from "../../services/lecturers/lecturer.service.js";
 import { syncLogService } from "../../services/syncLogs/syncLog.service.js";
+import { useTeamContext } from "../../store/teamContext/teamContext.js";
 
 function normalizeStatus(s) {
   const v = String(s ?? "").trim().toUpperCase();
@@ -54,6 +55,7 @@ function mapSystemLog(log) {
 
 export function DashboardPage() {
   const { user } = useAuth();
+  const teamCtx = useTeamContext();
   const isAdmin = user?.role === ROLES.ADMIN;
   const isLecturer = user?.role === ROLES.LECTURER;
 
@@ -70,11 +72,14 @@ export function DashboardPage() {
 
   const stats = useMemo(() => computeTaskStats(tasks), [tasks]);
 
-  const loadStudentDashboard = async () => {
+  const loadStudentDashboard = async (groupId) => {
+    const gid = groupId == null ? null : Number(groupId);
+    const hasGroup = Number.isFinite(gid) && gid > 0;
+
     const [taskData, activityData, memberData, studentData] = await Promise.all([
-      jiraTaskService.list().catch(() => []),
-      githubActivityService.list().catch(() => []),
-      groupService.listMembers().catch(() => []),
+      (hasGroup ? jiraTaskService.listByGroup(gid) : jiraTaskService.list()).catch(() => []),
+      (hasGroup ? githubActivityService.listByGroup(gid) : githubActivityService.list()).catch(() => []),
+      (hasGroup ? groupService.listGroupMembers(gid) : groupService.listMembers()).catch(() => []),
       studentService.list().catch(() => []),
     ]);
 
@@ -238,16 +243,22 @@ export function DashboardPage() {
   useEffect(() => {
     if (isAdmin) {
       loadAdminDashboard().catch((e) => console.error("[AdminDashboard] load failed:", e));
-    } else if (!isLecturer) {
-      loadStudentDashboard().catch((e) => console.error("[Dashboard] load failed:", e));
+      return;
     }
-  }, [isAdmin, isLecturer]);
+
+    if (isLecturer) return;
+
+    // Team Lead/Member: load by selected group (for semester switching)
+    loadStudentDashboard(teamCtx?.selectedGroupId).catch((e) =>
+      console.error("[Dashboard] load failed:", e),
+    );
+  }, [isAdmin, isLecturer, teamCtx?.selectedGroupId]);
 
   const handleSync = async () => {
     setIsSyncing(true);
     try {
       await syncService.syncAll();
-      await loadStudentDashboard();
+      await loadStudentDashboard(teamCtx?.selectedGroupId);
     } catch (e) {
       console.error("[Dashboard] sync failed:", e);
     } finally {

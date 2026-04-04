@@ -1,12 +1,8 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../store/auth/useAuth.jsx";
 import { ROLES } from "../../routes/access/roles.js";
-import { studentService } from "../../services/students/student.service.js";
-import { groupService } from "../../services/groups/group.service.js";
-import { classService } from "../../services/classes/class.service.js";
-import { semesterService } from "../../services/semesters/semester.service.js";
-import { topicService } from "../../services/topics/topic.service.js";
+import { useTeamContext } from "../../store/teamContext/teamContext.js";
 import "./topbar.css";
 
 const PATH_LABELS = {
@@ -20,85 +16,20 @@ const PATH_LABELS = {
 
 export function Topbar() {
   const { user, logout } = useAuth();
+  const teamCtx = useTeamContext();
   const [open, setOpen] = useState(false);
-  const [studyContext, setStudyContext] = useState({ semesterLabel: null, classLabel: null, topicLabel: null });
   const location = useLocation();
   const navigate = useNavigate();
 
   const isTeamUser = user?.role === ROLES.TEAM_LEAD || user?.role === ROLES.TEAM_MEMBER;
 
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      if (!isTeamUser || user?.id == null) {
-        setStudyContext({ semesterLabel: null, classLabel: null, topicLabel: null });
-        return;
+  const studyContext = isTeamUser
+    ? {
+        semesterLabel: teamCtx?.selectedGroup?.semesterLabel ?? null,
+        classLabel: teamCtx?.selectedGroup?.classLabel ?? null,
+        topicLabel: teamCtx?.selectedGroup?.topicLabel ?? null,
       }
-
-      try {
-        // Prefer group context from /groups (stable endpoint)
-        const groups = await groupService.list().catch(() => []);
-        const myGroup = Array.isArray(groups) ? groups[0] : null;
-
-        let classId = myGroup?.class_id ?? myGroup?.classId ?? null;
-        let semesterId = myGroup?.semester_id ?? myGroup?.semesterId ?? null;
-
-        const topicId = myGroup?.project_id ?? myGroup?.projectId ?? null;
-        let topicLabel = null;
-        if (topicId != null) {
-          const topics = await topicService.list().catch(() => []);
-          const t = (Array.isArray(topics) ? topics : []).find((x) => Number(x.id) === Number(topicId));
-          const code = t?.project_code ?? t?.code ?? t?.topic_code ?? t?.topicCode;
-          const name = t?.project_name ?? t?.name ?? t?.topic_name ?? t?.topicName;
-          topicLabel = name || code || null;
-        }
-
-        // Fallback: derive from student record (if context missing)
-        if (classId == null) {
-          const students = await studentService.list().catch(() => []);
-          const uid = Number(user.id);
-          const me = Number.isFinite(uid)
-            ? (Array.isArray(students) ? students : []).find((s) => Number(s.user_id ?? s.userId) === uid)
-            : null;
-          classId = me?.class_id ?? me?.classId ?? null;
-        }
-
-        let classLabel = null;
-        let semesterLabel = null;
-
-        const classes = await classService.list();
-        const cls = (Array.isArray(classes) ? classes : []).find((c) => Number(c.id) === Number(classId));
-        if (cls) {
-          const code = cls.class_code ?? cls.classCode;
-          const name = cls.class_name ?? cls.className;
-          classLabel = code || name || null;
-
-          if (semesterId == null) {
-            semesterId = cls.semester_id ?? cls.semesterId ?? null;
-          }
-        }
-
-        if (semesterId != null) {
-          const semesters = await semesterService.list();
-          const sem = (Array.isArray(semesters) ? semesters : []).find((s) => Number(s.id) === Number(semesterId));
-          if (sem) {
-            const semCode = sem.code ?? sem.semester_code ?? sem.semesterCode;
-            const semName = sem.name ?? sem.semester_name ?? sem.semesterName;
-            semesterLabel = semCode || semName || null;
-          }
-        }
-
-        if (!cancelled) setStudyContext({ semesterLabel, classLabel, topicLabel });
-      } catch {
-        if (!cancelled) setStudyContext({ semesterLabel: null, classLabel: null, topicLabel: null });
-      }
-    };
-
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, [isTeamUser, user?.id]);
+    : { semesterLabel: null, classLabel: null, topicLabel: null };
 
   const currentPath =
     location.pathname.split("/").filter(Boolean)[0] || "dashboard";
@@ -128,7 +59,23 @@ export function Topbar() {
 
           {isTeamUser && (
             <div className="topbar__study-context">
-              <span className="topbar__value">Semester: {studyContext.semesterLabel || "-"}</span>
+              <span className="topbar__value">
+                Semester:{" "}
+                <select
+                  className="topbar__context-select"
+                  value={teamCtx?.selectedSemesterId ?? ""}
+                  onChange={(e) => teamCtx?.setSelectedSemesterId?.(e.target.value)}
+                  disabled={!teamCtx?.isTeamUser || teamCtx?.isLoading || (teamCtx?.semesterOptions?.length ?? 0) <= 1}
+                  title={(teamCtx?.semesterOptions?.length ?? 0) <= 1 ? "Không có kì khác để chọn" : "Chọn kì để xem"}
+                >
+                  {(teamCtx?.semesterOptions || []).map((s) => (
+                    <option key={s.semesterId} value={s.semesterId}>
+                      {s.semesterLabel}
+                      {s.semesterStatus === "active" ? " (Active)" : ""}
+                    </option>
+                  ))}
+                </select>
+              </span>
               <span className="topbar__dot">•</span>
               <span className="topbar__value">Class: {studyContext.classLabel || "-"}</span>
               <span className="topbar__dot">•</span>
