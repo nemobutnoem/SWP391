@@ -39,6 +39,31 @@
   font-size: 1rem;
 }
 
+.topbar__study-context {
+  margin-top: 0.15rem;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--slate-500);
+  flex-wrap: wrap;
+}
+
+.topbar__dot {
+  color: var(--slate-300);
+}
+
+.topbar__value {
+  white-space: nowrap;
+}
+
+.topbar__topic {
+  max-width: 520px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .topbar__right {
   display: flex;
   align-items: center;
