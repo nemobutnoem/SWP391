@@ -35,6 +35,24 @@ export function MyGroupsPage() {
   const [refreshingGroupId, setRefreshingGroupId] = useState(null);
   const [refreshStatusByGroupId, setRefreshStatusByGroupId] = useState({});
 
+  const DROPPED_MEMBERS_STORAGE_KEY = "swp391:lecturer:droppedMembersByGroup";
+  const loadDroppedMembersByGroup = () => {
+    try {
+      const raw = localStorage.getItem(DROPPED_MEMBERS_STORAGE_KEY);
+      const parsed = raw ? JSON.parse(raw) : {};
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch {
+      return {};
+    }
+  };
+  const saveDroppedMembersByGroup = (value) => {
+    try {
+      localStorage.setItem(DROPPED_MEMBERS_STORAGE_KEY, JSON.stringify(value || {}));
+    } catch {
+      // ignore
+    }
+  };
+
   const loadJiraTasks = async () => {
     try {
       const list = await jiraTaskService.list();
@@ -46,7 +64,17 @@ export function MyGroupsPage() {
 
   const loadData = () => {
     groupService.list().then(setAllGroups);
-    groupService.listMembers().then(setAllMembers);
+    groupService.listMembers().then((members) => {
+      const droppedByGroup = loadDroppedMembersByGroup();
+      const next = (Array.isArray(members) ? members : []).map((m) => {
+        const gid = Number(m.group_id ?? m.groupId);
+        const mid = Number(m.id ?? m.member_id ?? m.memberId);
+        const droppedList = droppedByGroup?.[String(gid)];
+        const isDropped = Array.isArray(droppedList) && droppedList.map(Number).includes(mid);
+        return isDropped ? { ...m, isDropped: true } : m;
+      });
+      setAllMembers(next);
+    });
     studentService.list().then(setStudents);
     gradeService.list().then(setGrades);
     topicService.list().then(setTopics);
@@ -246,13 +274,26 @@ export function MyGroupsPage() {
     }
   };
 
-  const handleRemoveMember = async (groupId, memberId) => {
-    if (!window.confirm("Are you sure you want to remove this member?")) return;
+  // Đánh rớt sinh viên: chỉ set isDropped=true, không xóa khỏi danh sách
+  const handleDropMember = async (groupId, memberId) => {
+    if (!window.confirm("Bạn có chắc muốn đánh rớt sinh viên này không?")) return;
     try {
-      await groupService.removeMember(groupId, memberId);
-      loadData();
+      // Persist to localStorage so reload vẫn giữ trạng thái.
+      const gid = Number(groupId);
+      const mid = Number(memberId);
+      const droppedByGroup = loadDroppedMembersByGroup();
+      const key = String(gid);
+      const prevList = Array.isArray(droppedByGroup[key]) ? droppedByGroup[key] : [];
+      const nextList = Array.from(new Set([...prevList.map(Number), mid]));
+      saveDroppedMembersByGroup({ ...droppedByGroup, [key]: nextList });
+
+      setAllMembers((prev) => prev.map((m) =>
+        Number(m.group_id ?? m.groupId) === Number(groupId) && Number(m.id ?? m.member_id ?? m.memberId) === Number(memberId)
+          ? { ...m, isDropped: true }
+          : m
+      ));
     } catch (err) {
-      alert("Failed to remove member: " + (err.message || err));
+      alert("Đánh rớt thất bại: " + (err.message || err));
     }
   };
 
@@ -362,7 +403,7 @@ export function MyGroupsPage() {
       onToggleExpand={toggleExpand}
       onRoleChange={handleRoleChange}
       onAddMember={handleAddMember}
-      onRemoveMember={handleRemoveMember}
+      onRemoveMember={handleDropMember}
       addMemberGroupId={addMemberGroupId}
       onOpenAddMember={setAddMemberGroupId}
       onCloseAddMember={() => setAddMemberGroupId(null)}
