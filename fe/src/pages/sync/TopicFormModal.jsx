@@ -10,23 +10,20 @@ export function TopicFormModal({
   defaultBlockType = "MAIN",
   lockBlockTypeTo = null,
   disabled = false,
+  semesters = [],
+  selectedSemesterId = "",
 }) {
   const initialBlockType =
     (initialData?.block_type ?? initialData?.blockType ?? defaultBlockType ?? "MAIN");
 
-  // Reset state when modal opens or initialData changes
   const [formData, setFormData] = useState({
     name: initialData?.name || "",
     code: initialData?.code || "",
     description: initialData?.description || "",
     status: initialData?.status || "ACTIVE",
     block_type: String(initialBlockType).toUpperCase(),
+    semester_id: initialData?.semester_id ?? initialData?.semesterId ?? selectedSemesterId ?? "",
   });
-
-  // Since we want the form to reset when initialData changes (e.g. switching from Edit to Create)
-  // or when the modal closes, we can't just rely on the initial state of the modal isn't unmounted.
-  // Actually, the parent can just use a `key` to remount the component.
-  // I will update the parent to use `key={editingTopic?.id || 'new'}`
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -35,6 +32,9 @@ export function TopicFormModal({
       [name]: name === "code" ? value.toUpperCase() : value,
     }));
   };
+
+  const selectedSem = semesters.find((s) => String(s.id) === String(formData.semester_id));
+  const semStatus = String(selectedSem?.status || "").toUpperCase();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -47,6 +47,7 @@ export function TopicFormModal({
       name: formData.name.trim(),
       description: formData.description.trim(),
       block_type: finalBlockType,
+      semester_id: formData.semester_id ? Number(formData.semester_id) : null,
     });
   };
 
@@ -84,19 +85,24 @@ export function TopicFormModal({
             />
           </div>
           <div className="form-group">
-            <label>Status</label>
+            <label>Semester</label>
             <select
-              name="status"
-              value={formData.status}
+              name="semester_id"
+              value={formData.semester_id}
               onChange={handleChange}
-              disabled={Boolean(disabled)}
+              disabled={Boolean(disabled) || Boolean(initialData)}
             >
-              <option value="ACTIVE">Active</option>
-              <option value="INACTIVE">Inactive</option>
-              <option value="ARCHIVED">Archived</option>
+              <option value="">-- Select Semester --</option>
+              {semesters.filter((s) => String(s.status || "").toUpperCase() !== "COMPLETED").map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name} ({s.status})
+                </option>
+              ))}
             </select>
           </div>
+        </div>
 
+        <div className="form-row">
           <div className="form-group">
             <label>Block</label>
             <select
@@ -107,6 +113,24 @@ export function TopicFormModal({
             >
               <option value="MAIN">10 weeks (Main)</option>
               <option value="CAPSTONE">3 weeks (Capstone)</option>
+            </select>
+            {semStatus === "ACTIVE" && lockBlockTypeTo === "CAPSTONE" && (
+              <span style={{ fontSize: "0.75rem", color: "var(--warning)", marginTop: "0.25rem", display: "block" }}>
+                Semester is Active — only Capstone topics can be created.
+              </span>
+            )}
+          </div>
+          <div className="form-group">
+            <label>Status</label>
+            <select
+              name="status"
+              value={formData.status}
+              onChange={handleChange}
+              disabled={Boolean(disabled)}
+            >
+              <option value="ACTIVE">Active</option>
+              <option value="INACTIVE">Inactive</option>
+              <option value="ARCHIVED">Archived</option>
             </select>
           </div>
         </div>

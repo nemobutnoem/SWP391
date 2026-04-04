@@ -22,4 +22,15 @@ export const classMock = {
     remove: async (id) => {
         mockClasses = mockClasses.filter(c => c.id !== Number(id));
     },
+    complete: async (id) => {
+        mockClasses = mockClasses.map(c => c.id === Number(id) ? { ...c, status: "Completed" } : c);
+        return mockClasses.find(c => c.id === Number(id));
+    },
+    activate: async (id) => {
+        mockClasses = mockClasses.map(c => c.id === Number(id) ? { ...c, status: "Active" } : c);
+        return mockClasses.find(c => c.id === Number(id));
+    },
+    listEnrollments: async () => [],
+    enroll: async () => ({}),
+    unenroll: async () => {},
 };

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import html2pdf from "html2pdf.js";
 import { jiraTaskService } from "../../services/jiraTasks/jiraTask.service.js";
 import { groupService } from "../../services/groups/group.service.js";
+import { classService } from "../../services/classes/class.service.js";
 import { SRSBuilderView } from "./SRSBuilderView.jsx";
 import "./srsBuilder.css";
 
@@ -14,14 +15,39 @@ export function SRSBuilderPage() {
 
   // Group filter
   const [groups, setGroups] = useState([]);
+  const [classes, setClasses] = useState([]);
+  const [selectedClassId, setSelectedClassId] = useState(null);
   const [selectedGroupId, setSelectedGroupId] = useState(null);
 
   useEffect(() => {
-    groupService.list().then((data) => {
-      setGroups(data);
-      if (data.length > 0) setSelectedGroupId(data[0].id);
+    Promise.all([groupService.list(), classService.list()]).then(([groupsData, classesData]) => {
+      const g = Array.isArray(groupsData) ? groupsData : [];
+      const c = Array.isArray(classesData) ? classesData : [];
+      setGroups(g);
+      setClasses(c);
+      // Auto-select first class that has groups
+      const classIdsWithGroups = new Set(g.map((gr) => gr.class_id ?? gr.classId));
+      const firstClass = c.find((cl) => classIdsWithGroups.has(cl.id));
+      if (firstClass) {
+        setSelectedClassId(firstClass.id);
+        const firstGroup = g.find((gr) => (gr.class_id ?? gr.classId) === firstClass.id);
+        if (firstGroup) setSelectedGroupId(firstGroup.id);
+      } else if (g.length > 0) {
+        setSelectedGroupId(g[0].id);
+      }
     });
   }, []);
+
+  const filteredGroups = useMemo(() => {
+    if (!selectedClassId) return groups;
+    return groups.filter((g) => (g.class_id ?? g.classId) === selectedClassId);
+  }, [groups, selectedClassId]);
+
+  const handleClassChange = (classId) => {
+    setSelectedClassId(classId);
+    const firstGroup = groups.find((g) => (g.class_id ?? g.classId) === classId);
+    setSelectedGroupId(firstGroup ? firstGroup.id : null);
+  };
 
   useEffect(() => {
     if (!selectedGroupId) return;
@@ -91,7 +117,10 @@ export function SRSBuilderPage() {
       onMoveTask={handleMoveTask}
       onGenerate={handleGenerate}
       onDrop={handleMoveTask}
-      groups={groups}
+      groups={filteredGroups}
+      classes={classes}
+      selectedClassId={selectedClassId}
+      onClassChange={handleClassChange}
       selectedGroupId={selectedGroupId}
       onGroupChange={setSelectedGroupId}
       previewRef={previewRef}

@@ -56,4 +56,14 @@ public class ClassController {
     public void delete(@PathVariable("id") Integer id) {
         classService.delete(id);
     }
+
+    @PutMapping("/{id}/complete")
+    public ClassEntity complete(@PathVariable("id") Integer id) {
+        return classService.completeClass(id);
+    }
+
+    @PutMapping("/{id}/activate")
+    public ClassEntity activate(@PathVariable("id") Integer id) {
+        return classService.activateClass(id);
+    }
 }

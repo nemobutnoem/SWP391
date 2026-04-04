@@ -13,6 +13,7 @@ export function SemesterClassPage() {
   const [lecturers, setLecturers] = useState([]);
   const [students, setStudents] = useState([]);
   const [groups, setGroups] = useState([]);
+  const [enrollments, setEnrollments] = useState({});
 
   const [selectedSemesterId, setSelectedSemesterId] = useState(null);
 
@@ -37,7 +38,16 @@ export function SemesterClassPage() {
 
   useEffect(() => {
     if (selectedSemesterId) {
-      classService.list(selectedSemesterId).then(setClasses);
+      classService.list(selectedSemesterId).then((cls) => {
+        setClasses(cls);
+        // Load enrollments for CAPSTONE classes
+        const capstoneClasses = cls.filter((c) => (c.class_type || "MAIN") === "CAPSTONE");
+        capstoneClasses.forEach((c) => {
+          classService.listEnrollments(c.id).then((data) => {
+            setEnrollments((prev) => ({ ...prev, [c.id]: data }));
+          }).catch(() => {});
+        });
+      });
     } else {
       setClasses([]);
     }
@@ -47,17 +57,19 @@ export function SemesterClassPage() {
     return classes.map((c) => {
       const lecturer = lecturers.find((l) => l.id === c.lecturer_id);
       const classStudents = students.filter((s) => s.class_id === c.id || s.classId === c.id);
-      const studentCount = classStudents.length;
+      const classEnrollments = enrollments[c.id] || [];
+      const studentCount = classStudents.length + classEnrollments.length;
       const classGroups = groups.filter((g) => g.class_id === c.id || g.classId === c.id);
       return {
         ...c,
         lecturer_name: lecturer?.full_name || "Unassigned",
         student_count: studentCount,
         students: classStudents,
+        enrollments: classEnrollments,
         groups: classGroups,
       };
     });
-  }, [classes, lecturers, students, groups]);
+  }, [classes, lecturers, students, groups, enrollments]);
 
   const handleCreateSemester = () => {
     setEditingSemester(null);
@@ -180,22 +192,60 @@ export function SemesterClassPage() {
 
   const handleAddStudent = async (classId, student) => {
     try {
-      const email = student.email || `${(student.student_code || "").toLowerCase()}@fpt.edu.vn`;
-      await studentService.update(student.id, {
-        user_id: student.user_id || student.userId,
-        class_id: classId,
-        full_name: student.full_name,
-        student_code: student.student_code,
-        email: email,
-        major: student.major || "SE",
-        github_username: student.github_username || null,
-        status: student.status || "Active",
-      });
-      const updatedStudents = await studentService.list();
-      setStudents(updatedStudents);
+      const cls = classes.find((c) => c.id === classId);
+      const isCapstone = (cls?.class_type || "MAIN") === "CAPSTONE";
+
+      if (isCapstone) {
+        // CAPSTONE class: use enrollment system so student keeps their 10w class
+        await classService.enroll(classId, student.id);
+        const data = await classService.listEnrollments(classId);
+        setEnrollments((prev) => ({ ...prev, [classId]: data }));
+      } else {
+        // MAIN class: assign student directly
+        const email = student.email || `${(student.student_code || "").toLowerCase()}@fpt.edu.vn`;
+        await studentService.update(student.id, {
+          user_id: student.user_id || student.userId,
+          class_id: classId,
+          full_name: student.full_name,
+          student_code: student.student_code,
+          email: email,
+          major: student.major || "SE",
+          github_username: student.github_username || null,
+          status: student.status || "Active",
+        });
+        const updatedStudents = await studentService.list();
+        setStudents(updatedStudents);
+      }
     } catch (e) {
       alert("Failed to add student to class: " + (e?.data?.message || e?.response?.data?.message || e.message));
       throw e;
+    }
+  };
+
+  const handleCompleteClass = async (id) => {
+    const cls = classes.find((c) => c.id === id);
+    if (!window.confirm(`Mark class "${cls?.class_code}" as Completed?`)) return;
+    try {
+      await classService.complete(id);
+      const updated = await classService.list(selectedSemesterId);
+      setClasses(updated);
+      // Refresh semesters — semester may have auto-completed
+      const updatedSemesters = await semesterService.list();
+      setSemesters(updatedSemesters);
+    } catch (e) {
+      alert("Failed: " + (e.response?.data?.message || e.message));
+    }
+  };
+
+  const handleActivateClass = async (id) => {
+    const cls = classes.find((c) => c.id === id);
+    if (!window.confirm(`Activate class "${cls?.class_code}"?`)) return;
+    try {
+      await classService.activate(id);
+      const updated = await classService.list(selectedSemesterId);
+      setClasses(updated);
+    } catch (e) {
+      alert("Failed: " + (e.response?.data?.message || e.message));
     }
   };
 
@@ -226,6 +276,8 @@ export function SemesterClassPage() {
       onCloseAssignModal={() => setAssignModalOpen(false)}
       onAssignLecturer={handleAssignLecturer}
       onAddStudent={handleAddStudent}
+      onCompleteClass={handleCompleteClass}
+      onActivateClass={handleActivateClass}
       allStudents={students}
     />
   );

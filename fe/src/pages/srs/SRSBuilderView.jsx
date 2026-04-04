@@ -23,6 +23,9 @@ export function SRSBuilderView({
   onGenerate,
   onDrop,
   groups = [],
+  classes = [],
+  selectedClassId,
+  onClassChange,
   selectedGroupId,
   onGroupChange,
   previewRef,
@@ -74,8 +77,25 @@ export function SRSBuilderView({
       />
 
       <div className="builder-container">
-        {groups.length > 0 && (
-          <div className="srs-group-filter" style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", marginBottom: "1rem" }}>
+        {(groups.length > 0 || classes.length > 0) && (
+          <div className="srs-group-filter" style={{ display: "inline-flex", alignItems: "center", gap: "1rem", marginBottom: "1rem" }}>
+            {classes.length > 0 && (
+              <>
+                <label className="integration-label" style={{ margin: 0, whiteSpace: "nowrap" }}>Class</label>
+                <select
+                  className="integration-input"
+                  style={{ width: "auto", minWidth: "180px" }}
+                  value={selectedClassId || ""}
+                  onChange={(e) => onClassChange(Number(e.target.value))}
+                >
+                  {classes.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.class_code || c.class_name || `Class ${c.id}`}
+                    </option>
+                  ))}
+                </select>
+              </>
+            )}
             <label className="integration-label" style={{ margin: 0, whiteSpace: "nowrap" }}>Group</label>
             <select
               className="integration-input"

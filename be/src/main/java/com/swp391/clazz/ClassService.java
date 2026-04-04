@@ -18,6 +18,7 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class ClassService {
     private final ClassRepository classRepository;
+    private final ClassEnrollmentRepository enrollmentRepository;
     private final StudentGroupRepository groupRepository;
     private final StudentRepository studentRepository;
     private final SemesterRepository semesterRepository;
@@ -188,11 +189,14 @@ public class ClassService {
             throw ApiException.badRequest("Invalid class type '" + classType + "'. Allowed values: MAIN, CAPSTONE.");
         }
 
-        // Validate CAPSTONE prerequisite
-        if ("CAPSTONE".equalsIgnoreCase(classType)) {
-            if (req.prerequisiteClassId() == null) {
-                throw ApiException.badRequest("Capstone class (3w) requires a prerequisite main class (10w).");
-            }
+        // Upcoming semesters can only have MAIN (10w) classes
+        if ("Upcoming".equalsIgnoreCase(semester.getStatus()) && "CAPSTONE".equalsIgnoreCase(classType)) {
+            throw ApiException.badRequest(
+                    "Cannot create Capstone (3w) class in an Upcoming semester. Activate the semester and complete the Main (10w) classes first.");
+        }
+
+        // Validate CAPSTONE prerequisite (optional — if provided, must be a MAIN class)
+        if ("CAPSTONE".equalsIgnoreCase(classType) && req.prerequisiteClassId() != null) {
             ClassEntity prereq = classRepository.findById(req.prerequisiteClassId())
                     .orElseThrow(() -> ApiException.badRequest("Prerequisite class not found with id: " + req.prerequisiteClassId()));
             if (!"MAIN".equalsIgnoreCase(prereq.getClassType())) {
@@ -217,6 +221,87 @@ public class ClassService {
         if (req.lecturerId() != null && !lecturerRepository.existsById(req.lecturerId())) {
             throw ApiException.badRequest("Lecturer not found with id: " + req.lecturerId());
         }
+    }
+
+    /**
+     * Quick action: mark a class as Completed.
+     * Only Active classes can be completed.
+     */
+    @Transactional
+    public ClassEntity completeClass(Integer id) {
+        ClassEntity cls = getById(id);
+        if (!"Active".equalsIgnoreCase(cls.getStatus())) {
+            throw ApiException.badRequest("Only Active classes can be completed. Current status: " + cls.getStatus());
+        }
+        cls.setStatus("Completed");
+        ClassEntity saved = classRepository.save(cls);
+
+        // Auto-complete all groups in this class
+        var groups = groupRepository.findByClassId(id);
+        for (var group : groups) {
+            if (!"Completed".equalsIgnoreCase(group.getStatus())) {
+                group.setStatus("Completed");
+                groupRepository.save(group);
+            }
+        }
+
+        // Auto-complete semester if ALL classes in it are now Completed
+        List<ClassEntity> siblingClasses = classRepository.findBySemesterId(cls.getSemesterId());
+        boolean allCompleted = siblingClasses.stream()
+                .allMatch(c -> "Completed".equalsIgnoreCase(c.getStatus()));
+        if (allCompleted) {
+            var semester = semesterRepository.findById(cls.getSemesterId()).orElse(null);
+            if (semester != null && "Active".equalsIgnoreCase(semester.getStatus())) {
+                semester.setStatus("Completed");
+                semesterRepository.save(semester);
+            }
+        }
+
+        return saved;
+    }
+
+    /**
+     * Quick action: activate a class.
+     * Validates semester is active and prerequisite is completed (for CAPSTONE).
+     */
+    @Transactional
+    public ClassEntity activateClass(Integer id) {
+        ClassEntity cls = getById(id);
+        if ("Active".equalsIgnoreCase(cls.getStatus())) {
+            throw ApiException.badRequest("Class is already Active.");
+        }
+        if ("Completed".equalsIgnoreCase(cls.getStatus())) {
+            throw ApiException.badRequest("Cannot re-activate a Completed class.");
+        }
+
+        // Semester must be active
+        var semester = semesterRepository.findById(cls.getSemesterId())
+                .orElseThrow(() -> ApiException.badRequest("Semester not found"));
+        if (!"Active".equalsIgnoreCase(semester.getStatus())) {
+            throw ApiException.badRequest("Cannot activate class: semester '" + semester.getName() + "' is not active.");
+        }
+
+        // CAPSTONE: prerequisite must be completed
+        if ("CAPSTONE".equalsIgnoreCase(cls.getClassType()) && cls.getPrerequisiteClassId() != null) {
+            ClassEntity prereq = classRepository.findById(cls.getPrerequisiteClassId()).orElse(null);
+            if (prereq != null && !"Completed".equalsIgnoreCase(prereq.getStatus())) {
+                throw ApiException.badRequest(
+                        "Cannot activate capstone class: prerequisite '" + prereq.getClassCode()
+                                + "' has not completed yet (status: " + prereq.getStatus() + ").");
+            }
+        }
+
+        cls.setStatus("Active");
+        ClassEntity saved = classRepository.save(cls);
+
+        // Promote PRE_ENROLLED students to ACTIVE
+        var preEnrolled = enrollmentRepository.findByClassIdAndStatus(id, "PRE_ENROLLED");
+        for (var enrollment : preEnrolled) {
+            enrollment.setStatus("ACTIVE");
+            enrollmentRepository.save(enrollment);
+        }
+
+        return saved;
     }
 }
 

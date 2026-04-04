@@ -399,6 +399,9 @@ export function SemesterClassView({
   onCloseAssignModal,
   onAssignLecturer,
   onAddStudent,
+  onCompleteClass,
+  onActivateClass,
+  onPreEnroll,
   allStudents = [],
 }) {
   const [expandedClassId, setExpandedClassId] = useState(null);
@@ -536,6 +539,24 @@ export function SemesterClassView({
                         </td>
                         <td className="action-cell">
                           <div className="action-buttons">
+                            {c.status?.toLowerCase() === "active" && isSemesterActive && (
+                              <Button variant="ghost" size="sm" onClick={() => onCompleteClass(c.id)}>
+                                Complete
+                              </Button>
+                            )}
+                            {c.status?.toLowerCase() === "inactive" && isSemesterActive && (() => {
+                              const isCapstone = (c.class_type || "MAIN") === "CAPSTONE";
+                              const prereq = isCapstone && c.prerequisite_class_id
+                                ? enrichedClasses.find((x) => x.id === c.prerequisite_class_id)
+                                : null;
+                              const prereqDone = !isCapstone || !c.prerequisite_class_id || (prereq && prereq.status?.toLowerCase() === "completed");
+                              return (
+                                <Button variant="ghost" size="sm" disabled={!prereqDone} onClick={() => onActivateClass(c.id)}
+                                  title={!prereqDone ? `Prerequisite class "${prereq?.class_code}" must be completed first` : "Activate this class"}>
+                                  Activate
+                                </Button>
+                              );
+                            })()}
                             <Button
                               variant="ghost"
                               size="sm"
@@ -561,14 +582,39 @@ export function SemesterClassView({
                           <td colSpan="9" className="expanded-content-cell">
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
                               <span className="expanded-row-title" style={{ margin: 0 }}>Students in {c.class_code}</span>
-                              {isSemesterActive ? (
-                                <Button variant="primary" size="sm" onClick={() => setAddStudentClassId(c.id)}>+ Add Student</Button>
-                              ) : (
-                                <span style={{ fontSize: "0.75rem", color: "var(--slate-400)", fontStyle: "italic" }}>
-                                  Activate semester to add students
-                                </span>
-                              )}
+                              <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                                {isSemesterActive && (c.class_type || "MAIN") === "CAPSTONE" && c.status?.toLowerCase() !== "active" && (
+                                  <Button variant="secondary" size="sm" onClick={() => setAddStudentClassId(c.id)}>Pre-enroll to 3w</Button>
+                                )}
+                                {isSemesterActive && c.status?.toLowerCase() === "active" ? (
+                                  <Button variant="primary" size="sm" onClick={() => setAddStudentClassId(c.id)}>+ Add Student</Button>
+                                ) : !isSemesterActive ? (
+                                  <span style={{ fontSize: "0.75rem", color: "var(--slate-400)", fontStyle: "italic" }}>
+                                    Activate semester to add students
+                                  </span>
+                                ) : null}
+                              </div>
                             </div>
+
+                            {/* Pre-enrolled students for inactive capstone classes */}
+                            {(c.class_type || "MAIN") === "CAPSTONE" && c.status?.toLowerCase() !== "active" && c.enrollments && c.enrollments.length > 0 && (
+                              <div style={{ marginBottom: "0.75rem" }}>
+                                <span style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--slate-500)" }}>Pre-enrolled ({c.enrollments.length})</span>
+                                <div className="class-student-dropdown-list" style={{ marginTop: "0.5rem" }}>
+                                  {c.enrollments.map((e) => (
+                                    <div key={e.id} className="class-student-dropdown-item">
+                                      <div className="avatar-small">{(e.student_name || "S")[0]}</div>
+                                      <div className="profile-info">
+                                        <span className="profile-name">{e.student_name}</span>
+                                        <Badge variant="warning" size="sm">Pre-enrolled</Badge>
+                                      </div>
+                                      <code className="code-badge">{e.student_code}</code>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
                             {c.students && c.students.length > 0 ? (
                               <div className="class-student-dropdown-list">
                                 {c.students.map((student) => (
@@ -583,7 +629,7 @@ export function SemesterClassView({
                                 ))}
                               </div>
                             ) : (
-                              <span className="text-secondary">No students in this class yet.{isSemesterActive ? ' Click "+ Add Student" to add one.' : ""}</span>
+                              <span className="text-secondary">No students in this class yet.{isSemesterActive && c.status?.toLowerCase() === "active" ? ' Click "+ Add Student" to add one.' : ""}</span>
                             )}
                           </td>
                         </tr>

@@ -34,6 +34,7 @@ export function MyGroupsView({
   onRefreshGroupJira,
   refreshingGroupId = null,
   refreshStatusByGroupId = {},
+  isSemesterActive = true,
 }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedRole, setSelectedRole] = useState("Member");
@@ -107,7 +108,7 @@ export function MyGroupsView({
         title="My Supervised Groups"
         description="Detailed view of all groups under your supervision with member contribution scores and grade history."
         actions={
-          <Button variant="primary" size="sm" onClick={openCreateGroupModal}>
+          <Button variant="primary" size="sm" onClick={openCreateGroupModal} disabled={!isSemesterActive}>
             Create Group
           </Button>
         }
@@ -204,6 +205,12 @@ export function MyGroupsView({
                 {expandedGroupId === g.id && (
                   <tr className="expanded-row">
                     <td colSpan="5" className="expanded-content-cell">
+                      {/* Lock banner for completed groups */}
+                      {(!isSemesterActive || g.status?.toLowerCase() === "completed") && (
+                        <div style={{ padding: "0.625rem 1rem", marginBottom: "1rem", borderRadius: "8px", background: "var(--slate-100, #f1f5f9)", border: "1px solid var(--slate-300)", color: "var(--slate-600)", fontSize: "0.85rem", fontWeight: 500 }}>
+                          {!isSemesterActive ? "Semester is not active. All operations are locked." : "This group is completed. All operations are locked."}
+                        </div>
+                      )}
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: "1rem", flexWrap: "wrap", marginBottom: "1rem" }}>
                         <div style={{ minWidth: "320px", flex: "1 1 360px" }}>
                           <span className="expanded-row-title" style={{ display: "block", marginBottom: "0.5rem" }}>
@@ -216,6 +223,7 @@ export function MyGroupsView({
                               onChange={(e) => onTopicSelectionChange?.(g.id, e.target.value)}
                               onClick={(e) => e.stopPropagation()}
                               style={{ minWidth: "260px" }}
+                              disabled={!isSemesterActive || g.status?.toLowerCase() === "completed"}
                             >
                               <option value="">Select topic...</option>
                               {getScopedTopicsForGroup(g).map((topic) => (
@@ -227,6 +235,7 @@ export function MyGroupsView({
                             <Button
                               variant="secondary"
                               size="sm"
+                              disabled={!isSemesterActive || g.status?.toLowerCase() === "completed"}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 onAssignTopic?.(g.id);
@@ -301,6 +310,7 @@ export function MyGroupsView({
                             className="btn btn-primary btn-sm"
                             style={{ padding: "0.375rem 0.75rem", fontSize: "0.8125rem", borderRadius: "6px", border: "none", background: "var(--brand-600, #2563eb)", color: "white", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.375rem" }}
                             onClick={(e) => { e.stopPropagation(); onOpenAddMember(g.id); }}
+                            disabled={!isSemesterActive || g.status?.toLowerCase() === "completed"}
                           >
                             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
                               <path d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"/>
@@ -338,6 +348,7 @@ export function MyGroupsView({
                                   value={m.role_in_group}
                                   onChange={(e) => onRoleChange(g.id, m.member_id, e.target.value)}
                                   style={{ padding: "0.25rem 0.5rem", fontSize: "0.8125rem", width: "auto" }}
+                                  disabled={!isSemesterActive || g.status?.toLowerCase() === "completed"}
                                 >
                                   <option value="Leader">LEADER</option>
                                   <option value="Member">MEMBER</option>
@@ -362,8 +373,8 @@ export function MyGroupsView({
                               </td>
                               <td>
                                 <button
-                                  title={m.isDropped ? "Đã đánh rớt" : "Đánh rớt sinh viên"}
-                                  disabled={m.isDropped}
+                                  title={m.isDropped ? "Đã đánh rớt" : (!isSemesterActive || g.status?.toLowerCase() === "completed") ? "Operations locked" : "Đánh rớt sinh viên"}
+                                  disabled={m.isDropped || !isSemesterActive || g.status?.toLowerCase() === "completed"}
                                   onClick={(e) => { e.stopPropagation(); onRemoveMember(g.id, m.member_id); }}
                                   style={{ background: "none", border: "none", cursor: m.isDropped ? "not-allowed" : "pointer", color: m.isDropped ? "#aaa" : "var(--red-500, #ef4444)", padding: "0.25rem", borderRadius: "4px", display: "flex", alignItems: "center" }}
                                 >

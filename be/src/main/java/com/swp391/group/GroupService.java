@@ -109,6 +109,10 @@ public class GroupService {
 		StudentGroupEntity entity = groupRepository.findById(groupId)
 				.orElseThrow(() -> ApiException.notFound("Group not found with id: " + groupId));
 
+		if ("Completed".equalsIgnoreCase(entity.getStatus())) {
+			throw ApiException.badRequest("Cannot modify a completed group.");
+		}
+
 		if (request.groupCode() != null) {
 			entity.setGroupCode(request.groupCode());
 		}
@@ -153,6 +157,10 @@ public class GroupService {
 		StudentGroupEntity entity = groupRepository.findById(groupId)
 				.orElseThrow(() -> ApiException.notFound("Group not found with id: " + groupId));
 
+		if ("Completed".equalsIgnoreCase(entity.getStatus())) {
+			throw ApiException.badRequest("Cannot modify a completed group.");
+		}
+
 		if (lecturerId != null) {
 			lecturerRepository.findById(lecturerId)
 					.orElseThrow(() -> ApiException.notFound("Lecturer not found with id: " + lecturerId));
@@ -171,6 +179,10 @@ public class GroupService {
 
 		StudentGroupEntity entity = groupRepository.findById(groupId)
 				.orElseThrow(() -> ApiException.notFound("Group not found with id: " + groupId));
+
+		if ("Completed".equalsIgnoreCase(entity.getStatus())) {
+			throw ApiException.badRequest("Cannot modify a completed group.");
+		}
 
 		if (projectId != null) {
 			projectRepository.findById(projectId)

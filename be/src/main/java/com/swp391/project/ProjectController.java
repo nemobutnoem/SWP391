@@ -62,6 +62,13 @@ public class ProjectController {
         var sem = semesterRepository.findById(semesterId)
                 .orElseThrow(() -> new IllegalArgumentException("Semester not found"));
 
+        // Semester must have at least one class before topics can be created
+        var semClasses = classRepository.findBySemesterId(semesterId);
+        if (semClasses.isEmpty()) {
+            throw new IllegalStateException("Cannot create topics: semester '" + sem.getName()
+                    + "' has no classes yet. Create classes first.");
+        }
+
         var status = sem.getStatus() == null ? "" : sem.getStatus();
 
         if ("COMPLETED".equalsIgnoreCase(status)) {
@@ -69,7 +76,11 @@ public class ProjectController {
         }
 
         if ("UPCOMING".equalsIgnoreCase(status)) {
-            return; // allowed for both MAIN/CAPSTONE
+            // Upcoming semesters: only MAIN topics allowed (matching class restriction)
+            if ("CAPSTONE".equalsIgnoreCase(blockType)) {
+                throw new IllegalStateException("Cannot create Capstone (3w) topics for an Upcoming semester. Activate the semester first.");
+            }
+            return;
         }
 
         if ("ACTIVE".equalsIgnoreCase(status)) {

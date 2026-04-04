@@ -325,11 +325,14 @@ export function MyGroupsPage() {
     }
   };
 
-  // Đánh rớt sinh viên: chỉ set isDropped=true, không xóa khỏi danh sách
+  // Đánh rớt sinh viên: xóa khỏi DB + giữ hiển thị mờ trong UI
   const handleDropMember = async (groupId, memberId) => {
     if (!window.confirm("Bạn có chắc muốn đánh rớt sinh viên này không?")) return;
     try {
-      // Persist to localStorage by Semester + Block scope so retake/kì khác không bị dính.
+      // Actually remove from DB so student can join another group
+      await groupService.removeMember(groupId, memberId);
+
+      // Persist to localStorage for visual history (mờ đi)
       const gid = Number(groupId);
       const mid = Number(memberId);
       const group = allGroups.find((g) => Number(g.id) === gid);
@@ -349,13 +352,10 @@ export function MyGroupsPage() {
       };
       saveJsonObject(SCOPED_DROPPED_MEMBERS_STORAGE_KEY, nextScoped);
 
-      setAllMembers((prev) => prev.map((m) =>
-        Number(m.group_id ?? m.groupId) === Number(groupId) && Number(m.id ?? m.member_id ?? m.memberId) === Number(memberId)
-          ? { ...m, isDropped: true }
-          : m
-      ));
+      // Reload data to reflect DB changes
+      await loadData();
     } catch (err) {
-      alert("Đánh rớt thất bại: " + (err.message || err));
+      alert("Đánh rớt thất bại: " + (err.response?.data?.message || err.message || err));
     }
   };
 
@@ -458,6 +458,9 @@ export function MyGroupsPage() {
     [topics],
   );
 
+  const selectedSemester = semesters.find((s) => s.id === selectedSemesterId);
+  const isSemesterActive = selectedSemester?.status?.toLowerCase() === "active";
+
   return (
     <MyGroupsView
       enrichedGroups={enrichedGroups}
@@ -487,6 +490,7 @@ export function MyGroupsPage() {
       onRefreshGroupJira={handleRefreshGroupJira}
       refreshingGroupId={refreshingGroupId}
       refreshStatusByGroupId={refreshStatusByGroupId}
+      isSemesterActive={isSemesterActive}
     />
   );
 }

@@ -83,6 +83,8 @@ export function TopicsView({
         defaultBlockType={defaultBlockType}
         lockBlockTypeTo={lockBlockTypeTo}
         disabled={Boolean(isCrudLocked)}
+        semesters={semesters}
+        selectedSemesterId={selectedSemesterId}
       />
 
       <div className="table-container">
@@ -90,6 +92,7 @@ export function TopicsView({
           <thead>
             <tr>
               <th>Topic Details</th>
+              <th>Block</th>
               <th>Description</th>
               <th>Status</th>
               <th className="action-cell">Actions</th>
@@ -101,6 +104,11 @@ export function TopicsView({
                 <td>
                   <span className="topic-name">{topic.name}</span>
                   <span className="topic-code">Code: {topic.code}</span>
+                </td>
+                <td>
+                  <Badge variant={String(topic.block_type ?? topic.blockType ?? "MAIN").toUpperCase() === "CAPSTONE" ? "warning" : "info"} size="sm">
+                    {String(topic.block_type ?? topic.blockType ?? "MAIN").toUpperCase() === "CAPSTONE" ? "3w" : "10w"}
+                  </Badge>
                 </td>
                 <td>
                   <div className="topic-desc" title={topic.description}>

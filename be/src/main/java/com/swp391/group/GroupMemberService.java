@@ -47,6 +47,10 @@ public class GroupMemberService {
         var group = groupRepository.findById(groupId)
                 .orElseThrow(() -> ApiException.notFound("Group not found with id: " + groupId));
 
+        if ("Completed".equalsIgnoreCase(group.getStatus())) {
+            throw ApiException.badRequest("Cannot add members to a completed group.");
+        }
+
         var student = studentRepository.findById(studentId)
                 .orElseThrow(() -> ApiException.notFound("Student not found with id: " + studentId));
 
@@ -61,8 +65,14 @@ public class GroupMemberService {
                     "Student '" + student.getFullName() + "' belongs to a different class (ID: " + student.getClassId()
                             + "). They must be in the same class as this group to join.");
         }
-    if (memberRepository.existsByStudentId(studentId)) {
-        throw ApiException.badRequest("Student already belongs to another group");
+    // Block if student is already in another group within the SAME class
+    var existingMemberships = memberRepository.findByStudentId(studentId);
+    for (var existing : existingMemberships) {
+        if (existing.getGroupId().equals(groupId)) continue; // same group, skip
+        var otherGroup = groupRepository.findById(existing.getGroupId()).orElse(null);
+        if (otherGroup != null && group.getClassId() != null && group.getClassId().equals(otherGroup.getClassId())) {
+            throw ApiException.badRequest("Student already belongs to group '" + otherGroup.getGroupName() + "' in this class.");
+        }
     }
 
         GroupMemberEntity member = new GroupMemberEntity();
@@ -115,9 +125,13 @@ public class GroupMemberService {
             throw ApiException.badRequest("Member does not belong to this group");
         }
 
+        var group = groupRepository.findById(groupId).orElse(null);
+        if (group != null && "Completed".equalsIgnoreCase(group.getStatus())) {
+            throw ApiException.badRequest("Cannot remove members from a completed group.");
+        }
+
         // If removing the leader, reset leader_student_id in group
         if ("Leader".equalsIgnoreCase(member.getRoleInGroup())) {
-            var group = groupRepository.findById(groupId).orElse(null);
             if (group != null) {
                 group.setLeaderStudentId(null);
                 groupRepository.save(group);

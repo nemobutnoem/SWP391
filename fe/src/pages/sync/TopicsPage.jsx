@@ -65,16 +65,27 @@ export function TopicsPage() {
   const createLockReason = (() => {
     if (isCrudLocked) return "This semester is completed. Topics are view-only.";
     if (!selectedSemesterId || !selectedSemester) return "Please select a semester.";
-    if (selectedSemesterStatus === "UPCOMING") return null;
+    if (selectedSemesterStatus === "UPCOMING") {
+      // Check if semester has classes
+      const semClasses = (Array.isArray(classes) ? classes : [])
+        .filter((c) => String(c?.semester_id ?? c?.semesterId ?? "") === String(selectedSemesterId));
+      if (semClasses.length === 0) return "No classes in this semester yet. Create classes first.";
+      return null; // allow creating MAIN topics
+    }
     if (selectedSemesterStatus === "ACTIVE") {
       if (isCapstoneRunningForSelectedSemester) return "Capstone (3-week) is in progress. You can only create topics for upcoming semesters.";
       return null; // allow creating CAPSTONE topics
     }
-    return "You can only create topics for UPCOMING semesters.";
+    return "You can only create topics for UPCOMING or ACTIVE semesters.";
   })();
 
   const isCreateLocked = Boolean(createLockReason);
-  const lockBlockTypeTo = selectedSemesterStatus === "ACTIVE" && !isCapstoneRunningForSelectedSemester ? "CAPSTONE" : null;
+  // Upcoming → lock to MAIN, Active (no capstone running) → lock to CAPSTONE
+  const lockBlockTypeTo = selectedSemesterStatus === "UPCOMING"
+    ? "MAIN"
+    : selectedSemesterStatus === "ACTIVE" && !isCapstoneRunningForSelectedSemester
+      ? "CAPSTONE"
+      : null;
 
   const filteredTopics = topics.filter((t) => {
     const semId = t?.semester_id ?? t?.semesterId;

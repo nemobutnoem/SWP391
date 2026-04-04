@@ -69,7 +69,20 @@ public class SemesterService {
         entity.setStartDate(req.startDate());
         entity.setEndDate(req.endDate());
         entity.setStatus(newStatus);
-        return semesterRepository.save(entity);
+        SemesterEntity saved = semesterRepository.save(entity);
+
+        // Auto-activate MAIN classes when semester transitions Upcoming → Active
+        if ("Upcoming".equalsIgnoreCase(currentStatus) && "Active".equalsIgnoreCase(newStatus)) {
+            var classes = classRepository.findBySemesterId(id);
+            for (var cls : classes) {
+                if ("MAIN".equalsIgnoreCase(cls.getClassType()) && "Inactive".equalsIgnoreCase(cls.getStatus())) {
+                    cls.setStatus("Active");
+                    classRepository.save(cls);
+                }
+            }
+        }
+
+        return saved;
     }
 
     public void delete(Integer id) {

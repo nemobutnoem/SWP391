@@ -89,12 +89,15 @@ export function UserManagementPage() {
     if (activeTab !== "STUDENTS") return false;
     if (!selectedSemester) return false;
     const status = String(selectedSemester.status ?? "").toUpperCase();
-    return status === "COMPLETED";
+    return status === "COMPLETED" || status === "UPCOMING";
   }, [activeTab, selectedSemester]);
 
   const handleOpenCreate = () => {
     if (isCrudLockedByCompletedSemester) {
-      alert("This semester is completed. You can only view students in completed semesters.");
+      const semStatus = String(selectedSemester?.status ?? "").toLowerCase();
+      alert(semStatus === "upcoming"
+        ? "This semester is Upcoming. Activate it first to add students."
+        : "This semester is completed. You can only view students.");
       return;
     }
     setEditingUser(null);
@@ -104,7 +107,10 @@ export function UserManagementPage() {
 
   const handleOpenEdit = (user) => {
     if (isCrudLockedByCompletedSemester) {
-      alert("This semester is completed. You can only view students in completed semesters.");
+      const semStatus = String(selectedSemester?.status ?? "").toLowerCase();
+      alert(semStatus === "upcoming"
+        ? "This semester is Upcoming. Activate it first to edit students."
+        : "This semester is completed. You can only view students.");
       return;
     }
     setEditingUser(user);
