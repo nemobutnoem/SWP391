@@ -66,9 +66,9 @@ public class StudentController {
     @org.springframework.transaction.annotation.Transactional
     public StudentDto create(@Valid @RequestBody UpsertStudentRequest req, org.springframework.security.core.Authentication auth) {
         ensureAdminOrLecturer(auth);
-        // Block adding students when semester is not active
+        // Direct class assignment is only allowed for MAIN classes in UPCOMING semesters
         if (req.classId() != null) {
-            classService.ensureSemesterActive(req.classId());
+            classService.ensureCanAssignStudentToClass(req.classId());
         }
         try {
             String email = emptyToNull(req.email());
@@ -97,9 +97,9 @@ public class StudentController {
         StudentEntity s = studentRepository.findById(studentId)
                 .orElseThrow(() -> new IllegalArgumentException("Student not found"));
 
-        // Block moving students to a class in a non-active semester
+        // Direct class assignment is only allowed for MAIN classes in UPCOMING semesters
         if (req.classId() != null && !req.classId().equals(s.getClassId())) {
-            classService.ensureSemesterActive(req.classId());
+            classService.ensureCanAssignStudentToClass(req.classId());
         }
 
         String email = emptyToNull(req.email());

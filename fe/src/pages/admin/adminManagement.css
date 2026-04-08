@@ -371,7 +371,11 @@
 .semester-cards {
   display: flex;
   gap: 1rem;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 0.5rem;
+  scroll-behavior: smooth;
 }
 
 .semester-card {
@@ -380,6 +384,7 @@
   border-radius: var(--radius-lg);
   padding: 1.25rem 1.5rem;
   min-width: 220px;
+  flex: 0 0 auto;
   cursor: pointer;
   transition: border-color 0.2s, box-shadow 0.2s;
   display: flex;

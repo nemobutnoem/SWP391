@@ -75,9 +75,15 @@ public class SemesterService {
         if ("Upcoming".equalsIgnoreCase(currentStatus) && "Active".equalsIgnoreCase(newStatus)) {
             var classes = classRepository.findBySemesterId(id);
             for (var cls : classes) {
-                if ("MAIN".equalsIgnoreCase(cls.getClassType()) && "Inactive".equalsIgnoreCase(cls.getStatus())) {
-                    cls.setStatus("Active");
-                    classRepository.save(cls);
+                String classType = (cls.getClassType() == null || cls.getClassType().isBlank()) ? "MAIN" : cls.getClassType();
+                String classStatus = cls.getStatus() != null ? cls.getStatus() : "Inactive";
+
+                // When semester becomes Active, all MAIN (10w) classes should be Active (except Completed)
+                if ("MAIN".equalsIgnoreCase(classType) && !"Completed".equalsIgnoreCase(classStatus)) {
+                    if (!"Active".equalsIgnoreCase(classStatus)) {
+                        cls.setStatus("Active");
+                        classRepository.save(cls);
+                    }
                 }
             }
         }

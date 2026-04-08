@@ -24,12 +24,31 @@ export function SemesterClassPage() {
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [assigningClass, setAssigningClass] = useState(null);
 
+  const sortSemestersDesc = (items) => {
+    const list = Array.isArray(items) ? [...items] : [];
+    const toKey = (s) => {
+      // Prefer start_date, then end_date, then id.
+      // Dates are ISO (YYYY-MM-DD) so lexicographic compare is fine.
+      return String(s?.start_date || s?.end_date || "");
+    };
+    list.sort((a, b) => {
+      const ka = toKey(a);
+      const kb = toKey(b);
+      if (ka !== kb) return kb.localeCompare(ka);
+      const ia = Number(a?.id || 0);
+      const ib = Number(b?.id || 0);
+      return ib - ia;
+    });
+    return list;
+  };
+
   useEffect(() => {
     semesterService.list().then((data) => {
-      setSemesters(data);
-      const active = data.find((s) => s.status?.toLowerCase() === "active");
+      const sorted = sortSemestersDesc(data);
+      setSemesters(sorted);
+      const active = sorted.find((s) => s.status?.toLowerCase() === "active");
       if (active) setSelectedSemesterId(active.id);
-      else if (data.length > 0) setSelectedSemesterId(data[0].id);
+      else if (sorted.length > 0) setSelectedSemesterId(sorted[0].id);
     });
     lecturerService.list().then(setLecturers);
     studentService.list().then(setStudents);
@@ -53,11 +72,40 @@ export function SemesterClassPage() {
     }
   }, [selectedSemesterId]);
 
+  const isCapstoneRunning = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    return classes.some((c) => {
+      const isCapstone = (c.class_type || "MAIN") === "CAPSTONE";
+      if (!isCapstone) return false;
+      const isActive = String(c.status || "").toLowerCase() === "active";
+      if (!isActive) return false;
+      // If dates are missing, treat an Active CAPSTONE class as running.
+      const startOk = !c.start_date || String(c.start_date) <= today;
+      const endOk = !c.end_date || today <= String(c.end_date);
+      return startOk && endOk;
+    });
+  }, [classes]);
+
   const enrichedClasses = useMemo(() => {
     return classes.map((c) => {
       const lecturer = lecturers.find((l) => l.id === c.lecturer_id);
       const classStudents = students.filter((s) => s.class_id === c.id || s.classId === c.id);
-      const classEnrollments = enrollments[c.id] || [];
+      const rawEnrollments = enrollments[c.id] || [];
+      const classEnrollments = rawEnrollments.map((e) => {
+        const enrollmentStudentId = e.student_id ?? e.studentId;
+        const enrollmentStudentCode = e.student_code ?? e.studentCode;
+        const student = students.find((s) =>
+          (enrollmentStudentId != null && (s.id === enrollmentStudentId || s.id === Number(enrollmentStudentId))) ||
+          (enrollmentStudentCode && (s.student_code === enrollmentStudentCode || s.studentCode === enrollmentStudentCode))
+        );
+        return {
+          ...e,
+          email: e.email ?? student?.email ?? null,
+          student_email: e.student_email ?? student?.email ?? null,
+          student_name: e.student_name ?? student?.full_name ?? student?.fullName ?? null,
+          student_code: e.student_code ?? student?.student_code ?? student?.studentCode ?? null,
+        };
+      });
       const studentCount = classStudents.length + classEnrollments.length;
       const classGroups = groups.filter((g) => g.class_id === c.id || g.classId === c.id);
       return {
@@ -86,8 +134,16 @@ export function SemesterClassPage() {
       } else {
         await semesterService.create(formData);
       }
-      const updated = await semesterService.list();
+      const updated = sortSemestersDesc(await semesterService.list());
       setSemesters(updated);
+
+      // If semester status changes (e.g., Upcoming -> Active), backend may auto-update class statuses.
+      // Refresh classes list to reflect the latest data.
+      if (selectedSemesterId) {
+        const refreshed = await classService.list(selectedSemesterId);
+        setClasses(refreshed);
+      }
+
       setSemesterModalOpen(false);
       if (!selectedSemesterId && updated.length > 0) {
         setSelectedSemesterId(updated[0].id);
@@ -104,7 +160,7 @@ export function SemesterClassPage() {
     if (!window.confirm(warning)) return;
     try {
       await semesterService.remove(id);
-      const updated = await semesterService.list();
+      const updated = sortSemestersDesc(await semesterService.list());
       setSemesters(updated);
       if (selectedSemesterId === id) {
         setSelectedSemesterId(updated.length > 0 ? updated[0].id : null);
@@ -230,7 +286,7 @@ export function SemesterClassPage() {
       const updated = await classService.list(selectedSemesterId);
       setClasses(updated);
       // Refresh semesters — semester may have auto-completed
-      const updatedSemesters = await semesterService.list();
+      const updatedSemesters = sortSemestersDesc(await semesterService.list());
       setSemesters(updatedSemesters);
     } catch (e) {
       alert("Failed: " + (e.response?.data?.message || e.message));
@@ -278,6 +334,7 @@ export function SemesterClassPage() {
       onAddStudent={handleAddStudent}
       onCompleteClass={handleCompleteClass}
       onActivateClass={handleActivateClass}
+      isCapstoneRunning={isCapstoneRunning}
       allStudents={students}
     />
   );

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { PageHeader } from "../../components/common/PageHeader.jsx";
 import { Badge } from "../../components/common/Badge.jsx";
 import { Button } from "../../components/common/Button.jsx";
@@ -108,9 +108,12 @@ function ClassFormModal({
   onSubmit,
   initialData,
   lecturers,
+  semesterStatus = "",
   restrictCreateToCapstone = false,
-  restrictCreateToMain = false,
 }) {
+  const isSemesterActive = String(semesterStatus || "").toLowerCase() === "active";
+  const forceInactiveOnCreate = !initialData && (!isSemesterActive || restrictCreateToCapstone);
+
   const [form, setForm] = useState(() =>
     initialData
       ? {
@@ -122,7 +125,6 @@ function ClassFormModal({
           status: initialData.status || "Active",
           lecturer_id: initialData.lecturer_id || "",
           class_type: initialData.class_type || "MAIN",
-          prerequisite_class_id: initialData.prerequisite_class_id || "",
           start_date: initialData.start_date || "",
           end_date: initialData.end_date || "",
         }
@@ -132,10 +134,9 @@ function ClassFormModal({
           major: "SE",
           intake_year: new Date().getFullYear(),
           department: "",
-          status: "Active",
+          status: forceInactiveOnCreate ? "Inactive" : "Active",
           lecturer_id: "",
-          class_type: restrictCreateToCapstone ? "CAPSTONE" : restrictCreateToMain ? "MAIN" : "MAIN",
-          prerequisite_class_id: "",
+          class_type: restrictCreateToCapstone ? "CAPSTONE" : "MAIN",
           start_date: "",
           end_date: "",
         }
@@ -143,10 +144,13 @@ function ClassFormModal({
 
   const handle = (e) => setForm((p) => ({ ...p, [e.target.name]: e.target.value }));
 
-  // When switching to MAIN, clear prerequisite (kept for backward-compat, prerequisite is optional)
   const handleTypeChange = (e) => {
     const val = e.target.value;
-    setForm((p) => ({ ...p, class_type: val, prerequisite_class_id: val === "MAIN" ? "" : p.prerequisite_class_id }));
+    setForm((p) => ({
+      ...p,
+      class_type: val,
+      ...(forceInactiveOnCreate ? { status: "Inactive" } : null),
+    }));
   };
 
   return (
@@ -156,9 +160,6 @@ function ClassFormModal({
         if (!form.class_name || !form.class_name.trim()) return alert("Class name is required.");
         if (!initialData && restrictCreateToCapstone && form.class_type !== "CAPSTONE") {
           return alert("This semester is Active. Only Capstone (3 weeks) classes can be created.");
-        }
-        if (!initialData && restrictCreateToMain && form.class_type !== "MAIN") {
-          return alert("This semester is Upcoming. Only Main (10 weeks) classes can be created.");
         }
         const year = Number(form.intake_year);
         const currentYear = new Date().getFullYear();
@@ -183,7 +184,7 @@ function ClassFormModal({
               <option value="MAIN" disabled={!initialData && restrictCreateToCapstone}>
                 Main (10 weeks)
               </option>
-              <option value="CAPSTONE" disabled={!initialData && restrictCreateToMain}>
+              <option value="CAPSTONE">
                 Capstone (3 weeks)
               </option>
             </select>
@@ -197,18 +198,6 @@ function ClassFormModal({
                 }}
               >
                 Semester is Active: only Capstone (3 weeks) can be created.
-              </span>
-            )}
-            {!initialData && restrictCreateToMain && (
-              <span
-                style={{
-                  fontSize: "0.75rem",
-                  color: "var(--slate-500)",
-                  marginTop: "0.25rem",
-                  display: "block",
-                }}
-              >
-                Semester is Upcoming: only Main (10 weeks) can be created.
               </span>
             )}
           </div>
@@ -248,11 +237,23 @@ function ClassFormModal({
         </div>
         <div className="form-group">
           <label>Status</label>
-          <select name="status" value={form.status} onChange={handle}>
+          <select name="status" value={form.status} onChange={handle} disabled={forceInactiveOnCreate}>
             <option value="Active">Active</option>
             <option value="Inactive">Inactive</option>
             <option value="Completed">Completed</option>
           </select>
+          {forceInactiveOnCreate && (
+            <span
+              style={{
+                fontSize: "0.75rem",
+                color: "var(--slate-500)",
+                marginTop: "0.25rem",
+                display: "block",
+              }}
+            >
+              Status is forced to Inactive for new classes in this semester.
+            </span>
+          )}
         </div>
         <div className="form-actions">
           <Button variant="secondary" type="button" onClick={onClose}>Cancel</Button>
@@ -403,13 +404,41 @@ export function SemesterClassView({
   onActivateClass,
   onPreEnroll,
   allStudents = [],
+  isCapstoneRunning = false,
 }) {
+  const semesterCardsRef = useRef(null);
   const [expandedClassId, setExpandedClassId] = useState(null);
   const [addStudentClassId, setAddStudentClassId] = useState(null);
   const selectedSemester = semesters.find((s) => s.id === selectedSemesterId);
   const isSemesterActive = selectedSemester?.status?.toLowerCase() === "active";
   const isSemesterCompleted = selectedSemester?.status?.toLowerCase() === "completed";
   const isSemesterUpcoming = selectedSemester?.status?.toLowerCase() === "upcoming";
+  const hasUncompletedMain = enrichedClasses.some(
+    (c) => (c.class_type || "MAIN") === "MAIN" && String(c.status || "").toLowerCase() !== "completed"
+  );
+
+  const canEditClass = (cls) => {
+    if (isSemesterCompleted) return false;
+    if (!isSemesterActive) return true;
+    const isCapstone = (cls.class_type || "MAIN") === "CAPSTONE";
+    const isInactive = String(cls.status || "").toLowerCase() === "inactive";
+    return isCapstone && isInactive;
+  };
+
+  const canDeleteClass = () => {
+    if (isSemesterCompleted) return false;
+    if (isSemesterActive) return false;
+    return true;
+  };
+
+  const canAddStudentsToClass = (cls) => {
+    if (isSemesterCompleted) return false;
+    const isCapstone = (cls.class_type || "MAIN") === "CAPSTONE";
+    if (isSemesterUpcoming) return true;
+    if (!isSemesterActive) return false;
+    if (isCapstoneRunning) return false; // đang học 3w
+    return isCapstone; // đang học 10w => chỉ được thêm cho 3w
+  };
 
   const toggleStudents = (classId) => {
     setExpandedClassId((prev) => (prev === classId ? null : classId));
@@ -423,6 +452,27 @@ export function SemesterClassView({
     fn?.();
   };
 
+  const handleSemesterCardsWheel = (e) => {
+    const el = semesterCardsRef.current;
+    if (!el) return;
+    // Only convert vertical wheel to horizontal scroll when overflow exists.
+    if (el.scrollWidth <= el.clientWidth) return;
+    // Respect native horizontal scrolling (trackpads) and Shift+wheel.
+    if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+    if (e.shiftKey) return;
+
+    el.scrollLeft += e.deltaY;
+    e.preventDefault();
+  };
+
+  const guardEditAllowed = (actionLabel, cls, fn) => {
+    if (!canEditClass(cls)) {
+      window.alert("You can only edit 3w (Capstone) classes while the semester is Active, and only when the 3w class is Inactive.");
+      return;
+    }
+    fn?.();
+  };
+
   return (
     <div className="semester-class-page">
       <PageHeader
@@ -431,7 +481,11 @@ export function SemesterClassView({
         actions={<Button variant="primary" size="sm" onClick={onCreateSemester}>+ New Semester</Button>}
       />
 
-      <div className="semester-cards mt-2">
+      <div
+        ref={semesterCardsRef}
+        className="semester-cards mt-2"
+        onWheel={handleSemesterCardsWheel}
+      >
         {semesters.map((s) => (
           <div key={s.id} className={`semester-card ${s.id === selectedSemesterId ? "semester-card--active" : ""}`} onClick={() => onSelectSemester(s.id)}>
             <div className="semester-card__header">
@@ -479,7 +533,6 @@ export function SemesterClassView({
                   <th>Major</th>
                   <th>Lecturer</th>
                   <th>Students</th>
-                  <th>Groups</th>
                   <th>Status</th>
                   <th className="action-cell">Actions</th>
                 </tr>
@@ -487,7 +540,7 @@ export function SemesterClassView({
               <tbody>
                 {enrichedClasses.length === 0 ? (
                   <tr>
-                    <td colSpan="9" style={{ textAlign: "center", padding: "2rem", color: "var(--slate-400)" }}>
+                    <td colSpan="8" style={{ textAlign: "center", padding: "2rem", color: "var(--slate-400)" }}>
                       No classes in this semester yet. Click "+ New Class" to create one.
                     </td>
                   </tr>
@@ -506,9 +559,9 @@ export function SemesterClassView({
                         <td>
                           <span
                             className={`lecturer-link ${c.lecturer_id ? "" : "lecturer-link--unassigned"}`}
-                            onClick={() => guardCompleted("Assign lecturer", () => onOpenAssign(c))}
-                            title={isSemesterCompleted ? "Semester completed" : "Click to assign/change lecturer"}
-                            style={isSemesterCompleted ? { cursor: "not-allowed", opacity: 0.6 } : undefined}
+                            onClick={() => guardCompleted("Assign lecturer", () => guardEditAllowed("Assign lecturer", c, () => onOpenAssign(c)))}
+                            title={!canEditClass(c) ? "Editing is locked (only 3w Inactive can be edited while semester is Active)" : "Click to assign/change lecturer"}
+                            style={!canEditClass(c) ? { cursor: "not-allowed", opacity: 0.6 } : undefined}
                           >
                             {c.lecturer_name}
                           </span>
@@ -518,19 +571,6 @@ export function SemesterClassView({
                             <span>{c.student_count} student{c.student_count !== 1 ? "s" : ""}</span>
                             <span className={`student-dropdown-toggle__arrow ${expandedClassId === c.id ? "student-dropdown-toggle__arrow--open" : ""}`}>v</span>
                           </button>
-                        </td>
-                        <td>
-                          {c.groups && c.groups.length > 0 ? (
-                            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.25rem" }}>
-                              {c.groups.map((g) => (
-                                <Badge key={g.id} variant="info" size="sm" title={g.group_name}>
-                                  {g.group_code || g.group_name}
-                                </Badge>
-                              ))}
-                            </div>
-                          ) : (
-                            <span style={{ fontSize: "0.85rem", color: "var(--slate-400)" }}>None</span>
-                          )}
                         </td>
                         <td>
                           <Badge variant={c.status?.toLowerCase() === "active" ? "success" : c.status?.toLowerCase() === "completed" ? "default" : "warning"} size="sm">
@@ -546,13 +586,17 @@ export function SemesterClassView({
                             )}
                             {c.status?.toLowerCase() === "inactive" && isSemesterActive && (() => {
                               const isCapstone = (c.class_type || "MAIN") === "CAPSTONE";
-                              const prereq = isCapstone && c.prerequisite_class_id
-                                ? enrichedClasses.find((x) => x.id === c.prerequisite_class_id)
-                                : null;
-                              const prereqDone = !isCapstone || !c.prerequisite_class_id || (prereq && prereq.status?.toLowerCase() === "completed");
+                              const capstoneBlocked = isCapstone && hasUncompletedMain;
                               return (
-                                <Button variant="ghost" size="sm" disabled={!prereqDone} onClick={() => onActivateClass(c.id)}
-                                  title={!prereqDone ? `Prerequisite class "${prereq?.class_code}" must be completed first` : "Activate this class"}>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  disabled={capstoneBlocked}
+                                  onClick={() => onActivateClass(c.id)}
+                                  title={capstoneBlocked
+                                    ? "Cannot activate Capstone (3w) until all Main (10w) classes are Completed"
+                                    : "Activate this class"}
+                                >
                                   Activate
                                 </Button>
                               );
@@ -560,15 +604,17 @@ export function SemesterClassView({
                             <Button
                               variant="ghost"
                               size="sm"
-                              disabled={isSemesterCompleted}
-                              onClick={() => guardCompleted("Edit class", () => onEditClass(c))}
+                              disabled={!canEditClass(c)}
+                              title={!canEditClass(c) ? "Only 3w Inactive classes can be edited while semester is Active" : "Edit"}
+                              onClick={() => guardCompleted("Edit class", () => guardEditAllowed("Edit class", c, () => onEditClass(c)))}
                             >
                               Edit
                             </Button>
                             <Button
                               variant="ghost"
                               size="sm"
-                              disabled={isSemesterCompleted}
+                              disabled={!canDeleteClass()}
+                              title={!canDeleteClass() ? "You can only delete classes when the semester is not Active" : "Delete"}
                               onClick={() => guardCompleted("Delete class", () => onDeleteClass(c.id))}
                             >
                               Delete
@@ -579,58 +625,78 @@ export function SemesterClassView({
 
                       {expandedClassId === c.id && (
                         <tr>
-                          <td colSpan="9" className="expanded-content-cell">
+                          <td colSpan="8" className="expanded-content-cell">
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
                               <span className="expanded-row-title" style={{ margin: 0 }}>Students in {c.class_code}</span>
                               <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-                                {isSemesterActive && (c.class_type || "MAIN") === "CAPSTONE" && c.status?.toLowerCase() !== "active" && (
-                                  <Button variant="secondary" size="sm" onClick={() => setAddStudentClassId(c.id)}>Pre-enroll to 3w</Button>
-                                )}
-                                {isSemesterActive && c.status?.toLowerCase() === "active" ? (
-                                  <Button variant="primary" size="sm" onClick={() => setAddStudentClassId(c.id)}>+ Add Student</Button>
-                                ) : !isSemesterActive ? (
+                                {canAddStudentsToClass(c) ? (
+                                  (c.class_type || "MAIN") === "CAPSTONE" && c.status?.toLowerCase() !== "active" ? (
+                                    <Button variant="secondary" size="sm" onClick={() => setAddStudentClassId(c.id)}>Pre-enroll to 3w</Button>
+                                  ) : (
+                                    <Button variant="primary" size="sm" onClick={() => setAddStudentClassId(c.id)}>+ Add Student</Button>
+                                  )
+                                ) : (
                                   <span style={{ fontSize: "0.75rem", color: "var(--slate-400)", fontStyle: "italic" }}>
-                                    Activate semester to add students
+                                    You can only add students in Upcoming semesters, or pre-enroll to 3w while studying 10w.
                                   </span>
-                                ) : null}
+                                )}
                               </div>
                             </div>
 
-                            {/* Pre-enrolled students for inactive capstone classes */}
-                            {(c.class_type || "MAIN") === "CAPSTONE" && c.status?.toLowerCase() !== "active" && c.enrollments && c.enrollments.length > 0 && (
-                              <div style={{ marginBottom: "0.75rem" }}>
-                                <span style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--slate-500)" }}>Pre-enrolled ({c.enrollments.length})</span>
-                                <div className="class-student-dropdown-list" style={{ marginTop: "0.5rem" }}>
-                                  {c.enrollments.map((e) => (
-                                    <div key={e.id} className="class-student-dropdown-item">
-                                      <div className="avatar-small">{(e.student_name || "S")[0]}</div>
-                                      <div className="profile-info">
-                                        <span className="profile-name">{e.student_name}</span>
-                                        <Badge variant="warning" size="sm">Pre-enrolled</Badge>
+                            {(() => {
+                              const isCapstone = (c.class_type || "MAIN") === "CAPSTONE";
+                              const directStudents = Array.isArray(c.students) ? c.students : [];
+                              const enrollmentStudents = Array.isArray(c.enrollments) ? c.enrollments : [];
+                              const hasDirectStudents = directStudents.length > 0;
+                              const hasEnrollmentStudents = enrollmentStudents.length > 0;
+                              const isClassActive = c.status?.toLowerCase() === "active";
+
+                              if (isCapstone) {
+                                if (!hasEnrollmentStudents) {
+                                  return (
+                                    <span className="text-secondary">No students in this class yet.{canAddStudentsToClass(c) ? ' Click "+ Add Student" to add one.' : ""}</span>
+                                  );
+                                }
+
+                                return (
+                                  <div className="class-student-dropdown-list">
+                                    {enrollmentStudents.map((e) => (
+                                      <div key={e.id} className="class-student-dropdown-item">
+                                        <div className="avatar-small">{((e.student_name || e.full_name || "S")[0])}</div>
+                                        <div className="profile-info">
+                                          <span className="profile-name">{e.student_name || e.full_name || "-"}</span>
+                                          <span className="profile-email">
+                                            {e.email || e.student_email || e.studentEmail || "-"}
+                                          </span>
+                                        </div>
+                                        <code className="code-badge">{e.student_code || e.studentCode || e.code || "-"}</code>
                                       </div>
-                                      <code className="code-badge">{e.student_code}</code>
+                                    ))}
+                                  </div>
+                                );
+                              }
+
+                              if (!hasDirectStudents) {
+                                return (
+                                  <span className="text-secondary">No students in this class yet.{canAddStudentsToClass(c) ? ' Click "+ Add Student" to add one.' : ""}</span>
+                                );
+                              }
+
+                              return (
+                                <div className="class-student-dropdown-list">
+                                  {directStudents.map((student) => (
+                                    <div key={student.id} className="class-student-dropdown-item">
+                                      <div className="avatar-small">{(student.full_name || "S")[0]}</div>
+                                      <div className="profile-info">
+                                        <span className="profile-name">{student.full_name}</span>
+                                        <span className="profile-email">{student.email}</span>
+                                      </div>
+                                      <code className="code-badge">{student.student_code}</code>
                                     </div>
                                   ))}
                                 </div>
-                              </div>
-                            )}
-
-                            {c.students && c.students.length > 0 ? (
-                              <div className="class-student-dropdown-list">
-                                {c.students.map((student) => (
-                                  <div key={student.id} className="class-student-dropdown-item">
-                                    <div className="avatar-small">{(student.full_name || "S")[0]}</div>
-                                    <div className="profile-info">
-                                      <span className="profile-name">{student.full_name}</span>
-                                      <span className="profile-email">{student.email}</span>
-                                    </div>
-                                    <code className="code-badge">{student.student_code}</code>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <span className="text-secondary">No students in this class yet.{isSemesterActive && c.status?.toLowerCase() === "active" ? ' Click "+ Add Student" to add one.' : ""}</span>
-                            )}
+                              );
+                            })()}
                           </td>
                         </tr>
                       )}
@@ -655,8 +721,8 @@ export function SemesterClassView({
           onSubmit={onSubmitClass}
           initialData={editingClass}
           lecturers={lecturers}
+          semesterStatus={selectedSemester?.status || ""}
           restrictCreateToCapstone={isSemesterActive}
-          restrictCreateToMain={isSemesterUpcoming}
         />
       )}
 

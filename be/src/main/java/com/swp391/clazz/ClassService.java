@@ -27,6 +27,29 @@ public class ClassService {
     private static final Set<String> VALID_STATUSES = Set.of("Active", "Inactive", "Completed");
     private static final Set<String> VALID_CLASS_TYPES = Set.of("MAIN", "CAPSTONE");
 
+    private void ensureMainPhaseCompletedForCapstone(Integer semesterId) {
+        List<ClassEntity> siblingClasses = classRepository.findBySemesterId(semesterId);
+        List<ClassEntity> mainClasses = siblingClasses.stream()
+                .filter(c -> "MAIN".equalsIgnoreCase(c.getClassType() != null ? c.getClassType() : "MAIN"))
+                .toList();
+
+        if (mainClasses.isEmpty()) {
+            throw ApiException.badRequest("Cannot activate Capstone (3w): no Main (10w) classes found in this semester.");
+        }
+
+        ClassEntity firstNotCompleted = mainClasses.stream()
+                .filter(c -> !"Completed".equalsIgnoreCase(c.getStatus()))
+                .findFirst()
+                .orElse(null);
+
+        if (firstNotCompleted != null) {
+            String code = firstNotCompleted.getClassCode() != null ? firstNotCompleted.getClassCode() : ("Class " + firstNotCompleted.getId());
+            String st = firstNotCompleted.getStatus() != null ? firstNotCompleted.getStatus() : "Unknown";
+            throw ApiException.badRequest(
+                    "Cannot activate Capstone (3w): Main (10w) phase is not completed yet. Example: '" + code + "' is " + st + ".");
+        }
+    }
+
     public List<ClassEntity> listAll() {
         return classRepository.findAll();
     }
@@ -55,9 +78,25 @@ public class ClassService {
         entity.setPrerequisiteClassId(req.prerequisiteClassId());
         entity.setStartDate(req.startDate());
         entity.setEndDate(req.endDate());
-        // New classes in non-active semesters default to Inactive
-        String status = req.status() != null ? req.status() : "Active";
         var semester = semesterRepository.findById(req.semesterId()).orElse(null);
+        String classType = req.classType() != null ? req.classType() : "MAIN";
+
+        // Default statuses:
+        // - Non-active semesters -> Inactive
+        // - CAPSTONE (3w) should start Inactive; use activate endpoint when allowed
+        // - MAIN (10w) in Active semester defaults to Active
+        String status = req.status();
+        if (status == null) {
+            if (semester != null && !"Active".equalsIgnoreCase(semester.getStatus())) {
+                status = "Inactive";
+            } else if ("CAPSTONE".equalsIgnoreCase(classType)) {
+                status = "Inactive";
+            } else {
+                status = "Active";
+            }
+        }
+
+        // Safety: never allow Active status when semester is not Active
         if (semester != null && !"Active".equalsIgnoreCase(semester.getStatus())) {
             status = "Inactive";
         }
@@ -69,6 +108,31 @@ public class ClassService {
     public ClassEntity update(Integer id, ClassController.UpsertClassRequest req) {
         ClassEntity entity = getById(id);
         validateClass(req, id);
+
+        var semester = semesterRepository.findById(entity.getSemesterId()).orElse(null);
+        if (semester != null && "Completed".equalsIgnoreCase(semester.getStatus())) {
+            throw ApiException.badRequest("Cannot edit class when semester is Completed.");
+        }
+
+        if (semester != null && "Active".equalsIgnoreCase(semester.getStatus())) {
+            // Option B: allow editing only CAPSTONE classes that are currently Inactive
+            boolean isCapstone = "CAPSTONE".equalsIgnoreCase(entity.getClassType());
+            boolean isInactive = "Inactive".equalsIgnoreCase(entity.getStatus());
+            if (!isCapstone || !isInactive) {
+                throw ApiException.badRequest("Cannot edit classes while semester is Active (except Inactive Capstone/3w)." );
+            }
+
+            // While semester is Active, lock identity/state fields
+            if (req.semesterId() != null && !req.semesterId().equals(entity.getSemesterId())) {
+                throw ApiException.badRequest("Cannot move a class to another semester while semester is Active.");
+            }
+            if (req.classType() != null && !req.classType().equalsIgnoreCase(entity.getClassType())) {
+                throw ApiException.badRequest("Cannot change class type while semester is Active.");
+            }
+            if (req.status() != null && !req.status().equalsIgnoreCase(entity.getStatus())) {
+                throw ApiException.badRequest("Cannot change class status via Edit while semester is Active. Use Activate/Complete actions instead.");
+            }
+        }
 
         entity.setClassCode(req.classCode());
         entity.setClassName(req.className());
@@ -123,20 +187,47 @@ public class ClassService {
     }
 
     /**
-     * For CAPSTONE classes: ensure the prerequisite MAIN class is Completed.
+     * Student direct class assignment (via students.class_id) is only allowed for MAIN (10w) classes
+     * in UPCOMING semesters. CAPSTONE (3w) uses enrollment endpoint instead.
      */
-    public void ensurePrerequisiteCompleted(Integer classId) {
+    public void ensureCanAssignStudentToClass(Integer classId) {
         ClassEntity cls = getById(classId);
-        if (!"CAPSTONE".equalsIgnoreCase(cls.getClassType())) return;
-        if (cls.getPrerequisiteClassId() == null) return;
-
-        ClassEntity prereq = classRepository.findById(cls.getPrerequisiteClassId()).orElse(null);
-        if (prereq == null) return;
-        if (!"Completed".equalsIgnoreCase(prereq.getStatus())) {
-            throw ApiException.badRequest(
-                    "Cannot activate capstone class: prerequisite class '" + prereq.getClassCode()
-                            + "' has not completed yet (status: " + prereq.getStatus() + ").");
+        if ("CAPSTONE".equalsIgnoreCase(cls.getClassType())) {
+            throw ApiException.badRequest("Cannot assign student directly to a CAPSTONE (3w) class. Use enrollment instead.");
         }
+        var semester = semesterRepository.findById(cls.getSemesterId())
+                .orElseThrow(() -> ApiException.badRequest("Semester not found for class"));
+        if (!"Upcoming".equalsIgnoreCase(semester.getStatus())) {
+            throw ApiException.badRequest(
+                    "You can only add students to classes when the semester is Upcoming. (Semester '" + semester.getName() + "' is " + semester.getStatus() + ")");
+        }
+    }
+
+    /**
+     * CAPSTONE (3w) enrollment is allowed when:
+     * - semester is UPCOMING (pre-enroll), OR
+     * - semester is ACTIVE but capstone class is not ACTIVE yet (still in 10w phase).
+     */
+    public void ensureCanEnrollCapstone(Integer classId) {
+        ClassEntity cls = getById(classId);
+        if (!"CAPSTONE".equalsIgnoreCase(cls.getClassType())) {
+            throw ApiException.badRequest("This enrollment endpoint is only for CAPSTONE (3w) classes.");
+        }
+        var semester = semesterRepository.findById(cls.getSemesterId())
+                .orElseThrow(() -> ApiException.badRequest("Semester not found for class"));
+
+        if ("Upcoming".equalsIgnoreCase(semester.getStatus())) {
+            return;
+        }
+        if ("Active".equalsIgnoreCase(semester.getStatus())) {
+            // If capstone class is already Active, the 3w phase has started → do not allow adding more students.
+            if ("Active".equalsIgnoreCase(cls.getStatus())) {
+                throw ApiException.badRequest("Capstone phase is running. You can only enroll students to 3w before it starts, or enroll to an Upcoming semester.");
+            }
+            return;
+        }
+
+        throw ApiException.badRequest("Semester is not eligible for enrollment (status: " + semester.getStatus() + ").");
     }
 
     private void validateClass(ClassController.UpsertClassRequest req, Integer existingId) {
@@ -171,43 +262,36 @@ public class ClassService {
             }
         }
 
-        // Validate status
-        String status = req.status() != null ? req.status() : "Active";
-        if (!VALID_STATUSES.contains(status)) {
-            throw ApiException.badRequest("Invalid status '" + status + "'. Allowed values: Active, Inactive, Completed.");
-        }
-
-        // Block activating class if semester is not active
-        if ("Active".equalsIgnoreCase(status) && !"Active".equalsIgnoreCase(semester.getStatus())) {
-            throw ApiException.badRequest(
-                    "Cannot set class to Active: semester '" + semester.getName() + "' is not active. Activate the semester first.");
-        }
-
         // Validate class type
         String classType = req.classType() != null ? req.classType() : "MAIN";
         if (!VALID_CLASS_TYPES.contains(classType)) {
             throw ApiException.badRequest("Invalid class type '" + classType + "'. Allowed values: MAIN, CAPSTONE.");
         }
 
-        // Upcoming semesters can only have MAIN (10w) classes
-        if ("Upcoming".equalsIgnoreCase(semester.getStatus()) && "CAPSTONE".equalsIgnoreCase(classType)) {
-            throw ApiException.badRequest(
-                    "Cannot create Capstone (3w) class in an Upcoming semester. Activate the semester and complete the Main (10w) classes first.");
+        // Validate status
+        String status = req.status();
+        if (status == null) {
+            if (!"Active".equalsIgnoreCase(semester.getStatus())) {
+                status = "Inactive";
+            } else if ("CAPSTONE".equalsIgnoreCase(classType)) {
+                status = "Inactive";
+            } else {
+                status = "Active";
+            }
+        }
+        if (!VALID_STATUSES.contains(status)) {
+            throw ApiException.badRequest("Invalid status '" + status + "'. Allowed values: Active, Inactive, Completed.");
         }
 
-        // Validate CAPSTONE prerequisite (optional — if provided, must be a MAIN class)
-        if ("CAPSTONE".equalsIgnoreCase(classType) && req.prerequisiteClassId() != null) {
-            ClassEntity prereq = classRepository.findById(req.prerequisiteClassId())
-                    .orElseThrow(() -> ApiException.badRequest("Prerequisite class not found with id: " + req.prerequisiteClassId()));
-            if (!"MAIN".equalsIgnoreCase(prereq.getClassType())) {
-                throw ApiException.badRequest("Prerequisite class must be a MAIN (10w) class.");
-            }
-            // Block activating capstone if prerequisite not completed
-            if ("Active".equalsIgnoreCase(status) && !"Completed".equalsIgnoreCase(prereq.getStatus())) {
-                throw ApiException.badRequest(
-                        "Cannot activate capstone class: prerequisite class '" + prereq.getClassCode()
-                                + "' has not completed yet.");
-            }
+        // CAPSTONE can only be Active after all MAIN (10w) classes are Completed (i.e., after 10w phase)
+        if ("CAPSTONE".equalsIgnoreCase(classType) && "Active".equalsIgnoreCase(status)) {
+            ensureMainPhaseCompletedForCapstone(req.semesterId());
+        }
+
+        // Block activating class if semester is not active
+        if ("Active".equalsIgnoreCase(status) && !"Active".equalsIgnoreCase(semester.getStatus())) {
+            throw ApiException.badRequest(
+                    "Cannot set class to Active: semester '" + semester.getName() + "' is not active. Activate the semester first.");
         }
 
         // Validate class dates
@@ -262,7 +346,7 @@ public class ClassService {
 
     /**
      * Quick action: activate a class.
-     * Validates semester is active and prerequisite is completed (for CAPSTONE).
+        * Validates semester is active.
      */
     @Transactional
     public ClassEntity activateClass(Integer id) {
@@ -281,14 +365,9 @@ public class ClassService {
             throw ApiException.badRequest("Cannot activate class: semester '" + semester.getName() + "' is not active.");
         }
 
-        // CAPSTONE: prerequisite must be completed
-        if ("CAPSTONE".equalsIgnoreCase(cls.getClassType()) && cls.getPrerequisiteClassId() != null) {
-            ClassEntity prereq = classRepository.findById(cls.getPrerequisiteClassId()).orElse(null);
-            if (prereq != null && !"Completed".equalsIgnoreCase(prereq.getStatus())) {
-                throw ApiException.badRequest(
-                        "Cannot activate capstone class: prerequisite '" + prereq.getClassCode()
-                                + "' has not completed yet (status: " + prereq.getStatus() + ").");
-            }
+        // CAPSTONE (3w) can only start after MAIN (10w) phase is completed
+        if ("CAPSTONE".equalsIgnoreCase(cls.getClassType())) {
+            ensureMainPhaseCompletedForCapstone(cls.getSemesterId());
         }
 
         cls.setStatus("Active");
