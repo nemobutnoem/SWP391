@@ -18,6 +18,8 @@ export function UserManagementPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [modalRole, setModalRole] = useState("STUDENT");
+  const [studentClassHistory, setStudentClassHistory] = useState([]);
+  const [studentClassHistoryLoading, setStudentClassHistoryLoading] = useState(false);
 
   const [localStudents, setLocalStudents] = useState([]);
   const [localLecturers, setLocalLecturers] = useState([]);
@@ -55,27 +57,13 @@ export function UserManagementPage() {
     });
   }, []);
 
-  // Default semester selection (prefer Active) since we don't expose "All Semesters" in UI.
-  useEffect(() => {
-    if (!Array.isArray(semesters) || semesters.length === 0) return;
-    if (semesterFilter !== "ALL") return;
-
-    const active = semesters.find((s) => String(s.status || "").toUpperCase() === "ACTIVE");
-    const fallback = active || [...semesters].sort((a, b) => Number(b?.id ?? 0) - Number(a?.id ?? 0))[0];
-    if (fallback?.id != null) setSemesterFilter(String(fallback.id));
-  }, [semesters, semesterFilter]);
+  // Keep default as "ALL" so admin can see all students unless they choose a semester.
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     setMajorFilter("ALL");
     setStatusFilter("ALL");
-    if (Array.isArray(semesters) && semesters.length > 0) {
-      const active = semesters.find((s) => String(s.status || "").toUpperCase() === "ACTIVE");
-      const fallback = active || [...semesters].sort((a, b) => Number(b?.id ?? 0) - Number(a?.id ?? 0))[0];
-      setSemesterFilter(fallback?.id != null ? String(fallback.id) : "ALL");
-    } else {
-      setSemesterFilter("ALL");
-    }
+    setSemesterFilter("ALL");
     setBlockFilter("ALL");
     setSearchQuery("");
   };
@@ -99,6 +87,8 @@ export function UserManagementPage() {
     }
     setEditingUser(null);
     setModalRole(activeTab === "LECTURERS" ? "LECTURER" : "STUDENT");
+    setStudentClassHistory([]);
+    setStudentClassHistoryLoading(false);
     setIsModalOpen(true);
   };
 
@@ -109,6 +99,16 @@ export function UserManagementPage() {
     }
     setEditingUser(user);
     setModalRole(activeTab === "LECTURERS" ? "LECTURER" : "STUDENT");
+    setStudentClassHistory([]);
+    if (activeTab === "STUDENTS" && user?.id != null) {
+      setStudentClassHistoryLoading(true);
+      studentService.getClassHistory(user.id)
+        .then((data) => setStudentClassHistory(Array.isArray(data) ? data : []))
+        .catch(() => setStudentClassHistory([]))
+        .finally(() => setStudentClassHistoryLoading(false));
+    } else {
+      setStudentClassHistoryLoading(false);
+    }
     setIsModalOpen(true);
   };
 
@@ -121,11 +121,45 @@ export function UserManagementPage() {
       const payload = { ...formData };
       if (payload.class_id === "") payload.class_id = null;
 
+      const selectedClass = payload.class_id != null
+        ? classes.find((c) => isSameId(c.id, payload.class_id))
+        : null;
+      const selectedClassTypeRaw = selectedClass ? (selectedClass.class_type ?? selectedClass.classType ?? "MAIN") : null;
+      const selectedClassType = selectedClassTypeRaw == null ? null : String(selectedClassTypeRaw || "MAIN").toUpperCase();
+      const selectedClassSemesterId = selectedClass ? (selectedClass.semester_id ?? selectedClass.semesterId) : null;
+      const selectedSemesterForClass = selectedClassSemesterId != null
+        ? (semesters.find((s) => isSameId(s.id, selectedClassSemesterId)) || null)
+        : null;
+      const selectedSemesterStatus = selectedSemesterForClass ? String(selectedSemesterForClass.status ?? "").toUpperCase() : null;
+
       if (formData.role === "STUDENT") {
-        if (editingUser) {
-          await studentService.update(editingUser.id, payload);
+        // MAIN (10w): backend only allows direct assignment in UPCOMING semester.
+        // CAPSTONE (3w): must go through enrollment API (students.class_id is for MAIN only).
+        if (selectedClassType === "CAPSTONE" && payload.class_id != null) {
+          const capstoneClassId = payload.class_id;
+          if (editingUser) {
+            const safePayload = { ...payload, class_id: editingUser.class_id ?? editingUser.classId ?? null };
+            await studentService.update(editingUser.id, safePayload);
+            await classService.enroll(capstoneClassId, editingUser.id);
+          } else {
+            const safePayload = { ...payload, class_id: null };
+            const created = await studentService.create(safePayload);
+            await classService.enroll(capstoneClassId, created.id);
+          }
+          alert("Pre-enrolled to CAPSTONE (3w) class successfully.");
         } else {
-          await studentService.create(payload);
+          if (payload.class_id != null && selectedClassType !== "CAPSTONE") {
+            if (selectedSemesterStatus && selectedSemesterStatus !== "UPCOMING") {
+              alert("You can only assign a 10w class in an UPCOMING semester. For 3w, select a CAPSTONE class (it will be pre-enrolled). ");
+              return;
+            }
+          }
+
+          if (editingUser) {
+            await studentService.update(editingUser.id, payload);
+          } else {
+            await studentService.create(payload);
+          }
         }
       } else {
         if (editingUser) {
@@ -267,6 +301,8 @@ export function UserManagementPage() {
       onCloseModal={() => {
         setIsModalOpen(false);
         setEditingUser(null);
+        setStudentClassHistory([]);
+        setStudentClassHistoryLoading(false);
       }}
       onSubmit={handleSubmit}
       onDelete={handleDelete}
@@ -275,6 +311,8 @@ export function UserManagementPage() {
       classes={classes}
       semesters={semesters}
       isCrudLocked={isCrudLockedByCompletedSemester}
+      studentClassHistory={studentClassHistory}
+      studentClassHistoryLoading={studentClassHistoryLoading}
     />
   );
 }

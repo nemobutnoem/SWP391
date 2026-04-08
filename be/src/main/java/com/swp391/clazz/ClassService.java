@@ -173,7 +173,7 @@ public class ClassService {
 
     /**
      * Check if the semester of a given class is currently Active.
-     * Used by StudentController and GroupService to block operations on non-active semesters.
+         * Used by GroupService to block creating groups when the semester is not Active.
      */
     public void ensureSemesterActive(Integer classId) {
         ClassEntity cls = getById(classId);
@@ -182,7 +182,7 @@ public class ClassService {
         if (!"Active".equalsIgnoreCase(semester.getStatus())) {
             throw ApiException.badRequest(
                     "Semester '" + semester.getName() + "' is not active (status: " + semester.getStatus()
-                            + "). You can only add students/groups when the semester is Active.");
+                    + "). You can only create/manage groups when the semester is Active.");
         }
     }
 

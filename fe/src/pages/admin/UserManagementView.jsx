@@ -32,25 +32,63 @@ export function UserManagementView({
   classes,
   semesters,
   isCrudLocked,
+  studentClassHistory,
+  studentClassHistoryLoading,
 }) {
   const semesterOptions = Array.isArray(semesters) ? [...semesters] : [];
   semesterOptions.sort((a, b) => Number(b?.id ?? 0) - Number(a?.id ?? 0));
+
+  const getSemesterStatus = (semesterId) => {
+    const sem = (Array.isArray(semesters) ? semesters : []).find((s) => String(s?.id) === String(semesterId));
+    return String(sem?.status ?? "").toUpperCase();
+  };
+
+  const getClassType = (cls) => String(cls?.class_type ?? cls?.classType ?? "MAIN").toUpperCase();
 
   const classesForModal = (() => {
     const allClasses = Array.isArray(classes) ? classes : [];
     if (activeTab !== "STUDENTS") return allClasses;
 
-    let next = allClasses;
+    const sems = Array.isArray(semesters) ? semesters : [];
+    const activeSemester = sems.find((s) => String(s?.status ?? "").toUpperCase() === "ACTIVE") || null;
 
-    if (semesterFilter !== "ALL") {
-      next = next.filter((c) => String(c?.semester_id ?? c?.semesterId ?? "") === String(semesterFilter));
-    }
+    const selectedSemester = semesterFilter !== "ALL"
+      ? (sems.find((s) => String(s?.id) === String(semesterFilter)) || null)
+      : null;
 
-    if (blockFilter !== "ALL") {
-      next = next.filter((c) => String(c?.class_type ?? c?.classType ?? "MAIN").toUpperCase() === String(blockFilter));
-    }
+    const currentSemester = selectedSemester || activeSemester;
+    const currentSemesterId = currentSemester?.id ?? null;
+    const currentStart = String(currentSemester?.start_date ?? "");
 
-    return next;
+    const upcomingSemesters = sems
+      .filter((s) => String(s?.status ?? "").toUpperCase() === "UPCOMING")
+      .sort((a, b) => {
+        const cmp = String(a?.start_date ?? "").localeCompare(String(b?.start_date ?? ""));
+        if (cmp !== 0) return cmp;
+        return Number(a?.id ?? 0) - Number(b?.id ?? 0);
+      });
+    const nextSemester = currentStart
+      ? (upcomingSemesters.find((s) => String(s?.start_date ?? "") > currentStart) || upcomingSemesters[0] || null)
+      : (upcomingSemesters[0] || null);
+    const nextUpcomingSemesterId = nextSemester?.id ?? null;
+
+    const byCode = (a, b) => String(a?.class_code ?? a?.classCode ?? "").localeCompare(String(b?.class_code ?? b?.classCode ?? ""));
+    const semIdOf = (c) => c?.semester_id ?? c?.semesterId;
+
+    // Exactly as requested: prioritize 3w of current semester, then 10w of next semester.
+    const capstoneCurrent = currentSemesterId == null
+      ? []
+      : allClasses
+          .filter((c) => String(semIdOf(c)) === String(currentSemesterId) && getClassType(c) === "CAPSTONE")
+          .sort(byCode);
+
+    const mainNext = nextUpcomingSemesterId == null
+      ? []
+      : allClasses
+          .filter((c) => String(semIdOf(c)) === String(nextUpcomingSemesterId) && getClassType(c) === "MAIN")
+          .sort(byCode);
+
+    return [...capstoneCurrent, ...mainNext];
   })();
 
   return (
@@ -79,6 +117,8 @@ export function UserManagementView({
         initialData={editingUser}
         defaultRole={modalRole}
         classes={classesForModal}
+        classHistory={studentClassHistory}
+        classHistoryLoading={studentClassHistoryLoading}
       />
 
       <div className="admin-tabs">
@@ -115,6 +155,7 @@ export function UserManagementView({
               </select>
 
               <select className="filter-select" value={semesterFilter} onChange={(e) => onSemesterFilterChange(e.target.value)}>
+                <option value="ALL">All Semesters</option>
                 {semesterOptions.map((sem) => (
                   <option key={sem.id} value={String(sem.id)}>
                     {sem.name || `Semester ${sem.id}`}

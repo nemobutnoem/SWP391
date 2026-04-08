@@ -18,6 +18,8 @@ export function UserFormModal({
   defaultRole = "STUDENT",
   forcedRole = null,
   classes = [],
+  classHistory = [],
+  classHistoryLoading = false,
 }) {
   const resolvedRole = forcedRole || (initialData?.student_code ? "STUDENT" : initialData?.department ? "LECTURER" : defaultRole);
 
@@ -51,6 +53,13 @@ export function UserFormModal({
 
   const [errors, setErrors] = useState({});
   const [submitError, setSubmitError] = useState("");
+
+  const selectedClassForDropdown = Array.isArray(classes)
+    ? classes.find((c) => String(c.id) === String(formData.class_id))
+    : null;
+  const selectedClassTypeRaw = selectedClassForDropdown ? (selectedClassForDropdown.class_type ?? selectedClassForDropdown.classType ?? "MAIN") : null;
+  const selectedClassType = selectedClassTypeRaw == null ? null : String(selectedClassTypeRaw || "MAIN").toUpperCase();
+  const isCapstoneSelected = selectedClassType === "CAPSTONE";
 
   const validate = (name, value) => {
     let error = "";
@@ -224,11 +233,68 @@ export function UserFormModal({
                 <option value="">No Class</option>
                 {classes.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.class_code} {c.class_name ? `- ${c.class_name}` : ""}
+                    {c.class_code} {c.class_name ? `- ${c.class_name}` : ""}{" "}
+                    {String((c.class_type ?? c.classType ?? "MAIN")).toUpperCase() === "CAPSTONE" ? "(3w)" : "(10w)"}
                   </option>
                 ))}
               </select>
+              {isCapstoneSelected && (
+                <div style={{ marginTop: "0.25rem", color: "var(--slate-600)", fontSize: "0.875rem" }}>
+                  Note: Selecting a 3w class will pre-enroll the student to CAPSTONE. It does not replace the 10w class assignment.
+                </div>
+              )}
             </div>
+
+            {initialData && (
+              <div className="form-group">
+                <label>Class History</label>
+                <div style={{
+                  border: "1px solid var(--slate-200)",
+                  borderRadius: "10px",
+                  padding: "0.75rem",
+                  background: "var(--slate-50)",
+                  maxHeight: "200px",
+                  overflowY: "auto",
+                }}>
+                  {classHistoryLoading ? (
+                    <span style={{ color: "var(--slate-500)", fontSize: "0.875rem" }}>Loading history...</span>
+                  ) : (!Array.isArray(classHistory) || classHistory.length === 0) ? (
+                    <span style={{ color: "var(--slate-500)", fontSize: "0.875rem" }}>No history recorded yet.</span>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                      {classHistory.map((h) => {
+                        const code = h.class_code || (h.class_id != null ? `Class ${h.class_id}` : "-");
+                        const sem = h.semester_name || (h.semester_id != null ? `Semester ${h.semester_id}` : "-");
+                        const assigned = h.assigned_at ? String(h.assigned_at).replace("T", " ") : "-";
+                        const unassigned = h.unassigned_at ? String(h.unassigned_at).replace("T", " ") : "Present";
+                        const type = h.class_type ? (String(h.class_type).toUpperCase() === "CAPSTONE" ? "3w" : "10w") : "-";
+                        return (
+                          <div key={h.id || `${h.class_id}-${h.assigned_at}`}
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              gap: "0.75rem",
+                              alignItems: "baseline",
+                              background: "white",
+                              border: "1px solid var(--slate-200)",
+                              borderRadius: "10px",
+                              padding: "0.6rem 0.75rem",
+                            }}>
+                            <div style={{ display: "flex", flexDirection: "column" }}>
+                              <span style={{ fontWeight: 700, color: "var(--slate-900)", fontSize: "0.9rem" }}>{code} <span style={{ color: "var(--slate-400)", fontWeight: 600 }}>({type})</span></span>
+                              <span style={{ color: "var(--slate-500)", fontSize: "0.8rem" }}>{sem}</span>
+                            </div>
+                            <div style={{ color: "var(--slate-500)", fontSize: "0.8rem", whiteSpace: "nowrap" }}>
+                              {assigned} → {unassigned}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </>
         ) : (
           <div className="form-group">

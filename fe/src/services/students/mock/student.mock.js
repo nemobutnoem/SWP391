@@ -28,4 +28,9 @@ export const studentMock = {
     await sleep(200);
     return { id: Number(studentId) };
   },
+
+  async getClassHistory(studentId) {
+    await sleep(120);
+    return [];
+  },
 };

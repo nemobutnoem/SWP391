@@ -26,6 +26,9 @@ public class StudentController {
     private final GroupMemberRepository groupMemberRepository;
     private final StudentGroupRepository groupRepository;
     private final com.swp391.clazz.ClassService classService;
+    private final StudentClassHistoryRepository studentClassHistoryRepository;
+    private final StudentClassHistoryService studentClassHistoryService;
+    private final com.swp391.semester.SemesterRepository semesterRepository;
 
     public record StudentDto(
             Integer id,
@@ -84,7 +87,12 @@ public class StudentController {
             s.setEmail(email);
             s.setMajor(req.major());
             s.setStatus(req.status() != null ? req.status() : "Active");
-            return toDto(studentRepository.saveAndFlush(s));
+            StudentDto saved = toDto(studentRepository.saveAndFlush(s));
+
+            // Record assignment history (if any)
+            studentClassHistoryService.recordClassChange(saved.id(), null, saved.classId(), s.getCreatedAt());
+
+            return saved;
         } catch (org.springframework.dao.DataIntegrityViolationException ex) {
             throw handleConstraintViolation(ex);
         }
@@ -96,6 +104,8 @@ public class StudentController {
         ensureAdminOrLecturer(auth);
         StudentEntity s = studentRepository.findById(studentId)
                 .orElseThrow(() -> new IllegalArgumentException("Student not found"));
+
+        Integer previousClassId = s.getClassId();
 
         // Direct class assignment is only allowed for MAIN classes in UPCOMING semesters
         if (req.classId() != null && !req.classId().equals(s.getClassId())) {
@@ -126,10 +136,84 @@ public class StudentController {
             s.setUserId(user.getId());
         }
         try {
-            return toDto(studentRepository.saveAndFlush(s));
+            StudentDto saved = toDto(studentRepository.saveAndFlush(s));
+
+            // Record assignment history if class changed (including unassign)
+            Integer newClassId = saved.classId();
+            studentClassHistoryService.recordClassChange(saved.id(), previousClassId, newClassId, s.getCreatedAt());
+
+            return saved;
         } catch (org.springframework.dao.DataIntegrityViolationException ex) {
             throw handleConstraintViolation(ex);
         }
+    }
+
+    public record StudentClassHistoryDto(
+            Integer id,
+            @JsonProperty("class_id") Integer classId,
+            @JsonProperty("class_code") String classCode,
+            @JsonProperty("class_name") String className,
+            @JsonProperty("class_type") String classType,
+            @JsonProperty("semester_id") Integer semesterId,
+            @JsonProperty("semester_name") String semesterName,
+            @JsonProperty("assigned_at") java.time.LocalDateTime assignedAt,
+            @JsonProperty("unassigned_at") java.time.LocalDateTime unassignedAt
+    ) {
+    }
+
+    @GetMapping("/{studentId}/class-history")
+    public java.util.List<StudentClassHistoryDto> getClassHistory(@PathVariable("studentId") Integer studentId) {
+        // No auth restriction here since the rest of /students endpoints are already protected by security config.
+        var items = studentClassHistoryRepository.findByStudentIdOrderByAssignedAtDesc(studentId);
+
+        // Backfill for legacy students: if they already have a class assigned but history is empty,
+        // create an initial open record so UI doesn't show "No history recorded yet" forever.
+        if (items.isEmpty()) {
+            studentRepository.findById(studentId).ifPresent(s -> {
+                if (s.getClassId() != null) {
+                    StudentClassHistoryEntity seed = new StudentClassHistoryEntity();
+                    seed.setStudentId(studentId);
+                    seed.setClassId(s.getClassId());
+                    seed.setAssignedAt(s.getCreatedAt() != null ? s.getCreatedAt() : java.time.LocalDateTime.now());
+                    studentClassHistoryRepository.save(seed);
+                }
+            });
+            items = studentClassHistoryRepository.findByStudentIdOrderByAssignedAtDesc(studentId);
+        }
+        return items.stream().map(h -> {
+            var clsOpt = classRepository.findById(h.getClassId());
+            Integer semesterId = null;
+            String semesterName = null;
+            String classCode = null;
+            String className = null;
+            String classType = null;
+
+            if (clsOpt.isPresent()) {
+                var cls = clsOpt.get();
+                classCode = cls.getClassCode();
+                className = cls.getClassName();
+                classType = cls.getClassType();
+                semesterId = cls.getSemesterId();
+                if (semesterId != null) {
+                    var semOpt = semesterRepository.findById(semesterId);
+                    if (semOpt.isPresent()) {
+                        semesterName = semOpt.get().getName();
+                    }
+                }
+            }
+
+            return new StudentClassHistoryDto(
+                    h.getId(),
+                    h.getClassId(),
+                    classCode,
+                    className,
+                    classType,
+                    semesterId,
+                    semesterName,
+                    h.getAssignedAt(),
+                    h.getUnassignedAt()
+            );
+        }).toList();
     }
 
     private void ensureAdminOrLecturer(org.springframework.security.core.Authentication auth) {
@@ -275,8 +359,35 @@ public class StudentController {
 
     private com.swp391.common.ApiException handleConstraintViolation(org.springframework.dao.DataIntegrityViolationException ex) {
         String msg = ex.getMostSpecificCause() == null ? ex.getMessage() : ex.getMostSpecificCause().getMessage();
-        if (msg != null && (msg.contains("UX_users_account") || msg.contains("uq_") || msg.contains("UNIQUE"))) {
-            return com.swp391.common.ApiException.badRequest("Account or student information already exists in the system.");
+        if (msg != null) {
+            String lowered = msg.toLowerCase(Locale.ROOT);
+
+            if (lowered.contains("ux_users_account") || lowered.contains("users(account") || lowered.contains("dbo.users") && lowered.contains("account")) {
+                return com.swp391.common.ApiException.badRequest(
+                        "Account already exists. If you are moving a student to a new class/semester (retake), please search the existing student and use Edit instead of Create."
+                );
+            }
+            if (lowered.contains("uq_students_student_code") || lowered.contains("students") && lowered.contains("student_code")) {
+                return com.swp391.common.ApiException.badRequest(
+                        "Student code already exists. If you are moving a student to a new class/semester (retake), please search the existing student and use Edit instead of Create."
+                );
+            }
+            if (lowered.contains("uq_students_email") || lowered.contains("students") && lowered.contains("email")) {
+                return com.swp391.common.ApiException.badRequest(
+                        "Student email already exists. If you are moving a student to a new class/semester (retake), please search the existing student and use Edit instead of Create."
+                );
+            }
+            if (lowered.contains("uq_students_user_id") || lowered.contains("uq_students_user") || lowered.contains("students") && lowered.contains("user_id")) {
+                return com.swp391.common.ApiException.badRequest(
+                        "This account is already linked to a student profile. Please search the student and use Edit instead of Create."
+                );
+            }
+
+            if (lowered.contains("uq_") || lowered.contains("unique")) {
+                return com.swp391.common.ApiException.badRequest(
+                        "Duplicate data detected. If you are moving a student to a new class/semester (retake), please search the existing student and use Edit instead of Create."
+                );
+            }
         }
         return com.swp391.common.ApiException.badRequest("Database Error: " + msg);
     }

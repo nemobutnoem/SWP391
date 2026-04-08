@@ -25,4 +25,9 @@ export const studentApi = {
     const res = await http.delete(`/students/${studentId}`);
     return res.data;
   },
+
+  async getClassHistory(studentId) {
+    const res = await http.get(`/students/${studentId}/class-history`);
+    return res.data;
+  },
 };

@@ -86,6 +86,33 @@ export function SemesterClassPage() {
     });
   }, [classes]);
 
+  const eligibleStudentsForSelectedSemester = useMemo(() => {
+    // Show only students that belong to the selected semester.
+    if (!selectedSemesterId) return Array.isArray(students) ? students : [];
+    const list = Array.isArray(students) ? students : [];
+
+    const resolveSemesterId = (student) => {
+      const direct = student?.semester_id ?? student?.semesterId;
+      if (direct != null && String(direct).trim() !== "") return direct;
+      const classId = student?.class_id ?? student?.classId;
+      if (classId == null || String(classId).trim() === "") return null;
+      // We only have the currently selected semester's classes in state; this fallback is mainly
+      // for older payloads that didn't include semester_id.
+      const cls = classes.find((c) => String(c?.id) === String(classId));
+      // If classId is not in this semester's classes, the student belongs to another semester.
+      // Do NOT treat them as unassigned.
+      if (!cls) return "__OTHER_SEMESTER__";
+      return cls?.semester_id ?? cls?.semesterId ?? "__OTHER_SEMESTER__";
+    };
+
+    return list.filter((s) => {
+      const semId = resolveSemesterId(s);
+      if (semId == null) return false; // unassigned -> exclude (strict)
+      if (semId === "__OTHER_SEMESTER__") return false;
+      return String(semId) === String(selectedSemesterId);
+    });
+  }, [selectedSemesterId, students, classes]);
+
   const enrichedClasses = useMemo(() => {
     return classes.map((c) => {
       const lecturer = lecturers.find((l) => l.id === c.lecturer_id);
@@ -335,7 +362,7 @@ export function SemesterClassPage() {
       onCompleteClass={handleCompleteClass}
       onActivateClass={handleActivateClass}
       isCapstoneRunning={isCapstoneRunning}
-      allStudents={students}
+      allStudents={eligibleStudentsForSelectedSemester}
     />
   );
 }

@@ -9,5 +9,8 @@ EXEC(N'IF COL_LENGTH(''dbo.classes'',''end_date'') IS NULL ALTER TABLE dbo.class
 -- Class enrollments: allows a student to be enrolled in multiple classes (e.g. 10w active + 3w pre-enrolled)
 EXEC(N'IF OBJECT_ID(''dbo.class_enrollments'', ''U'') IS NULL CREATE TABLE dbo.class_enrollments (id INT IDENTITY(1,1) PRIMARY KEY, student_id INT NOT NULL, class_id INT NOT NULL, status NVARCHAR(20) NOT NULL DEFAULT ''ACTIVE'', enrolled_at DATETIME2 DEFAULT GETDATE(), CONSTRAINT UQ_enrollment UNIQUE (student_id, class_id))')
 
+-- Student class history: track MAIN class assignments over time (for retakes / semester changes)
+EXEC(N'IF OBJECT_ID(''dbo.student_class_history'', ''U'') IS NULL CREATE TABLE dbo.student_class_history (id INT IDENTITY(1,1) PRIMARY KEY, student_id INT NOT NULL, class_id INT NOT NULL, assigned_at DATETIME2 NOT NULL DEFAULT GETDATE(), unassigned_at DATETIME2 NULL)')
+
 -- Topics (projects): block_type (MAIN=10w, CAPSTONE=3w)
 EXEC(N'IF COL_LENGTH(''dbo.projects'',''block_type'') IS NULL ALTER TABLE dbo.projects ADD block_type NVARCHAR(20) NOT NULL DEFAULT ''MAIN''')
