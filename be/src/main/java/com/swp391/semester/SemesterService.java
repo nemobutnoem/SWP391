@@ -1,9 +1,11 @@
 package com.swp391.semester;
 
 import com.swp391.clazz.ClassRepository;
+import com.swp391.clazz.ClassService;
 import com.swp391.common.ApiException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Set;
@@ -13,6 +15,7 @@ import java.util.Set;
 public class SemesterService {
     private final SemesterRepository semesterRepository;
     private final ClassRepository classRepository;
+    private final ClassService classService;
 
     private static final Set<String> VALID_STATUSES = Set.of("Active", "Upcoming", "Completed");
 
@@ -50,6 +53,7 @@ public class SemesterService {
         return semesterRepository.save(entity);
     }
 
+    @Transactional
     public SemesterEntity update(Integer id, SemesterController.UpsertSemesterRequest req) {
         SemesterEntity entity = getById(id);
         validateSemester(req, id);
@@ -86,6 +90,12 @@ public class SemesterService {
                     }
                 }
             }
+        }
+
+        // Ensure consistency: whenever semester status is Completed, all classes in it must be Completed as well.
+        // (Idempotent — also fixes legacy data where semester was marked Completed but some classes weren't.)
+        if ("Completed".equalsIgnoreCase(newStatus)) {
+            classService.completeAllClassesInSemester(id);
         }
 
         return saved;

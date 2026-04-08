@@ -345,6 +345,60 @@ public class ClassService {
     }
 
     /**
+     * Bulk operation: when a semester is marked Completed, all classes inside it
+     * should be marked Completed as well (regardless of their current status).
+     * Also completes all groups in those classes.
+     */
+    @Transactional
+    public void completeAllClassesInSemester(Integer semesterId) {
+        if (semesterId == null) return;
+        List<ClassEntity> semClasses = classRepository.findBySemesterId(semesterId);
+        for (var cls : semClasses) {
+            if (!"Completed".equalsIgnoreCase(cls.getStatus())) {
+                cls.setStatus("Completed");
+                classRepository.save(cls);
+            }
+
+            Integer classId = cls.getId();
+            if (classId == null) continue;
+            var groups = groupRepository.findByClassId(classId);
+            for (var group : groups) {
+                if (!"Completed".equalsIgnoreCase(group.getStatus())) {
+                    group.setStatus("Completed");
+                    groupRepository.save(group);
+                }
+            }
+        }
+    }
+
+    /**
+     * Bulk operation: when a semester is marked Completed, all classes inside it
+     * should be marked Completed as well (regardless of their current status).
+     * Also completes all groups in those classes.
+     */
+    @Transactional
+    public void completeAllClassesInSemester(Integer semesterId) {
+        if (semesterId == null) return;
+        List<ClassEntity> semClasses = classRepository.findBySemesterId(semesterId);
+        for (var cls : semClasses) {
+            if (!"Completed".equalsIgnoreCase(cls.getStatus())) {
+                cls.setStatus("Completed");
+                classRepository.save(cls);
+            }
+
+            Integer classId = cls.getId();
+            if (classId == null) continue;
+            var groups = groupRepository.findByClassId(classId);
+            for (var group : groups) {
+                if (!"Completed".equalsIgnoreCase(group.getStatus())) {
+                    group.setStatus("Completed");
+                    groupRepository.save(group);
+                }
+            }
+        }
+    }
+
+    /**
      * Quick action: activate a class.
         * Validates semester is active.
      */

@@ -184,7 +184,14 @@ export function UserManagementPage() {
         ? groups.find((g) => isSameId(g.id, membership.group_id ?? membership.groupId))
         : groups.find((g) => isSameId(g.leader_student_id ?? g.leaderStudentId, s.id));
       const project = group ? projects.find((p) => isSameId(p.id, group.project_id ?? group.projectId)) : null;
-      const clazz = classes.find((c) => isSameId(c.id, s.class_id ?? s.classId));
+
+      // Display fallback: MAIN assignment uses students.class_id. CAPSTONE (3w) uses enrollments
+      // and does NOT populate students.class_id, so we show the latest capstone enrollment if present.
+      const mainClassId = s.class_id ?? s.classId;
+      const capstoneClassId = s.capstone_class_id ?? s.capstoneClassId;
+      const displayClassId = mainClassId ?? capstoneClassId;
+
+      const clazz = classes.find((c) => isSameId(c.id, displayClassId));
       const resolvedSemesterId =
         (s.semester_id ?? s.semesterId) ?? (clazz?.semester_id ?? clazz?.semesterId) ?? null;
       const semester =

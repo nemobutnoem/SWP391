@@ -7,6 +7,7 @@ import java.util.Optional;
 
 public interface ClassEnrollmentRepository extends JpaRepository<ClassEnrollmentEntity, Integer> {
     List<ClassEnrollmentEntity> findByStudentId(Integer studentId);
+    Optional<ClassEnrollmentEntity> findFirstByStudentIdOrderByEnrolledAtDescIdDesc(Integer studentId);
     List<ClassEnrollmentEntity> findByClassId(Integer classId);
     Optional<ClassEnrollmentEntity> findByStudentIdAndClassId(Integer studentId, Integer classId);
     boolean existsByStudentIdAndClassId(Integer studentId, Integer classId);

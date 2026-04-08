@@ -91,6 +91,13 @@ export function SemesterClassPage() {
     if (!selectedSemesterId) return Array.isArray(students) ? students : [];
     const list = Array.isArray(students) ? students : [];
 
+    const isEmptyId = (v) => v == null || String(v).trim() === "";
+    const isUnassigned = (student) => {
+      const semId = student?.semester_id ?? student?.semesterId;
+      const classId = student?.class_id ?? student?.classId;
+      return isEmptyId(semId) && isEmptyId(classId);
+    };
+
     const resolveSemesterId = (student) => {
       const direct = student?.semester_id ?? student?.semesterId;
       if (direct != null && String(direct).trim() !== "") return direct;
@@ -107,7 +114,7 @@ export function SemesterClassPage() {
 
     return list.filter((s) => {
       const semId = resolveSemesterId(s);
-      if (semId == null) return false; // unassigned -> exclude (strict)
+      if (semId == null) return isUnassigned(s); // include only truly unassigned students
       if (semId === "__OTHER_SEMESTER__") return false;
       return String(semId) === String(selectedSemesterId);
     });

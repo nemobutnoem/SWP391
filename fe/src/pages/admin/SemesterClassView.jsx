@@ -345,7 +345,7 @@ function AddStudentModal({ isOpen, onClose, onSubmit, allStudents, classId, enri
           <span style={{ color: "var(--slate-400)", textAlign: "center", padding: "1rem" }}>
             {search
               ? "No matching students found."
-              : "No students available for this semester. Create students in User Management and assign them to this semester first."}
+              : "No students available to add. Create students in User Management first."}
           </span>
         ) : (
           filtered.map((s) => (

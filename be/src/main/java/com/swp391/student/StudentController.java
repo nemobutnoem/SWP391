@@ -2,6 +2,7 @@ package com.swp391.student;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.swp391.clazz.ClassRepository;
+import com.swp391.clazz.ClassEnrollmentRepository;
 import com.swp391.group.GroupMemberRepository;
 import com.swp391.group.StudentGroupRepository;
 import com.swp391.lecturer.LecturerRepository;
@@ -22,6 +23,7 @@ public class StudentController {
     private final StudentRepository studentRepository;
     private final UserRepository userRepository;
     private final ClassRepository classRepository;
+    private final ClassEnrollmentRepository classEnrollmentRepository;
     private final LecturerRepository lecturerRepository;
     private final GroupMemberRepository groupMemberRepository;
     private final StudentGroupRepository groupRepository;
@@ -34,6 +36,7 @@ public class StudentController {
             Integer id,
             @JsonProperty("user_id") Integer userId,
             @JsonProperty("class_id") Integer classId,
+            @JsonProperty("capstone_class_id") Integer capstoneClassId,
             @JsonProperty("full_name") String fullName,
             @JsonProperty("student_code") String studentCode,
             String email,
@@ -399,6 +402,15 @@ public class StudentController {
                     .map(UserEntity::getGithubUsername)
                     .orElse(null);
         }
+
+        Integer capstoneClassId = null;
+        if (s.getId() != null) {
+            capstoneClassId = classEnrollmentRepository
+                .findFirstByStudentIdOrderByEnrolledAtDescIdDesc(s.getId())
+                .map(com.swp391.clazz.ClassEnrollmentEntity::getClassId)
+                .orElse(null);
+        }
+
         Integer semesterId = null;
         if (s.getClassId() != null) {
             semesterId = classRepository.findById(s.getClassId())
@@ -409,6 +421,7 @@ public class StudentController {
                 s.getId(),
                 s.getUserId(),
                 s.getClassId(),
+            capstoneClassId,
                 s.getFullName(),
                 s.getStudentCode(),
                 s.getEmail(),
