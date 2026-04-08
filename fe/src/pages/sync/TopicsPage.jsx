@@ -31,6 +31,11 @@ export function TopicsPage() {
       }
     });
   }, []);
+
+  // Keep classes fresh so create-lock logic reflects latest semester setup
+  useEffect(() => {
+    classService.list().then((cls) => setClasses(Array.isArray(cls) ? cls : [])).catch(() => {});
+  }, [selectedSemesterId]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTopic, setEditingTopic] = useState(null);
 

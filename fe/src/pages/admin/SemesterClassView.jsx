@@ -343,7 +343,7 @@ function AddStudentModal({ isOpen, onClose, onSubmit, allStudents, classId, enri
       <div style={{ maxHeight: "320px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
         {filtered.length === 0 ? (
           <span style={{ color: "var(--slate-400)", textAlign: "center", padding: "1rem" }}>
-            {search ? "No matching students found." : "No students available."}
+            {search ? "No matching students found." : "No students available. Create students in User Management first."}
           </span>
         ) : (
           filtered.map((s) => (
@@ -409,10 +409,11 @@ export function SemesterClassView({
   const semesterCardsRef = useRef(null);
   const [expandedClassId, setExpandedClassId] = useState(null);
   const [addStudentClassId, setAddStudentClassId] = useState(null);
-  const selectedSemester = semesters.find((s) => s.id === selectedSemesterId);
-  const isSemesterActive = selectedSemester?.status?.toLowerCase() === "active";
-  const isSemesterCompleted = selectedSemester?.status?.toLowerCase() === "completed";
-  const isSemesterUpcoming = selectedSemester?.status?.toLowerCase() === "upcoming";
+  const selectedSemester = semesters.find((s) => String(s.id) === String(selectedSemesterId));
+  const semesterStatus = String(selectedSemester?.status || "").trim().toLowerCase();
+  const isSemesterActive = semesterStatus === "active";
+  const isSemesterCompleted = semesterStatus === "completed";
+  const isSemesterUpcoming = semesterStatus === "upcoming";
   const hasUncompletedMain = enrichedClasses.some(
     (c) => (c.class_type || "MAIN") === "MAIN" && String(c.status || "").toLowerCase() !== "completed"
   );
@@ -434,7 +435,7 @@ export function SemesterClassView({
   const canAddStudentsToClass = (cls) => {
     if (isSemesterCompleted) return false;
     const isCapstone = (cls.class_type || "MAIN") === "CAPSTONE";
-    if (isSemesterUpcoming) return true;
+    if (isSemesterUpcoming) return !isCapstone; // Upcoming: only MAIN (10w) gets direct student assignment
     if (!isSemesterActive) return false;
     if (isCapstoneRunning) return false; // đang học 3w
     return isCapstone; // đang học 10w => chỉ được thêm cho 3w
@@ -579,6 +580,56 @@ export function SemesterClassView({
                         </td>
                         <td className="action-cell">
                           <div className="action-buttons">
+                            {(() => {
+                              // Quick add button (so user doesn't need to expand the students dropdown)
+                              if (isSemesterCompleted) return null;
+                              const rowIsCapstone = (c.class_type || "MAIN") === "CAPSTONE";
+
+                              // Active semester, MAIN phase (capstone not running): add student means pre-enroll to 3w
+                              if (isSemesterActive && !isCapstoneRunning) {
+                                const capstoneTarget = rowIsCapstone
+                                  ? c
+                                  : (enrichedClasses.find((x) => (x.class_type || "MAIN") === "CAPSTONE" && String(x.status || "").toLowerCase() === "inactive")
+                                      || enrichedClasses.find((x) => (x.class_type || "MAIN") === "CAPSTONE"));
+
+                                if (!capstoneTarget) return null;
+                                const capstoneStatus = String(capstoneTarget.status || "").toLowerCase();
+                                const locked = capstoneStatus === "active";
+
+                                return (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    disabled={locked}
+                                    title={
+                                      capstoneStatus === "active"
+                                        ? "Capstone (3w) is active. Enrollment is locked."
+                                        : "Pre-enroll students to Capstone (3w)"
+                                    }
+                                    onClick={() => setAddStudentClassId(capstoneTarget.id)}
+                                  >
+                                    Pre-enroll
+                                  </Button>
+                                );
+                              }
+
+                              // Upcoming semester: add student means assign to MAIN (10w) class
+                              if (isSemesterUpcoming) {
+                                if (rowIsCapstone) return null;
+                                return (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    title="Add student to this 10w class"
+                                    onClick={() => setAddStudentClassId(c.id)}
+                                  >
+                                    Add Student
+                                  </Button>
+                                );
+                              }
+
+                              return null;
+                            })()}
                             {c.status?.toLowerCase() === "active" && isSemesterActive && (
                               <Button variant="ghost" size="sm" onClick={() => onCompleteClass(c.id)}>
                                 Complete
@@ -629,17 +680,69 @@ export function SemesterClassView({
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
                               <span className="expanded-row-title" style={{ margin: 0 }}>Students in {c.class_code}</span>
                               <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-                                {canAddStudentsToClass(c) ? (
-                                  (c.class_type || "MAIN") === "CAPSTONE" && c.status?.toLowerCase() !== "active" ? (
-                                    <Button variant="secondary" size="sm" onClick={() => setAddStudentClassId(c.id)}>Pre-enroll to 3w</Button>
-                                  ) : (
-                                    <Button variant="primary" size="sm" onClick={() => setAddStudentClassId(c.id)}>+ Add Student</Button>
-                                  )
-                                ) : (
-                                  <span style={{ fontSize: "0.75rem", color: "var(--slate-400)", fontStyle: "italic" }}>
-                                    You can only add students in Upcoming semesters, or pre-enroll to 3w while studying 10w.
-                                  </span>
-                                )}
+                                {(() => {
+                                  const rowIsCapstone = (c.class_type || "MAIN") === "CAPSTONE";
+
+                                  // Active semester, MAIN phase (capstone not running): add student means pre-enroll to 3w
+                                  if (isSemesterActive && !isCapstoneRunning) {
+                                    const capstoneTarget = rowIsCapstone
+                                      ? c
+                                      : (enrichedClasses.find((x) => (x.class_type || "MAIN") === "CAPSTONE" && String(x.status || "").toLowerCase() === "inactive")
+                                          || enrichedClasses.find((x) => (x.class_type || "MAIN") === "CAPSTONE"));
+
+                                    if (!capstoneTarget) {
+                                      return (
+                                        <span style={{ fontSize: "0.75rem", color: "var(--slate-400)", fontStyle: "italic" }}>
+                                          Create a 3w (Capstone) class first to pre-enroll students.
+                                        </span>
+                                      );
+                                    }
+
+                                    // Only allow pre-enroll when capstone class is not Active
+                                    const capstoneStatus = String(capstoneTarget.status || "").toLowerCase();
+                                    if (capstoneStatus === "active") {
+                                      return (
+                                        <span style={{ fontSize: "0.75rem", color: "var(--slate-400)", fontStyle: "italic" }}>
+                                          Capstone (3w) is active. Enrollment is locked.
+                                        </span>
+                                      );
+                                    }
+
+                                    return (
+                                      <Button variant="secondary" size="sm" onClick={() => setAddStudentClassId(capstoneTarget.id)}>
+                                        Pre-enroll to 3w
+                                      </Button>
+                                    );
+                                  }
+
+                                  // Upcoming semester: add student means assign to MAIN (10w) class
+                                  if (isSemesterUpcoming) {
+                                    const mainTarget = rowIsCapstone
+                                      ? enrichedClasses.find((x) => (x.class_type || "MAIN") === "MAIN")
+                                      : c;
+
+                                    if (!mainTarget) {
+                                      return (
+                                        <span style={{ fontSize: "0.75rem", color: "var(--slate-400)", fontStyle: "italic" }}>
+                                          Create a 10w (Main) class first to add students.
+                                        </span>
+                                      );
+                                    }
+
+                                    return (
+                                      <Button variant="primary" size="sm" onClick={() => setAddStudentClassId(mainTarget.id)}>
+                                        + Add Student
+                                      </Button>
+                                    );
+                                  }
+
+                                  // Fallback: locked
+                                  return (
+                                    <span style={{ fontSize: "0.75rem", color: "var(--slate-400)", fontStyle: "italic" }}>
+                                      Adding students is locked for this semester status.
+                                    </span>
+                                  );
+                                })()}
                               </div>
                             </div>
 
@@ -654,7 +757,7 @@ export function SemesterClassView({
                               if (isCapstone) {
                                 if (!hasEnrollmentStudents) {
                                   return (
-                                    <span className="text-secondary">No students in this class yet.{canAddStudentsToClass(c) ? ' Click "+ Add Student" to add one.' : ""}</span>
+                                    <span className="text-secondary">No students in this class yet.</span>
                                   );
                                 }
 
@@ -678,7 +781,7 @@ export function SemesterClassView({
 
                               if (!hasDirectStudents) {
                                 return (
-                                  <span className="text-secondary">No students in this class yet.{canAddStudentsToClass(c) ? ' Click "+ Add Student" to add one.' : ""}</span>
+                                  <span className="text-secondary">No students in this class yet.</span>
                                 );
                               }
 
