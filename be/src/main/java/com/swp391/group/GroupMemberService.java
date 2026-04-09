@@ -1,5 +1,7 @@
 package com.swp391.group;
 
+import com.swp391.clazz.ClassEnrollmentRepository;
+import com.swp391.clazz.ClassRepository;
 import com.swp391.common.ApiException;
 import com.swp391.group.dto.GroupMemberDto;
 import com.swp391.student.StudentRepository;
@@ -20,6 +22,8 @@ public class GroupMemberService {
     private final StudentRepository studentRepository;
     private final StudentGroupRepository groupRepository;
     private final UserRepository userRepository;
+    private final ClassRepository classRepository;
+    private final ClassEnrollmentRepository enrollmentRepository;
 
     public List<GroupMemberDto> listGroupMembers(Integer groupId) {
         return memberRepository.findByGroupId(groupId).stream()
@@ -54,16 +58,31 @@ public class GroupMemberService {
         var student = studentRepository.findById(studentId)
                 .orElseThrow(() -> ApiException.notFound("Student not found with id: " + studentId));
 
-        // Business Rule: Student MUST belong to the same class as the group
-        if (student.getClassId() == null) {
-            throw ApiException.badRequest(
-                    "Student '" + student.getFullName() + "' has not been assigned to any class yet. "
-                            + "Admin must add the student to this class first.");
-        }
-        if (!student.getClassId().equals(group.getClassId())) {
-            throw ApiException.badRequest(
-                    "Student '" + student.getFullName() + "' belongs to a different class (ID: " + student.getClassId()
-                            + "). They must be in the same class as this group to join.");
+        var groupClass = group.getClassId() == null ? null : classRepository.findById(group.getClassId()).orElse(null);
+        boolean isCapstoneGroup = groupClass != null
+                && "CAPSTONE".equalsIgnoreCase(groupClass.getClassType());
+
+        // Business Rule:
+        // - MAIN/10w groups: student.class_id must match the group class
+        // - CAPSTONE/3w groups: student must be enrolled in that CAPSTONE class
+        if (isCapstoneGroup) {
+            boolean enrolledInCapstone = enrollmentRepository.existsByStudentIdAndClassId(studentId, group.getClassId());
+            if (!enrolledInCapstone) {
+                throw ApiException.badRequest(
+                        "Student '" + student.getFullName()
+                                + "' has not been enrolled in this 3w class yet. Pre-enroll/add them to the 3w class first.");
+            }
+        } else {
+            if (student.getClassId() == null) {
+                throw ApiException.badRequest(
+                        "Student '" + student.getFullName() + "' has not been assigned to any class yet. "
+                                + "Admin must add the student to this class first.");
+            }
+            if (!student.getClassId().equals(group.getClassId())) {
+                throw ApiException.badRequest(
+                        "Student '" + student.getFullName() + "' belongs to a different class (ID: " + student.getClassId()
+                                + "). They must be in the same class as this group to join.");
+            }
         }
     // Block if student is already in another group within the SAME class
     var existingMemberships = memberRepository.findByStudentId(studentId);

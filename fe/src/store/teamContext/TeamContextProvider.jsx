@@ -55,6 +55,7 @@ export function TeamContextProvider({ children }) {
         const classCode = safeGet(cls, ["class_code", "classCode"]);
         const className = safeGet(cls, ["class_name", "className", "name"]);
         const classLabel = classCode || className || null;
+        const classStatus = safeLower(safeGet(cls, ["status"])) || null;
 
         const t = topicList.find((x) => Number(x.id) === Number(topicId));
         const topicCode = safeGet(t, ["project_code", "code", "topic_code", "topicCode"]);
@@ -62,6 +63,7 @@ export function TeamContextProvider({ children }) {
         const topicLabel = topicName || topicCode || null;
 
         const semesterStatus = safeLower(safeGet(sem, ["status"])) || null;
+        const isUsable = semesterStatus === "active" && classStatus === "active";
 
         return {
           groupId: Number.isFinite(groupId) ? groupId : null,
@@ -71,6 +73,8 @@ export function TeamContextProvider({ children }) {
           semesterLabel,
           semesterStatus,
           classLabel,
+          classStatus,
+          isUsable,
           topicLabel,
           raw: g,
         };
@@ -117,8 +121,13 @@ export function TeamContextProvider({ children }) {
     if (!Number.isFinite(sid)) return null;
     const candidates = groupOptions.filter((g) => Number(g.semesterId) === sid);
     if (candidates.length === 0) return null;
-    // If multiple groups in same semester, keep deterministic: smallest groupId.
-    candidates.sort((a, b) => Number(a.groupId) - Number(b.groupId));
+    // Prefer usable groups (active semester + active class), then deterministic by groupId.
+    candidates.sort((a, b) => {
+      const ua = a.isUsable ? 1 : 0;
+      const ub = b.isUsable ? 1 : 0;
+      if (ua !== ub) return ub - ua;
+      return Number(a.groupId) - Number(b.groupId);
+    });
     return candidates[0];
   };
 
@@ -180,11 +189,24 @@ export function TeamContextProvider({ children }) {
             .filter((id) => Number.isFinite(id)),
         );
 
-        const groupIds = new Set(nextGroups.map((g) => Number(g.id)).filter((id) => Number.isFinite(id)));
-        let nextSelected = persisted != null && groupIds.has(persisted) ? persisted : null;
+        const activeClassIds = new Set(
+          (Array.isArray(classesData) ? classesData : [])
+            .filter((c) => safeLower(c?.status) === "active")
+            .map((c) => Number(c.id))
+            .filter((id) => Number.isFinite(id)),
+        );
+
+        const eligibleGroups = nextGroups.filter((g) => {
+          const semesterId = Number(safeGet(g, ["semester_id", "semesterId"]));
+          const classId = Number(safeGet(g, ["class_id", "classId"]));
+          return activeSemesterIds.has(semesterId) && activeClassIds.has(classId);
+        });
+
+        const allGroupIds = new Set(nextGroups.map((g) => Number(g.id)).filter((id) => Number.isFinite(id)));
+        let nextSelected = persisted != null && allGroupIds.has(persisted) ? persisted : null;
 
         if (nextSelected == null) {
-          const activeGroup = nextGroups.find((g) => activeSemesterIds.has(Number(safeGet(g, ["semester_id", "semesterId"]))));
+          const activeGroup = eligibleGroups[0] || null;
           nextSelected = activeGroup?.id != null ? Number(activeGroup.id) : null;
         }
 
@@ -225,6 +247,7 @@ export function TeamContextProvider({ children }) {
       selectedGroupId,
       setSelectedGroupId,
       selectedGroup,
+      selectedGroupIsUsable: Boolean(selectedGroup?.isUsable),
       selectedSemesterId,
       setSelectedSemesterId,
     }),

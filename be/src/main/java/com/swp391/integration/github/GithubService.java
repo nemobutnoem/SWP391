@@ -1,9 +1,12 @@
 package com.swp391.integration.github;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.swp391.clazz.ClassRepository;
 import com.swp391.group.GroupMemberRepository;
+import com.swp391.group.StudentGroupRepository;
 import com.swp391.integration.github.dto.GithubStatsResponse;
 import com.swp391.integration.GroupIntegrationService;
+import com.swp391.lecturer.LecturerRepository;
 import com.swp391.repo.GithubRepositoryRepository;
 import com.swp391.security.UserPrincipal;
 import com.swp391.student.StudentRepository;
@@ -30,6 +33,9 @@ public class GithubService {
 	private final GithubRepositoryRepository repoRepository;
 	private final StudentRepository studentRepository;
 	private final GroupMemberRepository memberRepository;
+	private final StudentGroupRepository groupRepository;
+	private final LecturerRepository lecturerRepository;
+	private final ClassRepository classRepository;
 	private final GroupIntegrationService integrationService;
 
 	public GithubStatsResponse stats(Integer groupId, Instant from, Instant to, UserPrincipal principal) {
@@ -213,6 +219,27 @@ public class GithubService {
 	}
 
 	private void ensureMember(Integer groupId, UserPrincipal principal) {
+		String role = principal.getRole();
+		if ("Admin".equalsIgnoreCase(role)) {
+			return;
+		}
+		if ("Lecturer".equalsIgnoreCase(role)) {
+			var lecturer = lecturerRepository.findByUserId(principal.getUserId())
+					.orElseThrow(() -> new IllegalArgumentException("Lecturer not found for current user"));
+			var group = groupRepository.findById(groupId)
+					.orElseThrow(() -> new IllegalArgumentException("Group not found"));
+
+			boolean assignedDirectly = lecturer.getId().equals(group.getLecturerId());
+			boolean assignedByClass = classRepository.findById(group.getClassId())
+					.map(c -> lecturer.getId().equals(c.getLecturerId()))
+					.orElse(false);
+
+			if (!assignedDirectly && !assignedByClass) {
+				throw new SecurityException("You are not assigned to this group");
+			}
+			return;
+		}
+
 		var student = studentRepository.findByUserId(principal.getUserId())
 				.orElseThrow(() -> new IllegalArgumentException("Student not found for current user"));
 		memberRepository.findByGroupIdAndStudentId(groupId, student.getId())

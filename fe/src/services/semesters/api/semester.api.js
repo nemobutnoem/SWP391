@@ -17,6 +17,10 @@ export const semesterApi = {
         const res = await http.put(`/semesters/${id}`, data);
         return res.data;
     },
+    archive: async (id) => {
+        const res = await http.patch(`/semesters/${id}/archive`);
+        return res.data;
+    },
     remove: async (id) => {
         const res = await http.delete(`/semesters/${id}`);
         return res.data;

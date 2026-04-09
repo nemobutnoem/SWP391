@@ -31,9 +31,9 @@ export function MyGroupsView({
   onTopicSelectionChange,
   onAssignTopic,
   onCreateGroup,
-  onRefreshGroupJira,
-  refreshingGroupId = null,
-  refreshStatusByGroupId = {},
+  onFetchGroupData,
+  fetchingGroupId = null,
+  fetchStatusByGroupId = {},
   isSemesterActive = true,
 }) {
   const [searchTerm, setSearchTerm] = useState("");
@@ -102,6 +102,20 @@ export function MyGroupsView({
     });
   };
 
+  const selectableClassOptions = (Array.isArray(classOptions) ? classOptions : [])
+    .filter((c) => !selectedSemesterId || c.semester_id === selectedSemesterId || c.semesterId === selectedSemesterId);
+
+  const formatClassOptionLabel = (clazz) => {
+    const code = clazz?.class_code || clazz?.classCode || `Class #${clazz?.id}`;
+    const block = String(clazz?.class_type || clazz?.classType || "MAIN").toUpperCase() === "CAPSTONE"
+      ? "Block 3"
+      : "Block 10";
+    const status = String(clazz?.status || "Inactive").toLowerCase() === "active"
+      ? "Active"
+      : "Inactive";
+    return `${code} - ${block} - ${status}`;
+  };
+
   return (
     <div className="user-mgmt-page">
       <PageHeader
@@ -133,11 +147,9 @@ export function MyGroupsView({
           onChange={(e) => onClassChange?.(e.target.value ? Number(e.target.value) : null)}
         >
           <option value="">All Classes</option>
-          {classOptions
-            .filter((c) => !selectedSemesterId || c.semester_id === selectedSemesterId || c.semesterId === selectedSemesterId)
-            .map((c) => (
+          {selectableClassOptions.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.class_code || c.classCode || `Class #${c.id}`}
+                {formatClassOptionLabel(c)}
               </option>
             ))}
         </select>
@@ -271,28 +283,28 @@ export function MyGroupsView({
                           )}
                         </div>
                         <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-                          {refreshStatusByGroupId?.[g.id]?.text && (
+                          {fetchStatusByGroupId?.[g.id]?.text && (
                             <div
                               className="text-secondary"
                               style={{
                                 fontSize: "0.75rem",
                                 alignSelf: "center",
                                 color:
-                                  refreshStatusByGroupId[g.id].type === "error"
+                                  fetchStatusByGroupId[g.id].type === "error"
                                     ? "var(--red-600, #dc2626)"
                                     : "var(--slate-500, #64748b)",
                               }}
                             >
-                              {refreshStatusByGroupId[g.id].text}
+                              {fetchStatusByGroupId[g.id].text}
                             </div>
                           )}
                           <button
                             className="btn btn-secondary btn-sm"
                             style={{ padding: "0.375rem 0.75rem", fontSize: "0.8125rem", borderRadius: "6px", border: "1px solid var(--slate-300, #cbd5e1)", background: "white", color: "var(--slate-700, #334155)", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.375rem" }}
-                            disabled={refreshingGroupId === g.id}
+                            disabled={fetchingGroupId === g.id}
                             onClick={(e) => {
                               e.stopPropagation();
-                              onRefreshGroupJira?.(g.id);
+                              onFetchGroupData?.(g.id);
                             }}
                           >
                             <svg
@@ -300,11 +312,11 @@ export function MyGroupsView({
                               height="14"
                               viewBox="0 0 16 16"
                               fill="currentColor"
-                              className={refreshingGroupId === g.id ? "jira-refresh-spin" : ""}
+                              className={fetchingGroupId === g.id ? "jira-refresh-spin" : ""}
                             >
                               <path d="M8 1.5a6.5 6.5 0 0 1 5.11 10.52.75.75 0 1 1-1.18-.92A5 5 0 1 0 8 13a4.98 4.98 0 0 0 3.03-1.02.75.75 0 1 1 .9 1.2A6.5 6.5 0 1 1 8 1.5Zm4.75.5a.75.75 0 0 1 .75.75V6a.75.75 0 0 1-1.5 0V4.56l-1.22 1.22a.75.75 0 1 1-1.06-1.06l2.5-2.5A.75.75 0 0 1 12.75 2Z" />
                             </svg>
-                            {refreshingGroupId === g.id ? "Refreshing..." : "Refresh Jira Data"}
+                            {fetchingGroupId === g.id ? "Fetching..." : "Fetch Data"}
                           </button>
                           <button
                             className="btn btn-primary btn-sm"
@@ -325,7 +337,7 @@ export function MyGroupsView({
                             <th>Member</th>
                             <th>Student Code</th>
                             <th>Group Role</th>
-                            {g.hasContributionData && <th>Contribution %</th>}
+                            <th>Contribution</th>
                             <th>GitHub</th>
                             <th style={{ width: "60px" }}></th>
                           </tr>
@@ -354,20 +366,18 @@ export function MyGroupsView({
                                   <option value="Member">MEMBER</option>
                                 </select>
                               </td>
-                              {g.hasContributionData && (
-                                <td>
-                                  {m.contribution_pct != null ? (
-                                    <div style={{ display: "flex", flexDirection: "column", gap: "0.2rem" }}>
-                                      <strong style={{ color: "var(--brand-700)" }}>{m.contribution_pct}%</strong>
-                                      <span className="text-secondary" style={{ fontSize: "0.75rem" }}>
-                                        {m.member_story_points} SP
-                                      </span>
-                                    </div>
-                                  ) : (
-                                    <span className="text-secondary">-</span>
-                                  )}
-                                </td>
-                              )}
+                              <td>
+                                {m.contribution_pct != null ? (
+                                  <div style={{ display: "flex", flexDirection: "column", gap: "0.2rem" }}>
+                                    <strong style={{ color: "var(--brand-700)" }}>{m.contribution_pct}%</strong>
+                                    <span className="text-secondary" style={{ fontSize: "0.75rem" }}>
+                                      {m.member_story_points} SP
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <span className="text-secondary">-</span>
+                                )}
+                              </td>
                               <td>
                                 <span className="text-secondary">{m.github_username ? `@${m.github_username}` : "-"}</span>
                               </td>

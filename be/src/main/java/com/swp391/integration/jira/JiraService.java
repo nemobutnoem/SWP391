@@ -3,6 +3,7 @@ package com.swp391.integration.jira;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.swp391.group.GroupMemberRepository;
 import com.swp391.group.StudentGroupRepository;
+import com.swp391.clazz.ClassRepository;
 import com.swp391.integration.GroupIntegrationService;
 import com.swp391.lecturer.LecturerRepository;
 import com.swp391.security.UserPrincipal;
@@ -30,6 +31,7 @@ public class JiraService {
 	private final StudentRepository studentRepository;
 	private final GroupMemberRepository memberRepository;
 	private final StudentGroupRepository groupRepository;
+	private final ClassRepository classRepository;
 	private final LecturerRepository lecturerRepository;
 	private final GroupIntegrationService integrationService;
 	private final UserRepository userRepository;
@@ -60,7 +62,11 @@ public class JiraService {
 		if (cfg.baseUrl() == null || cfg.email() == null || cfg.apiToken() == null) {
 			throw new IllegalStateException("Jira integration is not configured for this group");
 		}
-		String jql = "project = " + projectKey + " ORDER BY updated DESC";
+		String normalizedProjectKey = normalizeProjectKey(projectKey);
+		if (normalizedProjectKey == null) {
+			throw new IllegalArgumentException("Invalid Jira project key. Use format like SWP391GIT (letters/numbers/underscore only).");
+		}
+		String jql = "project = \"" + normalizedProjectKey + "\" ORDER BY updated DESC";
 		int upserted = 0;
 		java.util.Set<String> seenIssueKeys = new java.util.HashSet<>();
 		String nextPageToken = null;
@@ -269,6 +275,28 @@ public class JiraService {
 		}
 
 		return upserted;
+	}
+
+	private String normalizeProjectKey(String raw) {
+		if (raw == null) return null;
+		String value = raw.trim();
+		if (value.isEmpty()) return null;
+
+		// Support paste from Jira URL: .../projects/KEY/board
+		String marker = "/projects/";
+		int idx = value.toLowerCase().indexOf(marker);
+		if (idx >= 0) {
+			String tail = value.substring(idx + marker.length());
+			int slashIdx = tail.indexOf('/');
+			value = (slashIdx >= 0 ? tail.substring(0, slashIdx) : tail).trim();
+		}
+
+		// Strip common wrapper characters accidentally pasted with key.
+		value = value.replaceAll("^[\\s\"'`\\[]+|[\\s\"'`\\]]+$", "").trim();
+		value = value.toUpperCase();
+
+		if (!value.matches("^[A-Z][A-Z0-9_]*$")) return null;
+		return value;
 	}
 
 	@Transactional
@@ -701,7 +729,13 @@ private String pickBestAccountId(JsonNode users, String email, String emailLocal
 					.orElseThrow(() -> new IllegalArgumentException("Lecturer not found for current user"));
 			var group = groupRepository.findById(groupId)
 					.orElseThrow(() -> new IllegalArgumentException("Group not found"));
-			if (!lecturer.getId().equals(group.getLecturerId())) {
+
+			boolean assignedDirectly = lecturer.getId().equals(group.getLecturerId());
+			boolean assignedByClass = classRepository.findById(group.getClassId())
+					.map(c -> lecturer.getId().equals(c.getLecturerId()))
+					.orElse(false);
+
+			if (!assignedDirectly && !assignedByClass) {
 				throw new SecurityException("You are not assigned to this group");
 			}
 			return;

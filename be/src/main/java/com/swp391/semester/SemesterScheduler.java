@@ -4,6 +4,7 @@ import com.swp391.clazz.ClassEntity;
 import com.swp391.clazz.ClassRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,6 +19,7 @@ import java.util.List;
 @Slf4j
 @Component
 @RequiredArgsConstructor
+@ConditionalOnProperty(name = "app.semester.auto-complete-enabled", havingValue = "true")
 public class SemesterScheduler {
 
     private final SemesterRepository semesterRepository;

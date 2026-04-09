@@ -8,6 +8,9 @@ import "./adminManagement.css";
 function SemesterFormModal({ isOpen, onClose, onSubmit, initialData, semesters }) {
   const isEdit = !!initialData;
   const currentStatus = initialData?.status || null;
+  const activeSemester = semesters?.find(
+    (s) => s.status?.toLowerCase() === "active" && s.id !== initialData?.id
+  );
 
   const baseStatusOptions = [
     { value: "Upcoming", label: "Upcoming" },
@@ -19,6 +22,20 @@ function SemesterFormModal({ isOpen, onClose, onSubmit, initialData, semesters }
   const hasOtherActive = semesters?.some(
     (s) => s.status?.toLowerCase() === "active" && s.id !== initialData?.id
   );
+
+  const addOneDay = (isoDate) => {
+    if (!isoDate) return "";
+    const date = new Date(`${isoDate}T00:00:00`);
+    if (Number.isNaN(date.getTime())) return "";
+    date.setDate(date.getDate() + 1);
+    return date.toISOString().slice(0, 10);
+  };
+
+  const minimumStartDate =
+    activeSemester?.end_date &&
+    String(currentStatus || "").toLowerCase() !== "active"
+      ? addOneDay(activeSemester.end_date)
+      : "";
 
   const statusOptions = baseStatusOptions.map((opt) => {
     // If another semester is active, block selecting Active (but keep it visible)
@@ -48,6 +65,9 @@ function SemesterFormModal({ isOpen, onClose, onSubmit, initialData, semesters }
         e.preventDefault();
         if (!form.start_date) return alert("Start date is required.");
         if (!form.end_date) return alert("End date is required.");
+        if (minimumStartDate && form.start_date < minimumStartDate) {
+          return alert(`Start date must be after the active semester ends (${activeSemester?.end_date}).`);
+        }
         if (form.end_date <= form.start_date) return alert("End date must be after start date.");
         if (
           String(form.status || "").toLowerCase() === "active" &&
@@ -71,11 +91,30 @@ function SemesterFormModal({ isOpen, onClose, onSubmit, initialData, semesters }
         <div className="form-row">
           <div className="form-group">
             <label>Start Date</label>
-            <input name="start_date" type="date" value={form.start_date} onChange={handle} required />
+            <input
+              name="start_date"
+              type="date"
+              value={form.start_date}
+              onChange={handle}
+              min={minimumStartDate || undefined}
+              required
+            />
+            {minimumStartDate && (
+              <span style={{ fontSize: "0.75rem", color: "var(--slate-500)", marginTop: "0.25rem", display: "block" }}>
+                Upcoming semester must start after the active semester ends on {activeSemester?.end_date}.
+              </span>
+            )}
           </div>
           <div className="form-group">
             <label>End Date</label>
-            <input name="end_date" type="date" value={form.end_date} onChange={handle} required />
+            <input
+              name="end_date"
+              type="date"
+              value={form.end_date}
+              onChange={handle}
+              min={form.start_date || minimumStartDate || undefined}
+              required
+            />
           </div>
         </div>
         <div className="form-group">
@@ -109,6 +148,8 @@ function ClassFormModal({
   initialData,
   lecturers,
   semesterStatus = "",
+  semesterStartDate = "",
+  semesterEndDate = "",
   restrictCreateToCapstone = false,
 }) {
   const isSemesterActive = String(semesterStatus || "").toLowerCase() === "active";
@@ -165,6 +206,12 @@ function ClassFormModal({
         const currentYear = new Date().getFullYear();
         if (form.intake_year && (year < 2000 || year > currentYear + 1)) return alert(`Intake year must be between 2000 and ${currentYear + 1}.`);
         if (form.start_date && form.end_date && form.end_date <= form.start_date) return alert("End date must be after start date.");
+        if (semesterStartDate && form.start_date && form.start_date < semesterStartDate) {
+          return alert(`Class start date must be on or after semester start date (${semesterStartDate}).`);
+        }
+        if (semesterEndDate && form.end_date && form.end_date > semesterEndDate) {
+          return alert(`Class end date must be on or before semester end date (${semesterEndDate}).`);
+        }
         onSubmit(form);
       }}>
         <div className="form-row">
@@ -219,13 +266,32 @@ function ClassFormModal({
         <div className="form-row">
           <div className="form-group">
             <label>Start Date</label>
-            <input name="start_date" type="date" value={form.start_date} onChange={handle} />
+            <input
+              name="start_date"
+              type="date"
+              value={form.start_date}
+              onChange={handle}
+              min={semesterStartDate || undefined}
+              max={semesterEndDate || undefined}
+            />
           </div>
           <div className="form-group">
             <label>End Date</label>
-            <input name="end_date" type="date" value={form.end_date} onChange={handle} />
+            <input
+              name="end_date"
+              type="date"
+              value={form.end_date}
+              onChange={handle}
+              min={form.start_date || semesterStartDate || undefined}
+              max={semesterEndDate || undefined}
+            />
           </div>
         </div>
+        {(semesterStartDate || semesterEndDate) && (
+          <span style={{ fontSize: "0.75rem", color: "var(--slate-500)", marginTop: "-0.5rem", display: "block" }}>
+            Class dates must stay within the semester range{semesterStartDate ? ` ${semesterStartDate}` : ""}{semesterEndDate ? ` -> ${semesterEndDate}` : ""}.
+          </span>
+        )}
         <div className="form-group">
           <label>Lecturer</label>
           <select name="lecturer_id" value={form.lecturer_id} onChange={handle}>
@@ -293,6 +359,8 @@ function AssignLecturerModal({ isOpen, onClose, cls, lecturers, onAssign }) {
 
 function AddStudentModal({ isOpen, onClose, onSubmit, allStudents, classId, enrichedClasses }) {
   const [search, setSearch] = useState("");
+  const targetClass = enrichedClasses.find((c) => c.id === classId);
+  const isTargetCapstone = String(targetClass?.class_type || "MAIN").toUpperCase() === "CAPSTONE";
 
   // Exclude students already in THIS class
   const currentClassStudentIds = new Set(
@@ -320,7 +388,7 @@ function AddStudentModal({ isOpen, onClose, onSubmit, allStudents, classId, enri
 
   const handleClick = (student) => {
     const currentClass = studentClassMap[student.id];
-    if (currentClass) {
+    if (currentClass && !isTargetCapstone) {
       const confirmed = window.confirm(
         `This student is currently in class "${currentClass}". Do you want to move them to this class?`
       );
@@ -331,6 +399,11 @@ function AddStudentModal({ isOpen, onClose, onSubmit, allStudents, classId, enri
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Add Student to Class">
+      {isTargetCapstone && (
+        <div style={{ marginBottom: "0.75rem", padding: "0.75rem", borderRadius: "8px", background: "var(--slate-50)", border: "1px solid var(--slate-200)", color: "var(--slate-600)", fontSize: "0.875rem" }}>
+          Adding to a 3w class will pre-enroll the student only. Their 10w class assignment and history will be kept.
+        </div>
+      )}
       <div style={{ marginBottom: "1rem" }}>
         <input
           className="integration-input"
@@ -364,7 +437,7 @@ function AddStudentModal({ isOpen, onClose, onSubmit, allStudents, classId, enri
                 <code className="code-badge">{s.student_code}</code>
                 {studentClassMap[s.id] && (
                   <span style={{ fontSize: "0.7rem", color: "var(--warning)", fontWeight: 600 }}>
-                    In {studentClassMap[s.id]}
+                    {isTargetCapstone ? `Also in ${studentClassMap[s.id]} (10w)` : `In ${studentClassMap[s.id]}`}
                   </span>
                 )}
               </div>
@@ -389,6 +462,7 @@ export function SemesterClassView({
   onCloseSemesterModal,
   onSubmitSemester,
   onDeleteSemester,
+  onArchiveSemester,
   classModalOpen,
   editingClass,
   onCreateClass,
@@ -396,12 +470,14 @@ export function SemesterClassView({
   onCloseClassModal,
   onSubmitClass,
   onDeleteClass,
+  onDeleteGroup,
   assignModalOpen,
   assigningClass,
   onOpenAssign,
   onCloseAssignModal,
   onAssignLecturer,
   onAddStudent,
+  onRemoveStudentFromClass,
   onCompleteClass,
   onActivateClass,
   onPreEnroll,
@@ -411,17 +487,22 @@ export function SemesterClassView({
   const semesterCardsRef = useRef(null);
   const [expandedClassId, setExpandedClassId] = useState(null);
   const [addStudentClassId, setAddStudentClassId] = useState(null);
+  const [showArchived, setShowArchived] = useState(false);
+  const visibleSemesters = semesters.filter((s) => String(s.status || "").toLowerCase() !== "archived");
+  const archivedSemesters = semesters.filter((s) => String(s.status || "").toLowerCase() === "archived");
   const selectedSemester = semesters.find((s) => String(s.id) === String(selectedSemesterId));
   const semesterStatus = String(selectedSemester?.status || "").trim().toLowerCase();
   const isSemesterActive = semesterStatus === "active";
-  const isSemesterCompleted = semesterStatus === "completed";
+  const isSemesterCompleted = semesterStatus === "completed" || semesterStatus === "archived";
+  const isSemesterArchived = semesterStatus === "archived";
   const isSemesterUpcoming = semesterStatus === "upcoming";
+  const isSemesterLocked = isSemesterCompleted || isSemesterArchived;
   const hasUncompletedMain = enrichedClasses.some(
     (c) => (c.class_type || "MAIN") === "MAIN" && String(c.status || "").toLowerCase() !== "completed"
   );
 
   const canEditClass = (cls) => {
-    if (isSemesterCompleted) return false;
+    if (isSemesterLocked) return false;
     if (!isSemesterActive) return true;
     const isCapstone = (cls.class_type || "MAIN") === "CAPSTONE";
     const isInactive = String(cls.status || "").toLowerCase() === "inactive";
@@ -429,13 +510,12 @@ export function SemesterClassView({
   };
 
   const canDeleteClass = () => {
-    if (isSemesterCompleted) return false;
-    if (isSemesterActive) return false;
+    if (isSemesterLocked) return false;
     return true;
   };
 
   const canAddStudentsToClass = (cls) => {
-    if (isSemesterCompleted) return false;
+    if (isSemesterLocked) return false;
     const isCapstone = (cls.class_type || "MAIN") === "CAPSTONE";
     if (isSemesterUpcoming) return !isCapstone; // Upcoming: only MAIN (10w) gets direct student assignment
     if (!isSemesterActive) return false;
@@ -489,7 +569,7 @@ export function SemesterClassView({
         className="semester-cards mt-2"
         onWheel={handleSemesterCardsWheel}
       >
-        {semesters.map((s) => (
+        {visibleSemesters.map((s) => (
           <div key={s.id} className={`semester-card ${s.id === selectedSemesterId ? "semester-card--active" : ""}`} onClick={() => onSelectSemester(s.id)}>
             <div className="semester-card__header">
               <span className="semester-card__name">{s.name}</span>
@@ -499,11 +579,42 @@ export function SemesterClassView({
             {s.start_date && <span className="semester-card__dates">{s.start_date} {"->"} {s.end_date}</span>}
             <div className="semester-card__actions">
               <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onEditSemester(s); }}>Edit</Button>
+              {String(s.status || "").toLowerCase() === "completed" && (
+                <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onArchiveSemester(s.id); }}>Archive</Button>
+              )}
               <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onDeleteSemester(s.id); }}>Delete</Button>
             </div>
           </div>
         ))}
       </div>
+
+      {archivedSemesters.length > 0 && (
+        <div className="mt-2">
+          <div className="section-header">
+            <h2 className="section-title">Archived Semesters</h2>
+            <Button variant="ghost" size="sm" onClick={() => setShowArchived((prev) => !prev)}>
+              {showArchived ? "Hide Archived" : `Show Archived (${archivedSemesters.length})`}
+            </Button>
+          </div>
+          {showArchived && (
+            <div className="semester-cards mt-1">
+              {archivedSemesters.map((s) => (
+                <div key={s.id} className={`semester-card ${s.id === selectedSemesterId ? "semester-card--active" : ""}`} onClick={() => onSelectSemester(s.id)}>
+                  <div className="semester-card__header">
+                    <span className="semester-card__name">{s.name}</span>
+                    <Badge variant="default" size="sm">{s.status}</Badge>
+                  </div>
+                  <span className="semester-card__code">{s.code}</span>
+                  {s.start_date && <span className="semester-card__dates">{s.start_date} {"->"} {s.end_date}</span>}
+                  <div className="semester-card__actions">
+                    <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onDeleteSemester(s.id); }}>Delete</Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {selectedSemester && (
         <>
@@ -587,6 +698,19 @@ export function SemesterClassView({
                               if (isSemesterCompleted) return null;
                               const rowIsCapstone = (c.class_type || "MAIN") === "CAPSTONE";
 
+                              if (isSemesterActive && !rowIsCapstone) {
+                                return (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    title="Add student to this 10w class"
+                                    onClick={() => setAddStudentClassId(c.id)}
+                                  >
+                                    Add Student
+                                  </Button>
+                                );
+                              }
+
                               // Active semester, MAIN phase (capstone not running): add student means pre-enroll to 3w
                               if (isSemesterActive && !isCapstoneRunning) {
                                 const capstoneTarget = rowIsCapstone
@@ -610,7 +734,7 @@ export function SemesterClassView({
                                     }
                                     onClick={() => setAddStudentClassId(capstoneTarget.id)}
                                   >
-                                    Pre-enroll
+                                    Add Student
                                   </Button>
                                 );
                               }
@@ -667,7 +791,7 @@ export function SemesterClassView({
                               variant="ghost"
                               size="sm"
                               disabled={!canDeleteClass()}
-                              title={!canDeleteClass() ? "You can only delete classes when the semester is not Active" : "Delete"}
+                              title={!canDeleteClass() ? "Completed semester is locked" : "Delete"}
                               onClick={() => guardCompleted("Delete class", () => onDeleteClass(c.id))}
                             >
                               Delete
@@ -684,6 +808,14 @@ export function SemesterClassView({
                               <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
                                 {(() => {
                                   const rowIsCapstone = (c.class_type || "MAIN") === "CAPSTONE";
+
+                                  if (isSemesterActive && !rowIsCapstone) {
+                                    return (
+                                      <Button variant="primary" size="sm" onClick={() => setAddStudentClassId(c.id)}>
+                                        + Add Student
+                                      </Button>
+                                    );
+                                  }
 
                                   // Active semester, MAIN phase (capstone not running): add student means pre-enroll to 3w
                                   if (isSemesterActive && !isCapstoneRunning) {
@@ -712,7 +844,7 @@ export function SemesterClassView({
 
                                     return (
                                       <Button variant="secondary" size="sm" onClick={() => setAddStudentClassId(capstoneTarget.id)}>
-                                        Pre-enroll to 3w
+                                        + Add Student
                                       </Button>
                                     );
                                   }
@@ -797,11 +929,56 @@ export function SemesterClassView({
                                         <span className="profile-email">{student.email}</span>
                                       </div>
                                       <code className="code-badge">{student.student_code}</code>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => onRemoveStudentFromClass(c.id, student)}
+                                        disabled={isSemesterCompleted}
+                                        className="btn--danger-ghost"
+                                      >
+                                        Remove
+                                      </Button>
                                     </div>
                                   ))}
                                 </div>
                               );
                             })()}
+
+                            <div style={{ marginTop: "1rem" }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
+                                <span className="expanded-row-title" style={{ margin: 0 }}>Groups in {c.class_code}</span>
+                                {Array.isArray(c.groups) && c.groups.length > 0 && (
+                                  <span style={{ fontSize: "0.75rem", color: "var(--slate-500)" }}>
+                                    Delete groups first if you need to remove this class.
+                                  </span>
+                                )}
+                              </div>
+
+                              {!Array.isArray(c.groups) || c.groups.length === 0 ? (
+                                <span className="text-secondary">No groups in this class yet.</span>
+                              ) : (
+                                <div className="class-student-dropdown-list">
+                                  {c.groups.map((group) => (
+                                    <div key={group.id} className="class-student-dropdown-item">
+                                      <div className="avatar-small">G</div>
+                                      <div className="profile-info">
+                                        <span className="profile-name">{group.group_name || group.group_code || `Group ${group.id}`}</span>
+                                        <span className="profile-email">{group.group_code || "No code"}</span>
+                                      </div>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => onDeleteGroup(group.id)}
+                                        disabled={isSemesterCompleted}
+                                        className="btn--danger-ghost"
+                                      >
+                                        Delete Group
+                                      </Button>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       )}
@@ -827,6 +1004,8 @@ export function SemesterClassView({
           initialData={editingClass}
           lecturers={lecturers}
           semesterStatus={selectedSemester?.status || ""}
+          semesterStartDate={selectedSemester?.start_date || ""}
+          semesterEndDate={selectedSemester?.end_date || ""}
           restrictCreateToCapstone={isSemesterActive}
         />
       )}

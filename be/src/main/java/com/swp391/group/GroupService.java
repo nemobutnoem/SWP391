@@ -28,6 +28,22 @@ public class GroupService {
 	private final ClassRepository classRepository;
 	private final com.swp391.clazz.ClassService classService;
 
+	private void ensureUniqueWithinClass(Integer classId, String groupCode, Integer ignoreGroupId) {
+		if (classId == null) return;
+		var groupsInClass = groupRepository.findByClassId(classId);
+
+		String normalizedCode = groupCode == null ? null : groupCode.trim();
+
+		for (var existing : groupsInClass) {
+			if (ignoreGroupId != null && ignoreGroupId.equals(existing.getId())) continue;
+
+			if (normalizedCode != null && existing.getGroupCode() != null
+					&& normalizedCode.equalsIgnoreCase(existing.getGroupCode().trim())) {
+				throw ApiException.badRequest("Group code already exists in this class.");
+			}
+		}
+	}
+
 	// ─── READ ────────────────────────────────────────────────────────────
 
 	public List<GroupSummary> myGroups(Authentication auth) {
@@ -75,10 +91,11 @@ public class GroupService {
 	public GroupSummary createGroup(CreateGroupRequest request, UserPrincipal principal) {
 		ensureLecturerOrAdmin(principal);
 
-		// Block creating groups when semester is not active
+		// Block creating groups unless both semester and class are active
 		if (request.classId() != null) {
-			classService.ensureSemesterActive(request.classId());
+			classService.ensureClassActiveForGroupManagement(request.classId());
 		}
+		ensureUniqueWithinClass(request.classId(), request.groupCode(), null);
 
 		StudentGroupEntity entity = new StudentGroupEntity();
 		entity.setSemesterId(request.semesterId());
@@ -95,7 +112,7 @@ public class GroupService {
 		try {
 			groupRepository.save(entity);
 		} catch (DataIntegrityViolationException ex) {
-			throw ApiException.badRequest("Group code already exists in this class/semester");
+			throw ApiException.badRequest("Group data conflicts with an existing group in this class.");
 		}
 		return toSummary(entity);
 	}
@@ -108,6 +125,10 @@ public class GroupService {
 
 		StudentGroupEntity entity = groupRepository.findById(groupId)
 				.orElseThrow(() -> ApiException.notFound("Group not found with id: " + groupId));
+
+		if (entity.getClassId() != null) {
+			classService.ensureClassActiveForGroupManagement(entity.getClassId());
+		}
 
 		if ("Completed".equalsIgnoreCase(entity.getStatus())) {
 			throw ApiException.badRequest("Cannot modify a completed group.");
@@ -126,10 +147,12 @@ public class GroupService {
 			entity.setStatus(request.status());
 		}
 
+		ensureUniqueWithinClass(entity.getClassId(), entity.getGroupCode(), entity.getId());
+
 		try {
 			groupRepository.save(entity);
 		} catch (DataIntegrityViolationException ex) {
-			throw ApiException.badRequest("Group code already exists in this class/semester");
+			throw ApiException.badRequest("Group data conflicts with an existing group in this class.");
 		}
 		return toSummary(entity);
 	}
@@ -157,6 +180,10 @@ public class GroupService {
 		StudentGroupEntity entity = groupRepository.findById(groupId)
 				.orElseThrow(() -> ApiException.notFound("Group not found with id: " + groupId));
 
+		if (entity.getClassId() != null) {
+			classService.ensureClassActiveForGroupManagement(entity.getClassId());
+		}
+
 		if ("Completed".equalsIgnoreCase(entity.getStatus())) {
 			throw ApiException.badRequest("Cannot modify a completed group.");
 		}
@@ -179,6 +206,10 @@ public class GroupService {
 
 		StudentGroupEntity entity = groupRepository.findById(groupId)
 				.orElseThrow(() -> ApiException.notFound("Group not found with id: " + groupId));
+
+		if (entity.getClassId() != null) {
+			classService.ensureClassActiveForGroupManagement(entity.getClassId());
+		}
 
 		if ("Completed".equalsIgnoreCase(entity.getStatus())) {
 			throw ApiException.badRequest("Cannot modify a completed group.");

@@ -164,6 +164,75 @@ public class StudentController {
     ) {
     }
 
+    public record StudentClassHistoryListDto(
+            Integer id,
+            @JsonProperty("student_id") Integer studentId,
+            @JsonProperty("full_name") String fullName,
+            @JsonProperty("student_code") String studentCode,
+            String email,
+            String major,
+            String status,
+            @JsonProperty("class_id") Integer classId,
+            @JsonProperty("class_code") String classCode,
+            @JsonProperty("class_name") String className,
+            @JsonProperty("class_type") String classType,
+            @JsonProperty("semester_id") Integer semesterId,
+            @JsonProperty("semester_name") String semesterName,
+            @JsonProperty("assigned_at") java.time.LocalDateTime assignedAt,
+            @JsonProperty("unassigned_at") java.time.LocalDateTime unassignedAt
+    ) {
+    }
+
+    @GetMapping("/class-history")
+    public java.util.List<StudentClassHistoryListDto> listAllClassHistory() {
+        return studentClassHistoryRepository.findAll().stream()
+                .sorted(java.util.Comparator
+                        .comparing(StudentClassHistoryEntity::getAssignedAt, java.util.Comparator.nullsLast(java.util.Comparator.reverseOrder()))
+                        .thenComparing(StudentClassHistoryEntity::getId, java.util.Comparator.nullsLast(java.util.Comparator.reverseOrder())))
+                .map(h -> {
+                    StudentEntity student = studentRepository.findById(h.getStudentId()).orElse(null);
+                    var clsOpt = classRepository.findById(h.getClassId());
+                    Integer semesterId = null;
+                    String semesterName = null;
+                    String classCode = null;
+                    String className = null;
+                    String classType = null;
+
+                    if (clsOpt.isPresent()) {
+                        var cls = clsOpt.get();
+                        classCode = cls.getClassCode();
+                        className = cls.getClassName();
+                        classType = cls.getClassType();
+                        semesterId = cls.getSemesterId();
+                        if (semesterId != null) {
+                            var semOpt = semesterRepository.findById(semesterId);
+                            if (semOpt.isPresent()) {
+                                semesterName = semOpt.get().getName();
+                            }
+                        }
+                    }
+
+                    return new StudentClassHistoryListDto(
+                            h.getId(),
+                            h.getStudentId(),
+                            student != null ? student.getFullName() : null,
+                            student != null ? student.getStudentCode() : null,
+                            student != null ? student.getEmail() : null,
+                            student != null ? student.getMajor() : null,
+                            student != null ? student.getStatus() : null,
+                            h.getClassId(),
+                            classCode,
+                            className,
+                            classType,
+                            semesterId,
+                            semesterName,
+                            h.getAssignedAt(),
+                            h.getUnassignedAt()
+                    );
+                })
+                .toList();
+    }
+
     @GetMapping("/{studentId}/class-history")
     public java.util.List<StudentClassHistoryDto> getClassHistory(@PathVariable("studentId") Integer studentId) {
         // No auth restriction here since the rest of /students endpoints are already protected by security config.

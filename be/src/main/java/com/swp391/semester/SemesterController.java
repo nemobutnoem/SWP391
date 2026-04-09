@@ -51,6 +51,11 @@ public class SemesterController {
         return semesterService.update(id, req);
     }
 
+    @PatchMapping("/{id}/archive")
+    public SemesterEntity archive(@PathVariable("id") Integer id) {
+        return semesterService.archive(id);
+    }
+
     @DeleteMapping("/{id}")
     public void delete(@PathVariable("id") Integer id) {
         semesterService.delete(id);

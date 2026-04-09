@@ -1,8 +1,10 @@
 package com.swp391.semester;
 
+import com.swp391.clazz.ClassEntity;
 import com.swp391.clazz.ClassRepository;
 import com.swp391.clazz.ClassService;
 import com.swp391.common.ApiException;
+import com.swp391.project.ProjectRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,14 +18,16 @@ public class SemesterService {
     private final SemesterRepository semesterRepository;
     private final ClassRepository classRepository;
     private final ClassService classService;
+    private final ProjectRepository projectRepository;
 
-    private static final Set<String> VALID_STATUSES = Set.of("Active", "Upcoming", "Completed");
+    private static final Set<String> VALID_STATUSES = Set.of("Active", "Upcoming", "Completed", "Archived");
 
-    // Allowed transitions: Upcoming -> Active -> Completed
+    // Allowed transitions: Upcoming -> Active -> Completed -> Archived
     private static final java.util.Map<String, Set<String>> ALLOWED_TRANSITIONS = java.util.Map.of(
             "Upcoming", Set.of("Active", "Upcoming"),
             "Active", Set.of("Completed", "Active"),
-            "Completed", Set.of("Completed")
+            "Completed", Set.of("Completed", "Archived"),
+            "Archived", Set.of("Archived")
     );
 
     public List<SemesterEntity> listAll() {
@@ -65,9 +69,15 @@ public class SemesterService {
         if (!allowed.contains(newStatus)) {
             throw ApiException.badRequest(
                     "Cannot change semester status from '" + currentStatus + "' to '" + newStatus
-                            + "'. Allowed transitions: " + currentStatus + " → " + String.join(", ", allowed) + ".");
+                            + "'. Allowed transitions: " + currentStatus + " -> " + String.join(", ", allowed) + ".");
         }
 
+        if ("Active".equalsIgnoreCase(currentStatus) && "Completed".equalsIgnoreCase(newStatus)) {
+            ensureSemesterReadyToComplete(id, entity);
+        }
+        if ("Upcoming".equalsIgnoreCase(currentStatus) && "Active".equalsIgnoreCase(newStatus)) {
+            ensureSemesterReadyToActivate(id, entity);
+        }
         entity.setCode(req.code());
         entity.setName(req.name());
         entity.setStartDate(req.startDate());
@@ -75,7 +85,7 @@ public class SemesterService {
         entity.setStatus(newStatus);
         SemesterEntity saved = semesterRepository.save(entity);
 
-        // Auto-activate MAIN classes when semester transitions Upcoming → Active
+        // Auto-activate MAIN classes when semester transitions Upcoming -> Active
         if ("Upcoming".equalsIgnoreCase(currentStatus) && "Active".equalsIgnoreCase(newStatus)) {
             var classes = classRepository.findBySemesterId(id);
             for (var cls : classes) {
@@ -92,13 +102,44 @@ public class SemesterService {
             }
         }
 
-        // Ensure consistency: whenever semester status is Completed, all classes in it must be Completed as well.
-        // (Idempotent — also fixes legacy data where semester was marked Completed but some classes weren't.)
+        // Keep semester/class consistency once every class in the semester is done.
         if ("Completed".equalsIgnoreCase(newStatus)) {
             classService.completeAllClassesInSemester(id);
         }
 
         return saved;
+    }
+
+    private void ensureSemesterReadyToComplete(Integer semesterId, SemesterEntity semester) {
+        List<ClassEntity> semClasses = classRepository.findBySemesterId(semesterId);
+        if (semClasses.isEmpty()) {
+            throw ApiException.badRequest("Cannot complete semester without any classes.");
+        }
+
+        List<ClassEntity> unfinishedClasses = semClasses.stream()
+                .filter(c -> !"Completed".equalsIgnoreCase(c.getStatus()))
+                .toList();
+        if (!unfinishedClasses.isEmpty()) {
+            ClassEntity first = unfinishedClasses.get(0);
+            String code = first.getClassCode() != null ? first.getClassCode() : ("Class " + first.getId());
+            String type = "CAPSTONE".equalsIgnoreCase(first.getClassType()) ? "3w" : "10w";
+            String status = first.getStatus() != null ? first.getStatus() : "Unknown";
+            throw ApiException.badRequest(
+                    "Cannot complete semester '" + semester.getCode()
+                            + "' yet. All 10w and 3w classes must be completed first. Example: "
+                            + code + " (" + type + ") is still " + status + ".");
+        }
+    }
+
+    private void ensureSemesterReadyToActivate(Integer semesterId, SemesterEntity semester) {
+        long availableTopics = projectRepository.findBySemesterId(semesterId).stream()
+                .filter(project -> !"ARCHIVED".equalsIgnoreCase(project.getStatus()))
+                .count();
+        if (availableTopics < 1) {
+            throw ApiException.badRequest(
+                    "Cannot activate semester '" + semester.getCode()
+                            + "' yet. Add at least one topic to this semester first.");
+        }
     }
 
     public void delete(Integer id) {
@@ -109,6 +150,19 @@ public class SemesterService {
             throw ApiException.badRequest("Cannot delete semester: it still has classes assigned. Remove all classes first.");
         }
         semesterRepository.deleteById(id);
+    }
+
+    @Transactional
+    public SemesterEntity archive(Integer id) {
+        SemesterEntity entity = getById(id);
+        String currentStatus = entity.getStatus() != null ? entity.getStatus() : "Upcoming";
+        if (!"Completed".equalsIgnoreCase(currentStatus)) {
+            throw ApiException.badRequest("Only completed semesters can be archived.");
+        }
+
+        ensureSemesterReadyToComplete(id, entity);
+        entity.setStatus("Archived");
+        return semesterRepository.save(entity);
     }
 
     private void validateSemester(SemesterController.UpsertSemesterRequest req, Integer existingId) {
@@ -144,7 +198,7 @@ public class SemesterService {
         // Validate status value
         String status = req.status() != null ? req.status() : "Upcoming";
         if (!VALID_STATUSES.contains(status)) {
-            throw ApiException.badRequest("Invalid status '" + status + "'. Allowed values: Active, Upcoming, Completed.");
+            throw ApiException.badRequest("Invalid status '" + status + "'. Allowed values: Active, Upcoming, Completed, Archived.");
         }
 
         // Validate only one Active semester at a time

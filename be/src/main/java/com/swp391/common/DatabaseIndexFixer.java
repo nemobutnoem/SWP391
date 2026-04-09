@@ -35,6 +35,10 @@ public class DatabaseIndexFixer {
 
             // Fix Student_Group (table name is "groups" based on Entity)
             fixUniqueIndexOnColumn("groups", "project_id");
+            removeUniqueIndexOnColumn("groups", "group_code");
+            removeUniqueIndexOnColumn("groups", "group_name");
+            removeUniqueIndexOnColumn("classes", "class_code");
+            ensureCompositeUniqueIndex("classes", "UX_classes_semester_class_code", "semester_id", "class_code");
 
             log.info("DatabaseIndexFixer completed.");
         } catch (Exception e) {
@@ -74,6 +78,54 @@ public class DatabaseIndexFixer {
             } catch (Exception e) {
                 log.warn("Failed to fix index {}: {}", indexName, e.getMessage());
             }
+        }
+    }
+
+    private void removeUniqueIndexOnColumn(String tableName, String columnName) {
+        log.info("Checking and removing unique indexes on {}({})...", tableName, columnName);
+
+        String findIndexSql =
+            "SELECT i.name AS index_name " +
+            "FROM sys.indexes i " +
+            "JOIN sys.index_columns ic ON i.object_id = ic.object_id AND i.index_id = ic.index_id " +
+            "JOIN sys.columns c ON ic.object_id = c.object_id AND ic.column_id = c.column_id " +
+            "WHERE i.object_id = OBJECT_ID(?) " +
+            "AND c.name = ? " +
+            "AND i.is_unique = 1";
+
+        List<Map<String, Object>> indexes = jdbcTemplate.queryForList(findIndexSql, tableName, columnName);
+
+        for (Map<String, Object> index : indexes) {
+            String indexName = (String) index.get("index_name");
+            log.info("Dropping unique index {} on {}({})", indexName, tableName, columnName);
+            try {
+                jdbcTemplate.execute(String.format("DROP INDEX %s ON %s", indexName, tableName));
+            } catch (Exception e) {
+                log.warn("Failed to drop index {}: {}", indexName, e.getMessage());
+            }
+        }
+    }
+
+    private void ensureCompositeUniqueIndex(String tableName, String indexName, String firstColumn, String secondColumn) {
+        log.info("Ensuring composite unique index {} on {}({}, {})...", indexName, tableName, firstColumn, secondColumn);
+
+        String sql =
+            "SELECT COUNT(*) FROM sys.indexes " +
+            "WHERE object_id = OBJECT_ID(?) AND name = ?";
+
+        Integer count = jdbcTemplate.queryForObject(sql, Integer.class, tableName, indexName);
+        if (count != null && count > 0) {
+            return;
+        }
+
+        try {
+            jdbcTemplate.execute(String.format(
+                "CREATE UNIQUE INDEX %s ON %s(%s, %s)",
+                indexName, tableName, firstColumn, secondColumn
+            ));
+            log.info("Created composite unique index {} on {}({}, {}).", indexName, tableName, firstColumn, secondColumn);
+        } catch (Exception e) {
+            log.warn("Failed to create composite unique index {}: {}", indexName, e.getMessage());
         }
     }
 }

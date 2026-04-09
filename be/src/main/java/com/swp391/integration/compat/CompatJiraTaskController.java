@@ -37,6 +37,7 @@ public class CompatJiraTaskController {
 	private final UserRepository userRepository;
 	private final com.swp391.group.StudentGroupRepository groupRepository;
 	private final com.swp391.lecturer.LecturerRepository lecturerRepository;
+	private final com.swp391.clazz.ClassRepository classRepository;
 	private final TaskCommentRepository taskCommentRepository;
 
 	public record JiraTaskDto(
@@ -314,8 +315,11 @@ public class CompatJiraTaskController {
 		var lecturer = lecturerRepository.findByUserId(principal.getUserId()).orElse(null);
 		if (lecturer == null)
 			return Set.of();
+		Set<Integer> classIds = classRepository.findByLecturerId(lecturer.getId()).stream()
+				.map(c -> c.getId())
+				.collect(Collectors.toSet());
 		return groupRepository.findAll().stream()
-				.filter(g -> lecturer.getId().equals(g.getLecturerId()))
+				.filter(g -> lecturer.getId().equals(g.getLecturerId()) || (g.getClassId() != null && classIds.contains(g.getClassId())))
 				.map(g -> g.getId())
 				.collect(Collectors.toSet());
 	}

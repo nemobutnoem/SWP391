@@ -51,16 +51,34 @@ public class ClassService {
     }
 
     public List<ClassEntity> listAll() {
+        reconcileCompletedSemesters();
         return classRepository.findAll();
     }
 
     public List<ClassEntity> findBySemester(Integer semesterId) {
+        reconcileCompletedSemester(semesterId);
         return classRepository.findBySemesterId(semesterId);
     }
 
     public ClassEntity getById(Integer id) {
+        ClassEntity entity = classRepository.findById(id)
+                .orElseThrow(() -> ApiException.notFound("Class not found with id: " + id));
+        reconcileCompletedSemester(entity.getSemesterId());
         return classRepository.findById(id)
                 .orElseThrow(() -> ApiException.notFound("Class not found with id: " + id));
+    }
+
+    private void reconcileCompletedSemesters() {
+        semesterRepository.findAll().stream()
+                .filter(semester -> "Completed".equalsIgnoreCase(semester.getStatus()))
+                .forEach(semester -> completeAllClassesInSemester(semester.getId()));
+    }
+
+    private void reconcileCompletedSemester(Integer semesterId) {
+        if (semesterId == null) return;
+        semesterRepository.findById(semesterId)
+                .filter(semester -> "Completed".equalsIgnoreCase(semester.getStatus()))
+                .ifPresent(semester -> completeAllClassesInSemester(semester.getId()));
     }
 
     public ClassEntity create(ClassController.UpsertClassRequest req) {
@@ -186,9 +204,21 @@ public class ClassService {
         }
     }
 
+    public void ensureClassActiveForGroupManagement(Integer classId) {
+        ClassEntity cls = getById(classId);
+        ensureSemesterActive(classId);
+        if (!"Active".equalsIgnoreCase(cls.getStatus())) {
+            throw ApiException.badRequest(
+                    "Class '" + (cls.getClassCode() != null ? cls.getClassCode() : cls.getId())
+                            + "' is not active (status: " + cls.getStatus()
+                            + "). You can only create/manage groups when the class is Active.");
+        }
+    }
+
     /**
-     * Student direct class assignment (via students.class_id) is only allowed for MAIN (10w) classes
-     * in UPCOMING semesters. CAPSTONE (3w) uses enrollment endpoint instead.
+     * Student direct class assignment (via students.class_id) is allowed for MAIN (10w) classes.
+     * For demo/admin flow, both UPCOMING and ACTIVE semesters are accepted.
+     * CAPSTONE (3w) still uses the enrollment endpoint instead.
      */
     public void ensureCanAssignStudentToClass(Integer classId) {
         ClassEntity cls = getById(classId);
@@ -197,9 +227,9 @@ public class ClassService {
         }
         var semester = semesterRepository.findById(cls.getSemesterId())
                 .orElseThrow(() -> ApiException.badRequest("Semester not found for class"));
-        if (!"Upcoming".equalsIgnoreCase(semester.getStatus())) {
+        if (!"Upcoming".equalsIgnoreCase(semester.getStatus()) && !"Active".equalsIgnoreCase(semester.getStatus())) {
             throw ApiException.badRequest(
-                    "You can only add students to classes when the semester is Upcoming. (Semester '" + semester.getName() + "' is " + semester.getStatus() + ")");
+                    "You can only add students to Main (10w) classes when the semester is Upcoming or Active. (Semester '" + semester.getName() + "' is " + semester.getStatus() + ")");
         }
     }
 
@@ -231,14 +261,14 @@ public class ClassService {
     }
 
     private void validateClass(ClassController.UpsertClassRequest req, Integer existingId) {
-        // Validate class code uniqueness
+        // Validate class code uniqueness within the same semester only
         if (existingId == null) {
-            if (classRepository.existsByClassCode(req.classCode())) {
-                throw ApiException.badRequest("Class code '" + req.classCode() + "' already exists. Please use a different code.");
+            if (classRepository.existsBySemesterIdAndClassCode(req.semesterId(), req.classCode())) {
+                throw ApiException.badRequest("Class code '" + req.classCode() + "' already exists in this semester.");
             }
         } else {
-            if (classRepository.existsByClassCodeAndIdNot(req.classCode(), existingId)) {
-                throw ApiException.badRequest("Class code '" + req.classCode() + "' already exists.");
+            if (classRepository.existsBySemesterIdAndClassCodeAndIdNot(req.semesterId(), req.classCode(), existingId)) {
+                throw ApiException.badRequest("Class code '" + req.classCode() + "' already exists in this semester.");
             }
         }
 
@@ -248,6 +278,10 @@ public class ClassService {
         }
         var semester = semesterRepository.findById(req.semesterId())
                 .orElseThrow(() -> ApiException.badRequest("Semester not found with id: " + req.semesterId()));
+
+        if ("Completed".equalsIgnoreCase(semester.getStatus())) {
+            throw ApiException.badRequest("Cannot create or update classes in a Completed semester.");
+        }
 
         // Validate class name required
         if (req.className() == null || req.className().isBlank()) {
@@ -266,6 +300,10 @@ public class ClassService {
         String classType = req.classType() != null ? req.classType() : "MAIN";
         if (!VALID_CLASS_TYPES.contains(classType)) {
             throw ApiException.badRequest("Invalid class type '" + classType + "'. Allowed values: MAIN, CAPSTONE.");
+        }
+
+        if (existingId == null && "Active".equalsIgnoreCase(semester.getStatus()) && "MAIN".equalsIgnoreCase(classType)) {
+            throw ApiException.badRequest("Cannot create new Main (10w) classes after the semester is Active. Only Capstone (3w) classes can be added at this stage.");
         }
 
         // Validate status
@@ -299,6 +337,14 @@ public class ClassService {
             if (!req.endDate().isAfter(req.startDate())) {
                 throw ApiException.badRequest("Class end date must be after start date.");
             }
+        }
+        if (req.startDate() != null && semester.getStartDate() != null && req.startDate().isBefore(semester.getStartDate())) {
+            throw ApiException.badRequest(
+                    "Class start date cannot be before semester start date (" + semester.getStartDate() + ").");
+        }
+        if (req.endDate() != null && semester.getEndDate() != null && req.endDate().isAfter(semester.getEndDate())) {
+            throw ApiException.badRequest(
+                    "Class end date cannot be after semester end date (" + semester.getEndDate() + ").");
         }
 
         // Validate lecturer exists if provided
@@ -342,33 +388,6 @@ public class ClassService {
         }
 
         return saved;
-    }
-
-    /**
-     * Bulk operation: when a semester is marked Completed, all classes inside it
-     * should be marked Completed as well (regardless of their current status).
-     * Also completes all groups in those classes.
-     */
-    @Transactional
-    public void completeAllClassesInSemester(Integer semesterId) {
-        if (semesterId == null) return;
-        List<ClassEntity> semClasses = classRepository.findBySemesterId(semesterId);
-        for (var cls : semClasses) {
-            if (!"Completed".equalsIgnoreCase(cls.getStatus())) {
-                cls.setStatus("Completed");
-                classRepository.save(cls);
-            }
-
-            Integer classId = cls.getId();
-            if (classId == null) continue;
-            var groups = groupRepository.findByClassId(classId);
-            for (var group : groups) {
-                if (!"Completed".equalsIgnoreCase(group.getStatus())) {
-                    group.setStatus("Completed");
-                    groupRepository.save(group);
-                }
-            }
-        }
     }
 
     /**

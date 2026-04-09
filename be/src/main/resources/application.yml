@@ -31,6 +31,9 @@ app:
   auth:
     allow-register: false
 
+  semester:
+    auto-complete-enabled: false
+
 jira:
   base-url: "https://fpt-team-y8wit2i7.atlassian.net"
   email: "Hoangnvse182984@fpt.edu.vn"

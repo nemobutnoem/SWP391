@@ -71,7 +71,7 @@ export function Topbar() {
                   {(teamCtx?.semesterOptions || []).map((s) => (
                     <option key={s.semesterId} value={s.semesterId}>
                       {s.semesterLabel}
-                      {s.semesterStatus === "active" ? " (Active)" : ""}
+                      {s.semesterStatus === "active" ? " (Active)" : " (Inactive)"}
                     </option>
                   ))}
                 </select>

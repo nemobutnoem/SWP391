@@ -12,6 +12,7 @@ export function SemesterClassPage() {
   const [classes, setClasses] = useState([]);
   const [lecturers, setLecturers] = useState([]);
   const [students, setStudents] = useState([]);
+  const [studentHistories, setStudentHistories] = useState([]);
   const [groups, setGroups] = useState([]);
   const [enrollments, setEnrollments] = useState({});
 
@@ -47,11 +48,14 @@ export function SemesterClassPage() {
       const sorted = sortSemestersDesc(data);
       setSemesters(sorted);
       const active = sorted.find((s) => s.status?.toLowerCase() === "active");
+      const latestVisible = sorted.find((s) => s.status?.toLowerCase() !== "archived");
       if (active) setSelectedSemesterId(active.id);
+      else if (latestVisible) setSelectedSemesterId(latestVisible.id);
       else if (sorted.length > 0) setSelectedSemesterId(sorted[0].id);
     });
     lecturerService.list().then(setLecturers);
     studentService.list().then(setStudents);
+    studentService.listClassHistory().then(setStudentHistories).catch(() => setStudentHistories([]));
     groupService.list().then(setGroups);
   }, []);
 
@@ -87,7 +91,7 @@ export function SemesterClassPage() {
   }, [classes]);
 
   const eligibleStudentsForSelectedSemester = useMemo(() => {
-    // Show only students that belong to the selected semester.
+    // Allow reusing students from completed semesters in a new semester/demo flow.
     if (!selectedSemesterId) return Array.isArray(students) ? students : [];
     const list = Array.isArray(students) ? students : [];
 
@@ -112,18 +116,58 @@ export function SemesterClassPage() {
       return cls?.semester_id ?? cls?.semesterId ?? "__OTHER_SEMESTER__";
     };
 
+    const resolveSemesterStatus = (semesterId) => {
+      if (semesterId == null || semesterId === "__OTHER_SEMESTER__") return null;
+      const sem = semesters.find((item) => String(item?.id) === String(semesterId));
+      return String(sem?.status || "").toLowerCase();
+    };
+
     return list.filter((s) => {
       const semId = resolveSemesterId(s);
       if (semId == null) return isUnassigned(s); // include only truly unassigned students
-      if (semId === "__OTHER_SEMESTER__") return false;
-      return String(semId) === String(selectedSemesterId);
+      if (semId === "__OTHER_SEMESTER__") {
+        const directSemesterId = s?.semester_id ?? s?.semesterId;
+        const directSemesterStatus = resolveSemesterStatus(directSemesterId);
+        return directSemesterStatus === "completed" || directSemesterStatus === "archived";
+      }
+      if (String(semId) === String(selectedSemesterId)) return true;
+      const status = resolveSemesterStatus(semId);
+      return status === "completed" || status === "archived";
     });
-  }, [selectedSemesterId, students, classes]);
+  }, [selectedSemesterId, students, classes, semesters]);
+
+  const selectedSemester = useMemo(
+    () => semesters.find((s) => String(s.id) === String(selectedSemesterId)) || null,
+    [semesters, selectedSemesterId]
+  );
+  const selectedSemesterStatus = String(selectedSemester?.status || "").toLowerCase();
+  const shouldUseHistoricalRoster =
+    selectedSemesterStatus === "completed" || selectedSemesterStatus === "archived";
 
   const enrichedClasses = useMemo(() => {
     return classes.map((c) => {
       const lecturer = lecturers.find((l) => l.id === c.lecturer_id);
-      const classStudents = students.filter((s) => s.class_id === c.id || s.classId === c.id);
+      const classStudents = shouldUseHistoricalRoster
+        ? (() => {
+            const historyRows = (Array.isArray(studentHistories) ? studentHistories : [])
+              .filter((h) => String(h.class_id) === String(c.id))
+              .filter((h, index, arr) =>
+                arr.findIndex((item) => String(item.student_id) === String(h.student_id)) === index
+              );
+            return historyRows.map((h) => {
+              const current = students.find((s) => String(s.id) === String(h.student_id));
+              return {
+                id: h.student_id,
+                full_name: h.full_name ?? current?.full_name ?? "Unknown Student",
+                email: h.email ?? current?.email ?? "-",
+                student_code: h.student_code ?? current?.student_code ?? "-",
+                major: h.major ?? current?.major ?? null,
+                status: h.status ?? current?.status ?? "Active",
+                _history_only: true,
+              };
+            });
+          })()
+        : students.filter((s) => s.class_id === c.id || s.classId === c.id);
       const rawEnrollments = enrollments[c.id] || [];
       const classEnrollments = rawEnrollments.map((e) => {
         const enrollmentStudentId = e.student_id ?? e.studentId;
@@ -151,7 +195,7 @@ export function SemesterClassPage() {
         groups: classGroups,
       };
     });
-  }, [classes, lecturers, students, groups, enrollments]);
+  }, [classes, lecturers, students, groups, enrollments, shouldUseHistoricalRoster, studentHistories]);
 
   const handleCreateSemester = () => {
     setEditingSemester(null);
@@ -251,6 +295,34 @@ export function SemesterClassPage() {
     }
   };
 
+  const handleArchiveSemester = async (id) => {
+    if (!window.confirm("Archive this completed semester? It will move to the Archived area and stay read-only.")) return;
+    try {
+      await semesterService.archive(id);
+      const updated = sortSemestersDesc(await semesterService.list());
+      setSemesters(updated);
+      if (selectedSemesterId === id) {
+        const active = updated.find((s) => s.status?.toLowerCase() === "active");
+        const latestVisible = updated.find((s) => s.status?.toLowerCase() !== "archived");
+        setSelectedSemesterId(active?.id ?? latestVisible?.id ?? updated[0]?.id ?? null);
+      }
+    } catch (e) {
+      alert("Failed to archive semester: " + (e.response?.data?.message || e.message));
+    }
+  };
+
+  const handleDeleteGroup = async (groupId) => {
+    const group = groups.find((g) => g.id === groupId);
+    if (!window.confirm(`Delete group "${group?.group_name || group?.group_code || groupId}"?`)) return;
+    try {
+      await groupService.deleteGroup(groupId);
+      const updatedGroups = await groupService.list();
+      setGroups(updatedGroups);
+    } catch (e) {
+      alert("Failed to delete group: " + (e.response?.data?.message || e.message));
+    }
+  };
+
   const handleOpenAssign = (cls) => {
     setAssigningClass(cls);
     setAssignModalOpen(true);
@@ -305,10 +377,41 @@ export function SemesterClassPage() {
         });
         const updatedStudents = await studentService.list();
         setStudents(updatedStudents);
+        const updatedHistory = await studentService.listClassHistory();
+        setStudentHistories(updatedHistory);
       }
     } catch (e) {
       alert("Failed to add student to class: " + (e?.data?.message || e?.response?.data?.message || e.message));
       throw e;
+    }
+  };
+
+  const handleRemoveStudentFromClass = async (classId, student) => {
+    try {
+      const cls = classes.find((c) => c.id === classId);
+      const isCapstone = (cls?.class_type || "MAIN") === "CAPSTONE";
+      if (isCapstone) {
+        alert("Removing 3w enrollments is not supported from this screen yet.");
+        return;
+      }
+
+      const email = student.email || `${(student.student_code || "").toLowerCase()}@fpt.edu.vn`;
+      await studentService.update(student.id, {
+        user_id: student.user_id || student.userId,
+        class_id: null,
+        full_name: student.full_name,
+        student_code: student.student_code,
+        email,
+        major: student.major || "SE",
+        github_username: student.github_username || null,
+        status: student.status || "Active",
+      });
+      const updatedStudents = await studentService.list();
+      setStudents(updatedStudents);
+      const updatedHistory = await studentService.listClassHistory();
+      setStudentHistories(updatedHistory);
+    } catch (e) {
+      alert("Failed to remove student from class: " + (e?.response?.data?.message || e.message));
     }
   };
 
@@ -353,6 +456,7 @@ export function SemesterClassPage() {
       onCloseSemesterModal={() => setSemesterModalOpen(false)}
       onSubmitSemester={handleSubmitSemester}
       onDeleteSemester={handleDeleteSemester}
+      onArchiveSemester={handleArchiveSemester}
       classModalOpen={classModalOpen}
       editingClass={editingClass}
       onCreateClass={handleCreateClass}
@@ -360,12 +464,14 @@ export function SemesterClassPage() {
       onCloseClassModal={() => setClassModalOpen(false)}
       onSubmitClass={handleSubmitClass}
       onDeleteClass={handleDeleteClass}
+      onDeleteGroup={handleDeleteGroup}
       assignModalOpen={assignModalOpen}
       assigningClass={assigningClass}
       onOpenAssign={handleOpenAssign}
       onCloseAssignModal={() => setAssignModalOpen(false)}
       onAssignLecturer={handleAssignLecturer}
       onAddStudent={handleAddStudent}
+      onRemoveStudentFromClass={handleRemoveStudentFromClass}
       onCompleteClass={handleCompleteClass}
       onActivateClass={handleActivateClass}
       isCapstoneRunning={isCapstoneRunning}

@@ -30,4 +30,9 @@ export const studentApi = {
     const res = await http.get(`/students/${studentId}/class-history`);
     return res.data;
   },
+
+  async listClassHistory() {
+    const res = await http.get("/students/class-history");
+    return res.data;
+  },
 };

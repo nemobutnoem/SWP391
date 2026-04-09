@@ -14,6 +14,7 @@ export function GroupIntegrationPage() {
     const { user } = useAuth();
     const userRole = user?.role;
     const isAdmin = userRole === ROLES.ADMIN;
+    const isLecturer = userRole === ROLES.LECTURER;
     const canEdit = userRole === ROLES.TEAM_LEAD || isAdmin || userRole === ROLES.LECTURER;
 
     // All groups (for both admin and team lead)
@@ -39,6 +40,17 @@ export function GroupIntegrationPage() {
     const [saving, setSaving] = useState(false);
     const [msg, setMsg] = useState(null);
 
+    const dedupeGroupsById = (list) => {
+        const seen = new Set();
+        return (Array.isArray(list) ? list : []).filter((g) => {
+            const id = Number(g?.id);
+            if (!Number.isFinite(id)) return false;
+            if (seen.has(id)) return false;
+            seen.add(id);
+            return true;
+        });
+    };
+
     // ── Load initial data ──
     useEffect(() => {
         if (isAdmin) {
@@ -55,10 +67,40 @@ export function GroupIntegrationPage() {
                 else if (semData.length > 0) setSelectedSemesterId(semData[0].id);
             });
         } else {
-            // Team Lead / Member: just load their groups
-            groupService.list().then((data) => {
-                setGroups(data);
-                if (data.length > 0) setSelectedGroupId(data[0].id);
+            // Non-admin: show only groups in ACTIVE semester + ACTIVE class
+            Promise.all([
+                groupService.list().catch(() => []),
+                semesterService.list().catch(() => []),
+                classService.list().catch(() => []),
+            ]).then(([groupData, semData, classData]) => {
+                const normalizedGroups = dedupeGroupsById(groupData);
+                const normalizedSemesters = Array.isArray(semData) ? semData : [];
+                const normalizedClasses = Array.isArray(classData) ? classData : [];
+
+                setGroups(normalizedGroups);
+                setSemesters(normalizedSemesters);
+                setClasses(normalizedClasses);
+
+                const activeSemester = normalizedSemesters.find((s) => String(s?.status || "").toLowerCase() === "active");
+                const activeSemesterId = activeSemester?.id ?? null;
+                setSelectedSemesterId(activeSemesterId);
+
+                const activeClassIds = new Set(
+                    normalizedClasses
+                        .filter((c) => String(c?.status || "").toLowerCase() === "active")
+                        .filter((c) => activeSemesterId == null || Number(c?.semester_id ?? c?.semesterId) === Number(activeSemesterId))
+                        .map((c) => Number(c.id)),
+                );
+
+                const scopedGroups = normalizedGroups.filter((g) => {
+                    const gSemesterId = Number(g?.semester_id ?? g?.semesterId);
+                    const gClassId = Number(g?.class_id ?? g?.classId);
+                    const semOk = activeSemesterId == null || gSemesterId === Number(activeSemesterId);
+                    const classOk = activeClassIds.size === 0 || activeClassIds.has(gClassId);
+                    return semOk && classOk;
+                });
+
+                setSelectedGroupId(scopedGroups.length > 0 ? scopedGroups[0].id : null);
             });
         }
     }, [isAdmin]);
@@ -77,21 +119,43 @@ export function GroupIntegrationPage() {
 
     // ── Admin: filter groups when class changes ──
     const filteredGroups = useMemo(() => {
-        if (!isAdmin) return groups;
-        if (!selectedClassId) return [];
-        return groups.filter((g) => g.class_id === selectedClassId);
-    }, [isAdmin, groups, selectedClassId]);
+        if (isAdmin) {
+            if (!selectedClassId) return [];
+            return dedupeGroupsById(groups.filter((g) => Number(g.class_id ?? g.classId) === Number(selectedClassId)));
+        }
+
+        const activeSemester = semesters.find((s) => String(s?.status || "").toLowerCase() === "active");
+        const activeSemesterId = activeSemester?.id ?? null;
+        const activeClassIds = new Set(
+            (Array.isArray(classes) ? classes : [])
+                .filter((c) => String(c?.status || "").toLowerCase() === "active")
+                .filter((c) => activeSemesterId == null || Number(c?.semester_id ?? c?.semesterId) === Number(activeSemesterId))
+                .map((c) => Number(c.id)),
+        );
+
+        return dedupeGroupsById(
+            groups.filter((g) => {
+                const gSemesterId = Number(g?.semester_id ?? g?.semesterId);
+                const gClassId = Number(g?.class_id ?? g?.classId);
+                const semOk = activeSemesterId == null || gSemesterId === Number(activeSemesterId);
+                const classOk = activeClassIds.size === 0 || activeClassIds.has(gClassId);
+                return semOk && classOk;
+            }),
+        );
+    }, [isAdmin, groups, selectedClassId, semesters, classes]);
 
     // Auto-select first group when class changes
     useEffect(() => {
-        if (!isAdmin) return;
         if (filteredGroups.length > 0) {
-            setSelectedGroupId(filteredGroups[0].id);
+            const exists = filteredGroups.some((g) => Number(g.id) === Number(selectedGroupId));
+            if (!exists) {
+                setSelectedGroupId(filteredGroups[0].id);
+            }
         } else {
             setSelectedGroupId(null);
             setConfig(null);
         }
-    }, [isAdmin, filteredGroups]);
+    }, [filteredGroups, selectedGroupId]);
 
     // ── Load config when group changes ──
     const loadConfig = async (groupId) => {
@@ -145,7 +209,10 @@ export function GroupIntegrationPage() {
             const res = await http.put(`/groups/${selectedGroupId}/settings/integrations`, payload);
             setConfig(res.data);
             setForm((prev) => ({ ...prev, jiraApiToken: "", githubToken: "", jiraProjectKey: res.data.jiraProjectKey || "", githubRepoUrl: res.data.githubRepoUrl || "" }));
-            setMsg({ type: "success", text: "Group configuration saved!" });
+            setMsg({
+                type: "success",
+                text: `Saved configuration for Group #${selectedGroupId}${res.data.jiraProjectKey ? ` (Jira Key: ${res.data.jiraProjectKey})` : ""}.`,
+            });
         } catch (e) {
             setMsg({ type: "error", text: e?.data?.message || "Failed to save" });
         }
@@ -154,6 +221,35 @@ export function GroupIntegrationPage() {
 
     // Display groups for the selector (admin uses filtered, others use all)
     const displayGroups = isAdmin ? filteredGroups : groups;
+    const showGroupSelector = isAdmin || isLecturer || displayGroups.length > 1;
+
+    const selectedGroup = displayGroups.find((g) => Number(g.id) === Number(selectedGroupId)) || null;
+    const selectedGroupClassId = Number(selectedGroup?.class_id ?? selectedGroup?.classId);
+    const selectedGroupClass = (Array.isArray(classes) ? classes : []).find((c) => Number(c.id) === selectedGroupClassId);
+    const isSelectedClassActive = String(selectedGroupClass?.status || "").toLowerCase() === "active";
+    const canEditSelectedGroup = canEdit && (selectedGroup ? isSelectedClassActive : true);
+
+    const getStatusLabel = (value) => {
+        const s = String(value || "").toLowerCase();
+        return s === "active" ? "Active" : "Inactive";
+    };
+
+    const getGroupOptionLabel = (g) => {
+        const classId = Number(g?.class_id ?? g?.classId);
+        const semesterId = Number(g?.semester_id ?? g?.semesterId);
+        const clazz = (Array.isArray(classes) ? classes : []).find((c) => Number(c.id) === classId);
+        const semester = (Array.isArray(semesters) ? semesters : []).find((s) => Number(s.id) === semesterId);
+
+        const groupName = g.group_name || `Group ${g.id}`;
+        const classCode = clazz?.class_code || clazz?.classCode || `Class ${classId}`;
+        const semCode = semester?.code || semester?.semester_name || semester?.name || `Sem ${semesterId}`;
+
+        const groupStatus = getStatusLabel(g?.status);
+        const classStatus = getStatusLabel(clazz?.status);
+        const semesterStatus = getStatusLabel(semester?.status);
+
+        return `#${g.id} - ${groupName} - ${classCode} (${classStatus}) - ${semCode} (${semesterStatus}) - Group ${groupStatus}`;
+    };
 
     return (
         <div className="integration-page">
@@ -211,7 +307,7 @@ export function GroupIntegrationPage() {
                                 <option value="" disabled>-- Select Group --</option>
                                 {displayGroups.map((g) => (
                                     <option key={g.id} value={g.id}>
-                                        {g.group_name || `Group ${g.id}`}
+                                        {getGroupOptionLabel(g)}
                                     </option>
                                 ))}
                             </select>
@@ -220,12 +316,31 @@ export function GroupIntegrationPage() {
                 </div>
             )}
 
-            {/* ── Team Lead: show group name only (no selector) ── */}
-            {!isAdmin && groups.length > 0 && (
+            {/* ── Non-admin: allow selecting group when user has multiple groups (especially lecturers) ── */}
+            {!isAdmin && displayGroups.length > 0 && showGroupSelector && (
+                <div className="integration-group-info">
+                    <label className="integration-label">Group</label>
+                    <select
+                        className="integration-input"
+                        value={selectedGroupId || ""}
+                        onChange={(e) => setSelectedGroupId(Number(e.target.value))}
+                        disabled={displayGroups.length === 0}
+                    >
+                        <option value="" disabled>-- Select Group --</option>
+                        {displayGroups.map((g) => (
+                            <option key={g.id} value={g.id}>
+                                {getGroupOptionLabel(g)}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+            )}
+
+            {!isAdmin && displayGroups.length > 0 && !showGroupSelector && (
                 <div className="integration-group-info">
                     <label className="integration-label">Your Group</label>
                     <div className="integration-group-name">
-                        {groups[0]?.group_name || `Group ${groups[0]?.id}`}
+                        {displayGroups[0]?.group_name || `Group ${displayGroups[0]?.id}`}
                     </div>
                 </div>
             )}
@@ -233,6 +348,18 @@ export function GroupIntegrationPage() {
             {msg && (
                 <div className={`integration-msg integration-msg--${msg.type}`}>
                     {msg.text}
+                </div>
+            )}
+
+            {selectedGroup && !isSelectedClassActive && (
+                <div className="integration-msg integration-msg--warning">
+                    This group's class is inactive. Integration settings are read-only.
+                </div>
+            )}
+
+            {selectedGroup && (
+                <div className="integration-msg integration-msg--info">
+                    Editing Group #{selectedGroup.id}
                 </div>
             )}
 
@@ -256,7 +383,7 @@ export function GroupIntegrationPage() {
                                 placeholder="https://yourteam.atlassian.net (leave blank for admin default)"
                                 value={form.jiraBaseUrl}
                                 onChange={handleChange("jiraBaseUrl")}
-                                readOnly={!canEdit}
+                                readOnly={!canEditSelectedGroup}
                             />
                             <span className="integration-hint">Copy from your Jira board URL (the part before /jira/...)</span>
                         </div>
@@ -269,7 +396,7 @@ export function GroupIntegrationPage() {
                                 placeholder="Leave blank to use admin default"
                                 value={form.jiraEmail}
                                 onChange={handleChange("jiraEmail")}
-                                readOnly={!canEdit}
+                                readOnly={!canEditSelectedGroup}
                             />
                             <span className="integration-hint">The email you use to login Jira</span>
                         </div>
@@ -287,7 +414,7 @@ export function GroupIntegrationPage() {
                                 placeholder={config.jiraApiTokenSet ? "••••••••• (leave blank to keep)" : "Leave blank to use admin default"}
                                 value={form.jiraApiToken}
                                 onChange={handleChange("jiraApiToken")}
-                                readOnly={!canEdit}
+                                readOnly={!canEditSelectedGroup}
                             />
                             <span className="integration-hint">
                                 <a href="https://id.atlassian.com/manage-profile/security/api-tokens" target="_blank" rel="noopener noreferrer">
@@ -304,7 +431,7 @@ export function GroupIntegrationPage() {
                                 placeholder="e.g. SWP, FPTTEAM"
                                 value={form.jiraProjectKey}
                                 onChange={handleChange("jiraProjectKey")}
-                                readOnly={!canEdit}
+                                readOnly={!canEditSelectedGroup}
                             />
                             <span className="integration-hint">
                                 Find in your Jira board URL: yourteam.atlassian.net/jira/software/projects/<strong>KEY</strong>/board
@@ -330,7 +457,7 @@ export function GroupIntegrationPage() {
                                 placeholder="https://github.com/owner/repo"
                                 value={form.githubRepoUrl}
                                 onChange={handleChange("githubRepoUrl")}
-                                readOnly={!canEdit}
+                                readOnly={!canEditSelectedGroup}
                             />
                             <span className="integration-hint">Copy the full URL from your GitHub repository page</span>
                         </div>
@@ -348,7 +475,7 @@ export function GroupIntegrationPage() {
                                 placeholder={config.githubTokenSet ? "••••••••• (leave blank to keep)" : "Leave blank to use admin default"}
                                 value={form.githubToken}
                                 onChange={handleChange("githubToken")}
-                                readOnly={!canEdit}
+                                readOnly={!canEditSelectedGroup}
                             />
                             <span className="integration-hint">
                                 <a href="https://github.com/settings/tokens?type=beta" target="_blank" rel="noopener noreferrer">
@@ -363,7 +490,7 @@ export function GroupIntegrationPage() {
 
             {canEdit && (
                 <div className="integration-actions">
-                    <Button variant="primary" size="md" onClick={handleSave} disabled={saving || !selectedGroupId}>
+                    <Button variant="primary" size="md" onClick={handleSave} disabled={saving || !selectedGroupId || !canEditSelectedGroup}>
                         {saving ? "Saving..." : "Save Group Config"}
                     </Button>
                 </div>

@@ -7,6 +7,7 @@ import { githubActivityService } from "../../services/githubActivities/githubAct
 import { semesterService } from "../../services/semesters/semester.service.js";
 import { classService } from "../../services/classes/class.service.js";
 import { studentService } from "../../services/students/student.service.js";
+import { syncService } from "../../services/sync/sync.service.js";
 import { PageHeader } from "../../components/common/PageHeader.jsx";
 import { StatCard } from "../../components/common/StatCard.jsx";
 import { Badge } from "../../components/common/Badge.jsx";
@@ -59,6 +60,8 @@ export function LecturerDashboardView() {
   const [selectedSemesterId, setSelectedSemesterId] = useState(null);
   const [classes, setClasses] = useState([]);
   const [selectedClassId, setSelectedClassId] = useState(null);
+  const [autoSyncAttemptedScopes, setAutoSyncAttemptedScopes] = useState({});
+  const [isAutoSyncing, setIsAutoSyncing] = useState(false);
 
   useEffect(() => {
     groupService.list().then(setAllGroups);
@@ -118,6 +121,29 @@ export function LecturerDashboardView() {
     return `${sem.code} (${tag})`;
   };
 
+  const classOptions = useMemo(
+    () => (Array.isArray(classes) ? classes : []),
+    [classes]
+  );
+
+  const formatClassOptionLabel = (clazz) => {
+    const code = clazz?.class_code || clazz?.classCode || `Class #${clazz?.id}`;
+    const block = String(clazz?.class_type || clazz?.classType || "MAIN").toUpperCase() === "CAPSTONE"
+      ? "Block 3"
+      : "Block 10";
+    const status = String(clazz?.status || "Inactive").toLowerCase() === "active"
+      ? "Active"
+      : "Inactive";
+    return `${code} - ${block} - ${status}`;
+  };
+
+  useEffect(() => {
+    setSelectedClassId((prev) => {
+      if (!prev) return prev;
+      return classOptions.some((c) => Number(c.id) === Number(prev)) ? prev : null;
+    });
+  }, [classOptions]);
+
   const myGroups = useMemo(() => {
     const filteredBySem = selectedSemesterId
       ? allGroups.filter((g) => (g.semester_id ?? g.semesterId) === selectedSemesterId)
@@ -143,6 +169,53 @@ export function LecturerDashboardView() {
     () => jiraTasks.filter((t) => selectedGroupIds.has(t.group_id ?? t.groupId)),
     [jiraTasks, selectedGroupIds],
   );
+
+  const activitiesForSelectedGroups = useMemo(
+    () => githubActivities.filter((a) => selectedGroupIds.has(a.group_id ?? a.groupId)),
+    [githubActivities, selectedGroupIds],
+  );
+
+  useEffect(() => {
+    const groupIds = myGroups.map((g) => Number(g.id)).filter((id) => Number.isFinite(id) && id > 0);
+    if (groupIds.length === 0) return;
+
+    // Auto-sync once per filter scope when both Jira and GitHub data are empty.
+    if (tasksForSelectedGroups.length > 0 || activitiesForSelectedGroups.length > 0) return;
+
+    const scopeKey = `${selectedSemesterId ?? "all"}|${selectedClassId ?? "all"}`;
+    if (autoSyncAttemptedScopes[scopeKey]) return;
+
+    setAutoSyncAttemptedScopes((prev) => ({ ...prev, [scopeKey]: true }));
+
+    (async () => {
+      setIsAutoSyncing(true);
+      try {
+        await Promise.allSettled(
+          groupIds.flatMap((groupId) => [
+            syncService.syncJira({ groupId }),
+            syncService.syncGithub({ groupId }),
+          ]),
+        );
+
+        const [taskData, activityData] = await Promise.all([
+          jiraTaskService.list().catch(() => []),
+          githubActivityService.list().catch(() => []),
+        ]);
+
+        setJiraTasks(Array.isArray(taskData) ? taskData : []);
+        setGithubActivities(Array.isArray(activityData) ? activityData : []);
+      } finally {
+        setIsAutoSyncing(false);
+      }
+    })();
+  }, [
+    myGroups,
+    tasksForSelectedGroups.length,
+    activitiesForSelectedGroups.length,
+    selectedSemesterId,
+    selectedClassId,
+    autoSyncAttemptedScopes,
+  ]);
 
   const loginLabelByUserId = useMemo(() => {
     return new Map(
@@ -414,9 +487,9 @@ export function LecturerDashboardView() {
               }}
             >
               <option value="">All classes</option>
-              {classes.map((c) => (
+              {classOptions.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.class_code || c.classCode || `Class #${c.id}`}
+                  {formatClassOptionLabel(c)}
                 </option>
               ))}
             </select>
@@ -514,7 +587,9 @@ export function LecturerDashboardView() {
                     <div className="lecturer-tab-content">
                       {g.tasks.length === 0 ? (
                         <div className="text-secondary" style={{ padding: "1rem" }}>
-                          No Jira tasks synced yet. Sync from the Sync page.
+                          {isAutoSyncing
+                            ? "No Jira tasks yet. Auto syncing in background..."
+                            : "No Jira tasks synced yet for this group."}
                         </div>
                       ) : (
                         <>
@@ -623,7 +698,9 @@ export function LecturerDashboardView() {
                     <div className="lecturer-tab-content">
                       {g.activities.length === 0 ? (
                         <div className="text-secondary" style={{ padding: "1rem" }}>
-                          No GitHub activity yet. Sync from the Sync page.
+                          {isAutoSyncing
+                            ? "No GitHub activity yet. Auto syncing in background..."
+                            : "No GitHub activity yet for this group."}
                         </div>
                       ) : (
                         <>

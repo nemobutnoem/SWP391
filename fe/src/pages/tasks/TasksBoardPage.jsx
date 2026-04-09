@@ -6,6 +6,7 @@ import { effectiveStatus } from "../../features/tasks/taskStats.js";
 import { jiraTaskService } from "../../services/jiraTasks/jiraTask.service.js";
 import { syncService } from "../../services/sync/sync.service.js";
 import { groupService } from "../../services/groups/group.service.js";
+import { http } from "../../services/http/httpClient.js";
 import { useAuth } from "../../store/auth/useAuth.jsx";
 import { ROLES } from "../../routes/access/roles.js";
 import { useTeamContext } from "../../store/teamContext/teamContext.js";
@@ -87,8 +88,10 @@ export function TasksBoardPage() {
   const [comments, setComments] = useState([]);
   const [isLoadingComments, setIsLoadingComments] = useState(false);
   const isTeamLead = user?.role === ROLES.TEAM_LEAD;
+  const isSelectedGroupUsable = Boolean(teamCtx?.selectedGroupIsUsable);
 
   const canEditTaskFields = useMemo(() => {
+    if (!isSelectedGroupUsable) return false;
     if (user?.role !== ROLES.TEAM_MEMBER) return true;
     const userId = Number(user?.id);
     if (!Number.isFinite(userId)) return false;
@@ -105,7 +108,7 @@ export function TasksBoardPage() {
     }
 
     return false;
-  }, [membersByGroupId, tasks, user?.id, user?.role]);
+  }, [isSelectedGroupUsable, membersByGroupId, tasks, user?.id, user?.role]);
 
   const load = async () => {
     const gid = teamCtx?.selectedGroupId == null ? null : Number(teamCtx.selectedGroupId);
@@ -302,10 +305,38 @@ export function TasksBoardPage() {
   const onSyncJira = async () => {
     setIsSyncing(true);
     try {
-      await syncService.syncJira();
+      const gid = teamCtx?.selectedGroupId == null ? null : Number(teamCtx.selectedGroupId);
+      const hasGroup = Number.isFinite(gid) && gid > 0;
+
+      if (!hasGroup) {
+        throw new Error("Please select a group before syncing Jira data.");
+      }
+
+      if (!isSelectedGroupUsable) {
+        throw new Error("Selected class/semester is inactive. You can view data only.");
+      }
+
+      const integrationRes = await http.get(`/groups/${gid}/settings/integrations`);
+      const projectKey = String(integrationRes?.data?.jiraProjectKey || "").trim();
+      if (!projectKey) {
+        throw new Error(`Group ${gid} is missing Jira Project Key. Please save it in Group Integration settings.`);
+      }
+
+      const result = await syncService.syncJira({ groupId: gid, projectKey });
+      if (result?.ok === false) {
+        throw new Error(result?.message || "Jira sync failed");
+      }
+
+      if (Number(result?.totalUpserted || 0) === 0) {
+        window.alert(
+          `Sync success but 0 issues returned for project key '${projectKey}' (Group #${gid}). Check Jira project key, account permissions (Browse project), or whether project currently has issues.`,
+        );
+      }
+
       await load();
     } catch (e) {
       console.error("[TasksBoard] sync Jira failed:", e);
+      window.alert(e?.response?.data?.message || e?.message || "Sync Jira failed.");
     } finally {
       setIsSyncing(false);
     }
@@ -353,6 +384,7 @@ export function TasksBoardPage() {
         onToggleShowOnlyMine={() => setShowOnlyMine((prev) => !prev)}
         isSyncing={isSyncing}
         onSyncJira={onSyncJira}
+        canSyncJira={isSelectedGroupUsable}
         columns={columns}
         canEditTaskFields={canEditTaskFields}
         onStatusChange={handleStatusChange}

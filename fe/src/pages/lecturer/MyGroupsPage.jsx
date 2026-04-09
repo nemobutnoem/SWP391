@@ -32,8 +32,9 @@ export function MyGroupsPage() {
 
   // Add-member modal state
   const [addMemberGroupId, setAddMemberGroupId] = useState(null);
-  const [refreshingGroupId, setRefreshingGroupId] = useState(null);
-  const [refreshStatusByGroupId, setRefreshStatusByGroupId] = useState({});
+  const [fetchingGroupId, setFetchingGroupId] = useState(null);
+  const [fetchStatusByGroupId, setFetchStatusByGroupId] = useState({});
+  const [autoSyncAttemptedScopes, setAutoSyncAttemptedScopes] = useState({});
 
   const LEGACY_DROPPED_MEMBERS_STORAGE_KEY = "swp391:lecturer:droppedMembersByGroup";
   const SCOPED_DROPPED_MEMBERS_STORAGE_KEY = "swp391:lecturer:droppedMembersBySemesterBlock";
@@ -76,15 +77,6 @@ export function MyGroupsPage() {
     });
 
     return scoped;
-  };
-
-  const loadJiraTasks = async () => {
-    try {
-      const list = await jiraTaskService.list();
-      setJiraTasks(Array.isArray(list) ? list : []);
-    } catch {
-      setJiraTasks([]);
-    }
   };
 
   const loadData = async () => {
@@ -160,6 +152,44 @@ export function MyGroupsPage() {
       : bySem;
     return byClass;
   }, [allGroups, selectedSemesterId, selectedClassId]);
+
+  const tasksForSelectedGroupsCount = useMemo(() => {
+    const groupIds = new Set(myGroups.map((g) => Number(g.id)));
+    return jiraTasks.filter((task) => groupIds.has(Number(task.group_id ?? task.groupId))).length;
+  }, [myGroups, jiraTasks]);
+
+  useEffect(() => {
+    const groupIds = myGroups.map((g) => Number(g.id)).filter((id) => Number.isFinite(id) && id > 0);
+    if (groupIds.length === 0) return;
+    if (tasksForSelectedGroupsCount > 0) return;
+
+    const scopeKey = `${selectedSemesterId ?? "all"}|${selectedClassId ?? "all"}`;
+    if (autoSyncAttemptedScopes[scopeKey]) return;
+
+    setAutoSyncAttemptedScopes((prev) => ({ ...prev, [scopeKey]: true }));
+
+    (async () => {
+      try {
+        await Promise.allSettled(
+          groupIds.flatMap((groupId) => [
+            syncService.syncJira({ groupId }),
+            syncService.syncGithub({ groupId }),
+          ]),
+        );
+
+        const jiraData = await jiraTaskService.list().catch(() => []);
+        setJiraTasks(Array.isArray(jiraData) ? jiraData : []);
+      } catch {
+        // Silent background sync: keep UI usable even if integration for some groups is missing.
+      }
+    })();
+  }, [
+    myGroups,
+    tasksForSelectedGroupsCount,
+    selectedSemesterId,
+    selectedClassId,
+    autoSyncAttemptedScopes,
+  ]);
 
   const enrichedGroups = useMemo(() => {
     const toNumberOrNull = (v) => {
@@ -325,13 +355,10 @@ export function MyGroupsPage() {
     }
   };
 
-  // Đánh rớt sinh viên: xóa khỏi DB + giữ hiển thị mờ trong UI
+  // Đánh rớt sinh viên: chỉ mờ dòng trong UI, không xóa khỏi group trong DB
   const handleDropMember = async (groupId, memberId) => {
     if (!window.confirm("Bạn có chắc muốn đánh rớt sinh viên này không?")) return;
     try {
-      // Actually remove from DB so student can join another group
-      await groupService.removeMember(groupId, memberId);
-
       // Persist to localStorage for visual history (mờ đi)
       const gid = Number(groupId);
       const mid = Number(memberId);
@@ -352,8 +379,14 @@ export function MyGroupsPage() {
       };
       saveJsonObject(SCOPED_DROPPED_MEMBERS_STORAGE_KEY, nextScoped);
 
-      // Reload data to reflect DB changes
-      await loadData();
+      // Update local state immediately so row turns gray without deleting member.
+      setAllMembers((prev) =>
+        prev.map((m) =>
+          Number(m.id ?? m.member_id ?? m.memberId) === mid && Number(m.group_id ?? m.groupId) === gid
+            ? { ...m, isDropped: true }
+            : m,
+        ),
+      );
     } catch (err) {
       alert("Đánh rớt thất bại: " + (err.response?.data?.message || err.message || err));
     }
@@ -401,34 +434,46 @@ export function MyGroupsPage() {
     }
   };
 
-  const handleRefreshGroupJira = async (groupId) => {
-    if (refreshingGroupId != null) return;
-    setRefreshingGroupId(groupId);
-    setRefreshStatusByGroupId((prev) => ({
+  const handleFetchGroupData = async (groupId) => {
+    if (fetchingGroupId != null) return;
+    setFetchingGroupId(groupId);
+    setFetchStatusByGroupId((prev) => ({
       ...prev,
-      [groupId]: { type: "loading", text: "Refreshing Jira data..." },
+      [groupId]: { type: "loading", text: "Fetching Jira/GitHub data..." },
     }));
 
     try {
-      const result = await syncService.syncJira({ groupId });
-      if (result?.ok === false) {
-        throw new Error(result?.message || "Jira refresh failed");
+      const [jiraResult, githubResult] = await Promise.all([
+        syncService.syncJira({ groupId }),
+        syncService.syncGithub({ groupId }),
+      ]);
+
+      const jiraOk = jiraResult?.ok !== false;
+      const githubOk = githubResult?.ok !== false;
+      if (!jiraOk || !githubOk) {
+        const msg = jiraResult?.message || githubResult?.message || "Some sync operations failed.";
+        throw new Error(msg);
       }
-      await loadJiraTasks();
-      setRefreshStatusByGroupId((prev) => ({
+
+      const [jiraData] = await Promise.all([
+        jiraTaskService.list().catch(() => []),
+      ]);
+
+      setJiraTasks(Array.isArray(jiraData) ? jiraData : []);
+      setFetchStatusByGroupId((prev) => ({
         ...prev,
-        [groupId]: { type: "success", text: "Jira data updated." },
+        [groupId]: { type: "success", text: "Data fetched successfully." },
       }));
     } catch (err) {
-      setRefreshStatusByGroupId((prev) => ({
+      setFetchStatusByGroupId((prev) => ({
         ...prev,
         [groupId]: {
           type: "error",
-          text: err?.response?.data?.message || err?.message || "Failed to refresh Jira data.",
+          text: err?.response?.data?.message || err?.message || "Fetch data failed.",
         },
       }));
     } finally {
-      setRefreshingGroupId(null);
+      setFetchingGroupId(null);
     }
   };
 
@@ -437,6 +482,8 @@ export function MyGroupsPage() {
     if (!addMemberGroupId) return [];
     const targetGroup = enrichedGroups.find((g) => g.id === addMemberGroupId);
     const groupClassId = targetGroup ? Number(targetGroup.class_id ?? targetGroup.classId) : null;
+    const groupClass = allClasses.find((c) => Number(c.id) === Number(groupClassId));
+    const isCapstoneGroup = String(groupClass?.class_type ?? groupClass?.classType ?? "MAIN").toUpperCase() === "CAPSTONE";
     const memberStudentIds = new Set(
       allMembers
         .filter((m) => Number(m.group_id ?? m.groupId) === Number(addMemberGroupId))
@@ -444,14 +491,19 @@ export function MyGroupsPage() {
     );
     return students.filter((s) => {
       if (memberStudentIds.has(Number(s.id))) return false;
-      // Only show students that belong to the same class as the group
+      // MAIN/10w groups use students.class_id. CAPSTONE/3w groups use capstone enrollment.
       if (groupClassId != null) {
-        const studentClassId = Number(s.class_id ?? s.classId);
-        if (!studentClassId || studentClassId !== groupClassId) return false;
+        if (isCapstoneGroup) {
+          const enrolledCapstoneClassId = Number(s.capstone_class_id ?? s.capstoneClassId);
+          if (!enrolledCapstoneClassId || enrolledCapstoneClassId !== groupClassId) return false;
+        } else {
+          const studentClassId = Number(s.class_id ?? s.classId);
+          if (!studentClassId || studentClassId !== groupClassId) return false;
+        }
       }
       return true;
     });
-  }, [addMemberGroupId, allMembers, students, enrichedGroups]);
+  }, [addMemberGroupId, allMembers, students, enrichedGroups, allClasses]);
 
   const availableTopics = useMemo(
     () => topics.filter((t) => String(t.status || "").toUpperCase() !== "ARCHIVED"),
@@ -487,9 +539,9 @@ export function MyGroupsPage() {
       onTopicSelectionChange={handleTopicSelectionChange}
       onAssignTopic={handleAssignTopic}
       onCreateGroup={handleCreateGroup}
-      onRefreshGroupJira={handleRefreshGroupJira}
-      refreshingGroupId={refreshingGroupId}
-      refreshStatusByGroupId={refreshStatusByGroupId}
+      onFetchGroupData={handleFetchGroupData}
+      fetchingGroupId={fetchingGroupId}
+      fetchStatusByGroupId={fetchStatusByGroupId}
       isSemesterActive={isSemesterActive}
     />
   );

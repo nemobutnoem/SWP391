@@ -20,6 +20,7 @@ export function UserManagementPage() {
   const [modalRole, setModalRole] = useState("STUDENT");
   const [studentClassHistory, setStudentClassHistory] = useState([]);
   const [studentClassHistoryLoading, setStudentClassHistoryLoading] = useState(false);
+  const [allStudentClassHistory, setAllStudentClassHistory] = useState([]);
 
   const [localStudents, setLocalStudents] = useState([]);
   const [localLecturers, setLocalLecturers] = useState([]);
@@ -33,7 +34,7 @@ export function UserManagementPage() {
   const isSameId = (a, b) => Number.isFinite(toNum(a)) && Number.isFinite(toNum(b)) && toNum(a) === toNum(b);
 
   const loadAllData = async () => {
-    const [studentsData, lecturersData, groupsData, membersData, projectsData, classesData, semestersData] = await Promise.all([
+    const [studentsData, lecturersData, groupsData, membersData, projectsData, classesData, semestersData, studentHistoryData] = await Promise.all([
       studentService.list(),
       lecturerService.list(),
       groupService.list(),
@@ -41,6 +42,7 @@ export function UserManagementPage() {
       projectService.list(),
       classService.list(),
       semesterService.list(),
+      studentService.listClassHistory(),
     ]);
     setLocalStudents(Array.isArray(studentsData) ? studentsData : []);
     setLocalLecturers(Array.isArray(lecturersData) ? lecturersData : []);
@@ -49,6 +51,7 @@ export function UserManagementPage() {
     setProjects(Array.isArray(projectsData) ? projectsData : []);
     setClasses(Array.isArray(classesData) ? classesData : []);
     setSemesters(Array.isArray(semestersData) ? semestersData : []);
+    setAllStudentClassHistory(Array.isArray(studentHistoryData) ? studentHistoryData : []);
   };
 
   useEffect(() => {
@@ -77,7 +80,7 @@ export function UserManagementPage() {
     if (activeTab !== "STUDENTS") return false;
     if (!selectedSemester) return false;
     const status = String(selectedSemester.status ?? "").toUpperCase();
-    return status === "COMPLETED";
+    return status === "COMPLETED" || status === "ARCHIVED";
   }, [activeTab, selectedSemester]);
 
   const handleOpenCreate = () => {
@@ -213,6 +216,39 @@ export function UserManagementPage() {
     });
   }, [localStudents, groups, members, projects, classes, semesters]);
 
+  const historicalStudentsForSelectedSemester = useMemo(() => {
+    if (activeTab !== "STUDENTS" || !selectedSemester) return [];
+    const selectedStatus = String(selectedSemester.status ?? "").toUpperCase();
+    if (selectedStatus !== "COMPLETED" && selectedStatus !== "ARCHIVED") return [];
+
+    const rows = (Array.isArray(allStudentClassHistory) ? allStudentClassHistory : [])
+      .filter((h) => Number(h?.semester_id) === Number(selectedSemester.id))
+      .filter((h, index, arr) =>
+        arr.findIndex((item) => Number(item?.student_id) === Number(h?.student_id) && Number(item?.class_id) === Number(h?.class_id)) === index
+      );
+
+    return rows.map((h) => {
+      const current = localStudents.find((s) => isSameId(s.id, h.student_id)) || {};
+      return {
+        id: h.student_id,
+        user_id: current.user_id ?? current.userId ?? null,
+        full_name: h.full_name || current.full_name || "Unknown Student",
+        student_code: h.student_code || current.student_code || "-",
+        email: h.email || current.email || "-",
+        major: h.major || current.major || null,
+        status: h.status || current.status || "Active",
+        group_name: "Historical",
+        project_name: "Historical",
+        class_name: h.class_code || h.class_name || "No Class",
+        semester_name: h.semester_name || selectedSemester.name || "No Semester",
+        _semesterId: selectedSemester.id,
+        _classType: String(h.class_type || "MAIN").toUpperCase() === "CAPSTONE" ? "CAPSTONE" : "MAIN",
+        class_id: h.class_id ?? null,
+        _historyOnly: true,
+      };
+    });
+  }, [activeTab, selectedSemester, allStudentClassHistory, localStudents]);
+
   const enrichedLecturers = useMemo(() => {
     return localLecturers.map((l) => {
       const managedClasses = classes.filter((c) => c.lecturer_id === l.id);
@@ -225,7 +261,13 @@ export function UserManagementPage() {
     const q = searchQuery.toLowerCase().trim();
 
     if (activeTab === "STUDENTS") {
-      return enrichedStudents.filter((u) => {
+      const source =
+        selectedSemester &&
+        ["COMPLETED", "ARCHIVED"].includes(String(selectedSemester.status ?? "").toUpperCase())
+          ? historicalStudentsForSelectedSemester
+          : enrichedStudents;
+
+      return source.filter((u) => {
         const nameMatch = u.full_name.toLowerCase().includes(q);
         const codeMatch = u.student_code && u.student_code.toLowerCase().includes(q);
         const majorMatch = majorFilter === "ALL" || u.major === majorFilter;
@@ -244,19 +286,24 @@ export function UserManagementPage() {
       const statusMatch = statusFilter === "ALL" || String(u.status || "").toUpperCase() === statusFilter;
       return (!q || nameMatch || departmentMatch) && statusMatch;
     });
-  }, [activeTab, enrichedStudents, enrichedLecturers, searchQuery, majorFilter, statusFilter, semesterFilter, blockFilter]);
+  }, [activeTab, enrichedStudents, historicalStudentsForSelectedSemester, enrichedLecturers, searchQuery, majorFilter, statusFilter, semesterFilter, blockFilter, selectedSemester]);
 
   const scopedStudentCount = useMemo(() => {
     // Count students in the currently selected semester/block scope (ignore search/major/status)
-    if (semesterFilter === "ALL" && blockFilter === "ALL") return localStudents.length;
-    return enrichedStudents.filter((u) => {
+    const source =
+      selectedSemester &&
+      ["COMPLETED", "ARCHIVED"].includes(String(selectedSemester.status ?? "").toUpperCase())
+        ? historicalStudentsForSelectedSemester
+        : enrichedStudents;
+    if (semesterFilter === "ALL" && blockFilter === "ALL" && source === enrichedStudents) return localStudents.length;
+    return source.filter((u) => {
       const semesterMatch =
         semesterFilter === "ALL" ||
         (u._semesterId != null && Number(u._semesterId) === Number(semesterFilter));
       const blockMatch = blockFilter === "ALL" || (u._classType != null && String(u._classType) === blockFilter);
       return semesterMatch && blockMatch;
     }).length;
-  }, [enrichedStudents, localStudents.length, semesterFilter, blockFilter]);
+  }, [enrichedStudents, historicalStudentsForSelectedSemester, localStudents.length, semesterFilter, blockFilter, selectedSemester]);
 
   const handleDelete = async (user) => {
     if (isCrudLockedByCompletedSemester && activeTab === "STUDENTS") {
