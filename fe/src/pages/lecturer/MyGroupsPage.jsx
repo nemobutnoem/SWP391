@@ -34,7 +34,6 @@ export function MyGroupsPage() {
   const [addMemberGroupId, setAddMemberGroupId] = useState(null);
   const [fetchingGroupId, setFetchingGroupId] = useState(null);
   const [fetchStatusByGroupId, setFetchStatusByGroupId] = useState({});
-  const [autoSyncAttemptedScopes, setAutoSyncAttemptedScopes] = useState({});
 
   const LEGACY_DROPPED_MEMBERS_STORAGE_KEY = "swp391:lecturer:droppedMembersByGroup";
   const SCOPED_DROPPED_MEMBERS_STORAGE_KEY = "swp391:lecturer:droppedMembersBySemesterBlock";
@@ -127,7 +126,11 @@ export function MyGroupsPage() {
     const semesterList = Array.isArray(semestersData) ? semestersData : [];
     setSemesters(semesterList);
     const active = semesterList.find((s) => String(s.status || "").toLowerCase() === "active");
-    if (active) setSelectedSemesterId(active.id);
+    // Keep user-selected semester stable across reloads to avoid expensive rerender/reset loops.
+    setSelectedSemesterId((prev) => {
+      if (prev && semesterList.some((s) => Number(s.id) === Number(prev))) return prev;
+      return active?.id ?? (semesterList[0]?.id ?? null);
+    });
   };
 
   useEffect(() => {
@@ -152,44 +155,6 @@ export function MyGroupsPage() {
       : bySem;
     return byClass;
   }, [allGroups, selectedSemesterId, selectedClassId]);
-
-  const tasksForSelectedGroupsCount = useMemo(() => {
-    const groupIds = new Set(myGroups.map((g) => Number(g.id)));
-    return jiraTasks.filter((task) => groupIds.has(Number(task.group_id ?? task.groupId))).length;
-  }, [myGroups, jiraTasks]);
-
-  useEffect(() => {
-    const groupIds = myGroups.map((g) => Number(g.id)).filter((id) => Number.isFinite(id) && id > 0);
-    if (groupIds.length === 0) return;
-    if (tasksForSelectedGroupsCount > 0) return;
-
-    const scopeKey = `${selectedSemesterId ?? "all"}|${selectedClassId ?? "all"}`;
-    if (autoSyncAttemptedScopes[scopeKey]) return;
-
-    setAutoSyncAttemptedScopes((prev) => ({ ...prev, [scopeKey]: true }));
-
-    (async () => {
-      try {
-        await Promise.allSettled(
-          groupIds.flatMap((groupId) => [
-            syncService.syncJira({ groupId }),
-            syncService.syncGithub({ groupId }),
-          ]),
-        );
-
-        const jiraData = await jiraTaskService.list().catch(() => []);
-        setJiraTasks(Array.isArray(jiraData) ? jiraData : []);
-      } catch {
-        // Silent background sync: keep UI usable even if integration for some groups is missing.
-      }
-    })();
-  }, [
-    myGroups,
-    tasksForSelectedGroupsCount,
-    selectedSemesterId,
-    selectedClassId,
-    autoSyncAttemptedScopes,
-  ]);
 
   const enrichedGroups = useMemo(() => {
     const toNumberOrNull = (v) => {
